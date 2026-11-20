@@ -19,16 +19,20 @@ npm install        # installs dependencies for every tool (npm workspaces)
 npm test           # runs every tool's tests
 ```
 
-Run a tool directly:
+Run a tool with `npx`. Each tool's README has the full list of ways to run it:
 
 ```sh
-node tools/operation-ids/bin/cli.js path/to/openapi.yaml --dry-run
+npx openapi-operation-ids path/to/openapi.yaml --dry-run        # after `npm install` at the root
+npx ./tools/operation-ids path/to/openapi.yaml --dry-run        # no install needed
+npx /path/to/this/repo/tools/operation-ids openapi.yaml         # from any other directory
 ```
+
+Or with plain node: `node tools/operation-ids/bin/cli.js path/to/openapi.yaml`.
 
 ## Adding a new tool
 
 1. Create `tools/<tool-name>/` containing:
-   - `package.json` with its own `name`, `bin` (if it has a CLI), `dependencies` and a `test` script.
+   - `package.json` with its own `name`, `bin` (if it has a CLI, so `npx <name>` works), `dependencies` and a `test` script.
    - `README.md` covering usage, options and behaviour.
    - `bin/` for the CLI entry point, `src/` for the library code, `test/` for `node:test` tests.
 2. Run `npm install` at the repo root so the workspace is linked.

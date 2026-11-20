@@ -7,10 +7,33 @@ Fills in **missing** `operationId`s in an OpenAPI **3.0, 3.1 or 3.2** document (
 - **Idempotent**: running it on its own output changes nothing.
 - **Non-destructive**: existing `operationId`s are never changed. YAML comments and key order are kept.
 
+## Running with npx
+
+Requires Node.js 20+. Pick whichever matches where you are:
+
+```sh
+# 1. Inside a clone of this repo, after `npm install` at the repo root
+#    (npm workspaces links the command by name):
+npx openapi-operation-ids openapi.yaml --dry-run
+
+# 2. From the repo root without installing first (npx installs the tool's deps itself):
+npx ./tools/operation-ids openapi.yaml --dry-run
+
+# 3. From any other directory or project, pointing at a clone of this repo:
+npx /path/to/openapi/tools/operation-ids ./openapi.yaml --write
+```
+
+Any of the options below work with every form, for example
+`npx openapi-operation-ids openapi.yaml --case snake -o out.yaml`.
+
+> `npx github:<owner>/<repo>` can't run a tool from a subdirectory, so it won't work here.
+> To run the tool without a clone (`npx openapi-operation-ids` from anywhere), it has to be
+> published to an npm registry first, for example with `npm publish` from this directory.
+
 ## Usage
 
 ```sh
-# from the repo root
+# from the repo root (npx openapi-operation-ids … works the same way)
 node tools/operation-ids/bin/cli.js openapi.yaml            # print the result to stdout
 node tools/operation-ids/bin/cli.js openapi.yaml --write    # update the file in place
 node tools/operation-ids/bin/cli.js openapi.json -o out.json

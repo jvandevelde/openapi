@@ -1,0 +1,14 @@
+{
+  "name": "openapi-tools",
+  "private": true,
+  "description": "A collection of small, independent OpenAPI helper scripts.",
+  "workspaces": [
+    "tools/*"
+  ],
+  "scripts": {
+    "test": "npm test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,82 @@
+openapi: 3.1.0
+info:
+  title: Example
+  version: 1.0.0
+paths:
+  # Users
+  /users:
+    get:
+      summary: List users
+      responses: { '200': { description: ok } }
+    post:
+      responses: { '201': { description: created } }
+  /users/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [users]
+      summary: Get a user
+      responses: { '200': { description: ok } }
+    put:
+      responses: { '200': { description: ok } }
+    patch:
+      responses: { '200': { description: ok } }
+    delete:
+      responses: { '204': { description: gone } }
+  /users/me:
+    get:
+      responses: { '200': { description: ok } }
+  /users/{userId}/activate:
+    post:
+      responses: { '204': { description: ok } }
+  /orgs/{orgId}/users:
+    get:
+      responses: { '200': { description: ok } }
+  /orgs/{orgId}/members/{userId}:
+    get:
+      responses: { '200': { description: ok } }
+  /teams/{teamId}/members/{userId}:
+    get:
+      responses: { '200': { description: ok } }
+  /reports/{year}:
+    get:
+      responses: { '200': { description: ok } }
+  /reports/{year}/{month}:
+    get:
+      responses: { '200': { description: ok } }
+  /search:
+    get:
+      operationId: searchEverything
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses: { '200': { description: ok } }
+  /health:
+    get:
+      responses: { '200': { description: ok } }
+  /:
+    get:
+      responses: { '200': { description: ok } }
+  /{id}:
+    get:
+      responses: { '200': { description: ok } }
+  /subscriptions:
+    post:
+      responses: { '201': { description: ok } }
+      callbacks:
+        onEvent:
+          '{$request.body#/callbackUrl}':
+            post:
+              responses: { '200': { description: ok } }
+  /shared:
+    $ref: '#/components/pathItems/Shared'
+webhooks:
+  newPet:
+    post:
+      responses: { '200': { description: ok } }
+components:
+  parameters:
+    UserId: { name: userId, in: path, required: true, schema: { type: string } }
+  pathItems:
+    Shared:
+      get:
+        responses: { '200': { description: ok } }

@@ -1,0 +1,28 @@
+{
+  "name": "openapi-operation-ids",
+  "version": "1.0.0",
+  "description": "Fill in missing OpenAPI operationIds with short, deterministic, collision-free names.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "openapi-operation-ids": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "pluralize": "^8.0.0",
+    "yaml": "^2.9.1"
+  }
+}

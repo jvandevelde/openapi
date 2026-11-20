@@ -8,19 +8,53 @@ Each tool lives in its own directory under [`tools/`](tools/) and is fully self-
 |---|---|---|---|
 | [`operation-ids`](tools/operation-ids/) | Node.js ≥ 20 | Fills in missing `operationId`s with short, deterministic, unique names (OpenAPI 3.0–3.2). | `npx ./tools/operation-ids spec.yaml` |
 
-## Using the tools
+## Using the tools with `make`
 
-See each tool's README for its requirements and all the ways to run it. From the repo root:
+The repo uses [`make`](https://www.gnu.org/software/make/) as one entry point that works for every tool, whatever language the tool is written in. You run `make` from the repo root. It passes the command on to the `Makefile` in each tool's folder, and that `Makefile` calls the tool's own toolchain (for example `npm`, `uv` or `go`).
+
+### 1. Install `make` and the tool's runtime
+
+You need `make` itself, plus the runtime for any tool you want to use. The table at the top of this README and each tool's README list the runtime.
+
+| OS | How to get `make` |
+|---|---|
+| macOS | `xcode-select --install` (Command Line Tools) |
+| Debian / Ubuntu | `sudo apt install make` |
+| Fedora / RHEL | `sudo dnf install make` |
+| Windows | Use WSL, or install it with `winget install GnuWin32.Make` or `choco install make`, and run it from Git Bash |
+
+Run `make --version` to check that it's installed.
+
+### 2. Commands
+
+Run these from the repo root:
+
+| Command | What it does |
+|---|---|
+| `make list` | Lists every tool that `make` can see |
+| `make install` | Installs each tool's dependencies from its lockfile |
+| `make test` | Runs every tool's tests, stopping at the first failure |
+| `make test TOOL=<name>` | Runs the tests for one tool only (`install` also accepts `TOOL=`) |
+| `make run TOOL=<name> ARGS="..."` | Runs one tool and passes `ARGS` to it |
+
+Examples:
 
 ```sh
-make list                                   # list tools
-make install                                # install dependencies for every tool
-make test                                   # run every tool's tests
-make test TOOL=operation-ids                # just one tool
-make run  TOOL=operation-ids ARGS="test/fixtures/simple-3.0.json --dry-run"
+make list
+make install
+make test
+make test TOOL=operation-ids
+make run TOOL=operation-ids ARGS="test/fixtures/simple-3.0.json --dry-run"
 ```
 
-`make run` runs inside the tool's directory, so relative paths in `ARGS` are resolved from there. To pass paths relative to where you are, use the tool's native runner. For example: `npx ./tools/operation-ids path/to/spec.yaml`.
+`make test` and `make run` install dependencies first if they aren't installed yet, so you can skip `make install`.
+
+### 3. Things to know
+
+- **`ARGS` paths are relative to the tool's folder**, not to where you ran `make`, because `make run` runs inside `tools/<name>/`. Use absolute paths, for example `ARGS="$PWD/spec.yaml --write"`. Alternatively, call the tool's own runner directly, such as `npx ./tools/operation-ids spec.yaml`.
+- **Quote `ARGS`** whenever it contains more than one word: `ARGS="spec.yaml -o out.yaml"`.
+- **You can work inside a tool's folder**: `cd tools/operation-ids && make test`. Inside the folder, `make run ARGS="..."` works without `TOOL=`.
+- **You don't have to use `make`.** Each tool's README shows how to run it with its own toolchain, for example `npx` or `npm test`.
 
 ## Adding a new tool
 

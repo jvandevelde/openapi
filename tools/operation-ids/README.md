@@ -7,20 +7,23 @@ Fills in **missing** `operationId`s in an OpenAPI **3.0, 3.1 or 3.2** document (
 - **Idempotent**: running it on its own output changes nothing.
 - **Non-destructive**: existing `operationId`s are never changed. YAML comments and key order are kept.
 
+## Requirements
+
+Node.js 20 or later. The only dependencies are [`yaml`](https://www.npmjs.com/package/yaml) and [`pluralize`](https://www.npmjs.com/package/pluralize).
+
 ## Running with npx
 
-Requires Node.js 20+. Pick whichever matches where you are:
+Pick whichever matches where you are:
 
 ```sh
-# 1. Inside a clone of this repo, after `npm install` at the repo root
-#    (npm workspaces links the command by name):
-npx openapi-operation-ids openapi.yaml --dry-run
-
-# 2. From the repo root without installing first (npx installs the tool's deps itself):
+# 1. From the repo root. No install needed; npx installs the tool's dependencies itself.
 npx ./tools/operation-ids openapi.yaml --dry-run
 
-# 3. From any other directory or project, pointing at a clone of this repo:
+# 2. From any other directory or project, pointing at a clone of this repo:
 npx /path/to/openapi/tools/operation-ids ./openapi.yaml --write
+
+# 3. Inside this directory, after `npm install` (or `make install`), by name:
+npx openapi-operation-ids openapi.yaml --dry-run
 ```
 
 Any of the options below work with every form, for example
@@ -33,13 +36,14 @@ Any of the options below work with every form, for example
 ## Usage
 
 ```sh
-# from the repo root (npx openapi-operation-ids … works the same way)
-node tools/operation-ids/bin/cli.js openapi.yaml            # print the result to stdout
-node tools/operation-ids/bin/cli.js openapi.yaml --write    # update the file in place
-node tools/operation-ids/bin/cli.js openapi.json -o out.json
-node tools/operation-ids/bin/cli.js openapi.yaml --dry-run  # list what would be added
-node tools/operation-ids/bin/cli.js openapi.yaml --check    # exit 1 if any are missing (CI)
-cat openapi.yaml | node tools/operation-ids/bin/cli.js -    # read stdin
+# examples run from the repo root; `npx openapi-operation-ids` or
+# `node tools/operation-ids/bin/cli.js` work the same way
+npx ./tools/operation-ids openapi.yaml            # print the result to stdout
+npx ./tools/operation-ids openapi.yaml --write    # update the file in place
+npx ./tools/operation-ids openapi.json -o out.json
+npx ./tools/operation-ids openapi.yaml --dry-run  # list what would be added
+npx ./tools/operation-ids openapi.yaml --check    # exit 1 if any are missing (CI)
+cat openapi.yaml | npx ./tools/operation-ids -    # read stdin
 ```
 
 | Option | Description |
@@ -126,8 +130,12 @@ If one operation in a clash has nothing left to add at a level, its name stays t
 ## Development
 
 ```sh
-npm test   # node:test, run from this directory or from the repo root
+make install                     # npm ci
+make test                        # node:test (or `make test TOOL=operation-ids` from the repo root)
+make run ARGS="test/fixtures/simple-3.0.json --dry-run"
 ```
+
+CI runs `make test` on Node 20 and 22. It is set up in [`.github/workflows/operation-ids.yml`](../../.github/workflows/operation-ids.yml).
 
 Source layout:
 

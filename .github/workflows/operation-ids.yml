@@ -1,0 +1,32 @@
+# One workflow per tool. It runs only when that tool (or this file) changes and
+# sets up only the toolchain that tool needs.
+name: operation-ids
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/operation-ids/**'
+      - '.github/workflows/operation-ids.yml'
+  pull_request:
+    paths:
+      - 'tools/operation-ids/**'
+      - '.github/workflows/operation-ids.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/operation-ids
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: tools/operation-ids/package-lock.json
+      - run: make test

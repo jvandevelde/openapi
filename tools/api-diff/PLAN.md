@@ -2,36 +2,67 @@
 
 Status: **planning**. No code yet. The initial rule set is in [RULES.md](RULES.md), and the policy file reference in [POLICY.md](POLICY.md). This directory has no `Makefile`, so the root `make` ignores it for now.
 
-`api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. It does the same job as [oasdiff](https://github.com/oasdiff/oasdiff), but we own it. That means we decide what counts as breaking and how results are shown, and we can change either without forking someone else's project.
+`api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Several tools already do parts of this (section 1). We're building our own so that we decide what counts as breaking and how results are shown, and so the tool is built around the problems those tools leave open (section 3): shared and recursive schemas, request vs response direction, wire vs SDK compatibility, and reports for different readers.
 
 ---
 
-## 1. What oasdiff does well (and we should keep)
+## 1. Existing tools
 
-- Three views of one comparison: **diff** (everything), **changelog** (changes clients can see), **breaking** (changes that break clients).
-- Three severity levels: `ERR` (definitely breaking), `WARN` (might break, can't tell from the spec), `INFO` (safe).
-- `--fail-on <level>` for CI exit codes.
-- A stable ID for every check (e.g. `api-security-scope-removed`), so you can change a check's level or turn it off.
-- Lifecycle rules: a deprecation period before removal, and stability levels (`draft`/`alpha`/`beta`/`stable`).
-- Path tools: filter by path, add or strip prefixes, and treat a renamed path parameter as the same endpoint.
-- Output as JSON, YAML, Markdown, HTML, JUnit and GitHub Actions annotations.
+Surveyed in November 2026 from each project's own README and docs. "Not documented" means we didn't find it in the pages we read, not that the feature is missing.
 
-## 2. Where oasdiff falls short (and how we can do better)
+| Tool | Type | Status | What stands out |
+|---|---|---|---|
+| [oasdiff](https://github.com/oasdiff/oasdiff) | Go CLI, Apache-2.0 | Active | `breaking`, `changelog` and `diff` views; `ERR`/`WARN`/`INFO` levels; a large set of checks, each with an ID whose level can be changed; deprecation periods and stability levels; path prefix and filter options |
+| [openapi-changes](https://github.com/pb33f/openapi-changes) (pb33f) | Go CLI, Apache-2.0 | Active | Reads specs straight from git (`HEAD~1:openapi.yaml`) and walks a file's git history; interactive terminal UI; offline HTML report with a timeline, change graph and side-by-side/unified diff views; OpenAPI 3.0–3.2 and AsyncAPI 3; rule file toggles `added`/`modified`/`removed` per change type |
+| [openapi-diff](https://github.com/OpenAPITools/openapi-diff) (OpenAPITools) | Java CLI, Maven plugin and library, Apache-2.0 | Active | One-word result (`no_changes` / `compatible` / `incompatible`); per-check config properties (e.g. `incompatible.response.enum.increased`); pluggable path matcher; extension diffing via plugins; HTML, Markdown, AsciiDoc, JSON, text |
+| [Optic](https://github.com/opticdev/optic) | Node CLI, MIT | **Archived** January 2026 (Optic Labs joined Atlassian) | Breaking-change checks and lint rules in one tool; "forwards-only governance" (rules applied to new and changed parts only); generating and testing specs from captured traffic |
+| [Azure openapi-diff](https://github.com/Azure/openapi-diff) (`oad`) | TypeScript CLI, MIT | **Retired** July 2026 | About 50 numbered rules (1000–1050), each with its own docs page (description, cause, example); version-aware rules (a breaking change needs a new `api-version`; a changed spec without a version change is flagged); Azure `x-ms-*` extension rules; Swagger 2.0 |
+| [Bump.sh](https://docs.bump.sh/help/changes-management/) | Hosted service, with CLI and GitHub Action | Active | Changelog published with the API docs; changes labelled documentation, structural or breaking; PR comments; `fail_on_breaking`; consumers subscribe by email or RSS; any two releases can be compared through a shareable link. Breaking-change rules aren't documented as configurable |
+| [Speakeasy](https://www.speakeasy.com/docs) | SDK generation platform | Active | Computes OpenAPI and SDK diffs internally (per its changelog), but has no documented standalone diff feature |
 
-| # | oasdiff today | Our approach |
+### What most tools agree on (our baseline)
+
+- A **breaking / non-breaking** classification, usually with a middle "might break" level.
+- An **exit code** for CI.
+- A **stable ID per check**, so checks can be documented and tuned.
+- Matching `/users/{id}` and `/users/{userId}` as the same path.
+- At least **JSON** and **HTML** output.
+
+## 2. Ideas we take from other tools
+
+| Idea | Seen in | How we use it |
 |---|---|---|
-| 1 | **Hundreds of hand-written checks.** Each keyword in each position (request, response, parameter) is its own rule, so gaps are easy to miss and behaviour is uneven. | **Variance-based classification.** Every schema change is first labelled *widened*, *narrowed*, *incompatible* or *neutral*. Then its **position** decides whether it breaks: data clients **send** (requests, parameters) may only widen, and data clients **receive** (responses) may only narrow. One core rule covers most cases. Named rules stay as overrides and for non-schema changes. |
-| 2 | **A shared `$ref` change is repeated** once for every operation that uses it, which buries the real change. | **Report root causes.** One finding per changed component, with an *impact* list of the affected operations and positions. Renderers can expand or collapse it. |
-| 3 | **Limited customisation.** One flat `check-id level` file, plus ignore files that match on free-text descriptions. | **Policy file.** Severity per rule, scoped by path, tag, operation, stability level or `x-` extension, with conditions. **Acknowledgements** point at a stable finding ID and carry a reason, owner and expiry date. Expired acknowledgements fail again. |
-| 4 | **No source locations.** Findings name an endpoint, not a file and line. | **Source maps.** Every finding has a JSON Pointer and a file/line/column in **both** documents, which feeds `file:line` references in text output and links in the HTML report. |
-| 5 | **Fixed message text and plain renderers.** | **Typed change records → separate renderers.** The engine never writes prose. Three output formats: **JSON** (versioned schema, the source of truth), **text** (terminal and logs) and **HTML** (one self-contained file). Any other format (Markdown, SARIF, JUnit, …) can be produced from the JSON by a small script outside the tool. |
-| 6 | **Known gaps:** no checks for parameters that use `content` instead of `schema`. `$dynamicRef` isn't resolved. 3.2 support is partial. | Model `content` parameters from the start. Normalise 3.0/3.1/3.2 into one internal model, so `nullable: true` and `type: [x, "null"]` don't show up as a diff. |
-| 7 | **allOf is approximate** unless you pass `--flatten-allof`. oneOf/anyOf changes often come out as WARN. | Always compare **effective** schemas (allOf merged), and keep the original structure for display. Match oneOf/anyOf branches by discriminator value, `$ref` target or structural similarity, not by array index. |
-| 8 | **Renames read as remove + add.** | **Rename detection:** an operation with the same `operationId` at a new path, a component with a new name but the same structure, a renamed path parameter. Reported as one *renamed* change. |
-| 9 | Says *what* broke. | Each finding also says **why** it breaks (an example client that fails) and **how to fix** it (e.g. "make the new property optional", "deprecate first"). |
-| 10 | Version-bump checking is a single flag. | **Semver advice:** the bump the changes need (major/minor/patch), compared with the recorded versions (`info.version` or configured `x-` extensions, see *Versions compared*). |
+| Read specs from git revisions (`main:openapi.yaml`) without a checkout | openapi-changes | Accepted anywhere a file path is: `api-diff main:openapi.yaml openapi.yaml` (phase 1) |
+| Walk a spec's history and show a timeline | openapi-changes | `--history <range>` compares each consecutive pair of commits, and the `explore` report shows the timeline (backlog) |
+| Side-by-side, unified and inline diff views | openapi-changes | Options in the `explore` HTML report (phase 4) |
+| A one-word result for scripts | openapi-diff | `--state` prints `no-changes`, `compatible` or `breaking` (phase 1) |
+| Pluggable path matching | openapi-diff | Configurable matcher, including versioning-aware matching (backlog) |
+| A docs page per rule with cause and example | Azure openapi-diff | Generated from rule metadata: `api-diff rules <id>` (see POLICY.md section 13) |
+| Version-aware rules | Azure openapi-diff, oasdiff | `version-bump-too-small` and `version-unchanged` (RULES.md section 9) |
+| Separate documentation, structural and breaking changes | Bump.sh | Our `docs` / `wire` / `sdk` kinds, plus severity |
+| Lint only what changed | Optic | Rule plugins can declare `scope: changed`, so house rules apply to new and changed parts only and legacy parts don't block a PR (backlog) |
+| Deprecation periods and stability levels | oasdiff | `operation-removed` options and the `lifecycle` policy section |
 
-## 3. Architecture
+**Out of scope:** hosted changelog pages and email/RSS subscriptions (Bump.sh); traffic capture (Optic); AsyncAPI (openapi-changes). The JSON output is enough for someone to build the first two on top.
+
+## 3. Gaps we aim to close
+
+| # | Common today | Our approach |
+|---|---|---|
+| 1 | **Hand-written checks for each keyword and position** (request, response, parameter). The larger the set, the easier it is to miss a combination, and behaviour can be uneven. | **Variance-based classification.** Every schema change is first labelled *widened*, *narrowed*, *incompatible* or *neutral*. Then its **position** decides whether it breaks: data clients **send** (requests, parameters) may only widen, and data clients **receive** (responses) may only narrow. One core rule covers most cases. Named rules stay as overrides and for non-schema changes. |
+| 2 | **Findings are per endpoint**, so a change to a shared `$ref` can be repeated once for every operation that uses it, which buries the real change. | **Report root causes.** One finding per changed component, with an *impact* list of the affected operations and positions. Renderers can expand or collapse it. |
+| 3 | **Customisation ranges from none documented** (Bump.sh, Azure) to on/off switches (openapi-changes, openapi-diff) to a level per check (oasdiff). Ignoring a specific change usually means matching on text. | **Policy file.** Severity per rule, scoped by path, tag, operation, stability level or `x-` extension, with conditions. **Acknowledgements** point at a stable finding ID and carry a reason, owner and expiry date. Expired acknowledgements fail again. |
+| 4 | **Findings point at an endpoint or one location**, not at the exact place in both documents. | **Source maps.** Every finding has a JSON Pointer and a file/line/column in **both** documents, which feeds `file:line` references in text output and links in the HTML report. |
+| 5 | **Message text is fixed**, and each output format is its own code path. | **Typed change records → separate renderers.** The engine never writes prose. Three output formats: **JSON** (versioned schema, the source of truth), **text** (terminal and logs) and **HTML** (one self-contained file). Any other format (Markdown, SARIF, JUnit, …) can be produced from the JSON by a small script outside the tool. |
+| 6 | **Uneven OpenAPI coverage:** parameters that use `content` instead of `schema`, `$dynamicRef`, and 3.2 are partly or not covered (e.g. documented as gaps in oasdiff; openapi-diff lists 3.0). | Model `content` parameters from the start. Normalise 3.0/3.1/3.2 into one internal model, so `nullable: true` and `type: [x, "null"]` don't show up as a diff. |
+| 7 | **Composition is approximate:** `allOf` may need to be flattened by an option first, and `oneOf`/`anyOf` changes often can't be classified. | Always compare **effective** schemas (allOf merged), and keep the original structure for display. Match oneOf/anyOf branches by discriminator value, `$ref` target or structural similarity, not by array index. |
+| 8 | **Renames read as remove + add.** | **Rename detection:** an operation with the same `operationId` at a new path, a component with a new name but the same structure, a renamed path parameter. Reported as one *renamed* change. |
+| 9 | Says *what* changed. | Each finding also says **why** it breaks (an example client that fails) and **how to fix** it (e.g. "make the new property optional", "deprecate first"). |
+| 10 | Version checks are a yes/no rule, where they exist. | **Semver advice:** the bump the changes need (major/minor/patch), compared with the recorded versions (`info.version` or configured `x-` extensions, see *Versions compared*). |
+| 11 | **Wire and SDK compatibility are mixed together.** A renamed component is harmless on the wire but breaks generated code. | Every rule declares its kind (`wire`, `sdk`, `docs`), and `--profile wire|sdk` sets defaults for each audience. |
+| 12 | **One output for everyone.** | **Reports per audience** (section 5) from one result: CI, reviewers, consumers, SDK maintainers, release managers, governance. |
+
+## 4. Architecture
 
 ```
  base.yaml ─┐
@@ -265,7 +296,7 @@ Every finding in the output also shows **where its severity came from** (e.g. `w
   expires: 2027-01-31
 ```
 
-## 4. Reports by audience
+## 5. Reports by audience
 
 The engine produces one **result object** (JSON with a versioned schema): findings, usages, counts, the semver advice, and where each severity came from. Every report is a **view** over that object, so all reports agree with each other and the specs are parsed only once, however many reports are produced.
 
@@ -345,7 +376,7 @@ Only three: **`json`**, **`txt`** and **`html`**. Every report supports `json`, 
 - **`txt`**: plain text for terminals, CI logs and PR comments (inside a code block). Colour only when writing to a TTY, and `NO_COLOR` is respected.
 - **`html`**: a single self-contained file (inline CSS/JS, no network), so it works as a CI artifact or opened locally.
 
-### What makes these better than oasdiff's outputs
+### What's different from existing tools' reports
 
 - **Exclusions for each audience.** Each report applies only the exclusion sets you configure (see *Exclusions*), and `changelog` never shows acknowledgement reasons or owners.
 - **Each report stays the right size.** GitHub comments are limited to 65,536 characters, so `review` shows the most serious findings in full, collapses the rest and links to the `explore` HTML artifact for the remainder. It never just cuts off.
@@ -379,30 +410,30 @@ api-diff base.yaml rev.yaml \
   --report changelog:html:out/changelog.html
 ```
 
-## 5. Phases
+## 6. Phases
 
 | Phase | Deliverable | Done when |
 |---|---|---|
-| **0. Corpus** | `test/cases/<name>/{base,revision}.yaml` plus `expected.yaml` (the findings we want). Start with about 40 cases covering every row in section 2, plus recursive schemas: one that refers to itself, a union whose member refers back to the base type in a collection, a cycle that passes through three schemas, an invalid `allOf` cycle, and a change deep inside a cycle. Optionally record what oasdiff says for each case to compare. | We agree on the expected results. This is where we settle what "breaking" means. |
-| **1. Skeleton** | load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`. | Phase 1 cases pass. |
+| **0. Corpus** | `test/cases/<name>/{base,revision}.yaml` plus `expected.yaml` (the findings we want). Start with about 40 cases covering every row in section 3, plus recursive schemas: one that refers to itself, a union whose member refers back to the base type in a collection, a cycle that passes through three schemas, an invalid `allOf` cycle, and a change deep inside a cycle. Optionally run oasdiff and openapi-diff on each case and record what they say, to compare. | We agree on the expected results. This is where we settle what "breaking" means. |
+| **1. Skeleton** | load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`, `--state`, and git revision inputs (`main:openapi.yaml`). | Phase 1 cases pass. |
 | **2. Schema engine** | Effective-schema merge (allOf), variance classifier, oneOf/anyOf branch matching, `$ref` root-cause aggregation. | All schema cases pass, and each shared-component change appears once. |
 | **3. Policy & CI** | Policy file, acknowledgements, source maps. The `ci` and `review` reports, `summary`. | Usable as a required PR check. |
-| **4. Presentation** | The `explore` HTML report, `changelog` (with redaction), `sdk`, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to oasdiff output. |
+| **4. Presentation** | The `explore` HTML report, `changelog` (with redaction), `sdk`, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to the output of the tools in section 1. |
 | **5. Governance & consumers** | `audit`, custom reports and templates, consumer impact reports (`--uses`). | Release notes and governance reviews use it without manual editing. |
 
 Out of scope at first: **webhooks and callbacks** (if a spec has them, a single `info` notice says they weren't compared, so nothing is skipped silently; the direction model allows them to be added later by flipping direction), Swagger 2.0, external (`http://`) refs, specs split across many files (`--composed`), translations.
 
-## 6. Decisions to make
+## 7. Decisions to make
 
-1. **Language.** Proposal: **TypeScript on Node ≥ 20**, matching `operation-ids` and using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go would match oasdiff and produce a single binary, but we'd need our own position-aware YAML handling.
+1. **Language.** Proposal: **TypeScript on Node ≥ 20**, matching `operation-ids` and using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go (like oasdiff and openapi-changes) would produce a single binary, but we'd need our own position-aware YAML handling.
 2. **OpenAPI versions.** Proposal: 3.0, 3.1 and 3.2 from the start, using the normalise step.
 3. **Default stance on ambiguous changes.** Examples: a new enum value in a response, a new optional request property where the server sets `additionalProperties: false`, a new required response header. Proposal: `warn` by default, and the policy can change it.
-4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 4 that matters more to you, or one that's missing?
+4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 5 that matters more to you, or one that's missing?
 5. **Name.** `api-diff` is a placeholder.
 
-## 7. Further ideas (backlog)
+## 8. Further ideas (backlog)
 
-Ideas aimed at large enterprise specs. As far as I know, oasdiff doesn't have them and other common diff tools don't either, but none of this has been checked against every tool. Each idea has a rough value/effort rating so we can pick from it later. **★** marks the ones I'd do first.
+Ideas aimed at large enterprise specs. None of the tools in section 1 document these, as far as we found. Each idea has a rough value/effort rating so we can pick from it later. **★** marks the ones I'd do first.
 
 ### Evidence and accuracy
 
@@ -439,6 +470,8 @@ Ideas aimed at large enterprise specs. As far as I know, oasdiff doesn't have th
 | **Editor integration (LSP)** | Run the engine as a language server against `main`, so breaking changes show up as editor warnings while the spec is edited, before a PR exists. The engine is pure functions, so this is mostly a wrapper. | high / medium |
 | **`api-diff explain <finding-id>`** | Prints the full reasoning for one finding: the rule, the usages, where the severity came from, the counter-example and the fix. | medium / low |
 | **Rule plugins** | Custom rules written in TypeScript against the change-record API, tested with the same `base/revision/expected` corpus format as the built-in rules. Covers house rules such as "every list operation must keep its pagination parameters". | high / medium |
+| **History mode** | `--history v1.0..HEAD` compares each consecutive pair of commits that touched the spec, and the `explore` report shows a timeline of when each change landed (idea from openapi-changes). Cheap with the cached index. | medium / medium |
+| **Lint only what changed** | Rule plugins can declare `scope: changed`, so house rules apply only to new and changed parts and legacy parts don't block a PR (idea from Optic's forwards-only governance). | high / low |
 | **Watch mode** | `api-diff --watch` re-runs on save. Cheap with the cached base index. | low / low |
 
 ### Enterprise operation

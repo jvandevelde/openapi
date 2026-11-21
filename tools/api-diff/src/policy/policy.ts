@@ -10,7 +10,9 @@ import { resolve } from 'node:path';
 import { load } from 'js-yaml';
 import { unrelatedOptions } from '../diff/unrelated.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
-import { allRuleIds, baseRuleId } from '../rules/registry.ts';
+import { DEFAULT_LIFECYCLE, type LifecycleSettings } from './context.ts';
+import { parseOverrides, type Override } from './overrides.ts';
+import { allRuleIds, baseRuleId, getRule } from '../rules/registry.ts';
 import type { FailOn, Profile, Severity } from '../types.ts';
 
 export type RuleSeverity = Severity | 'off';
@@ -33,6 +35,10 @@ export interface Policy {
   minSeverity?: Severity;
   /** Keyed by the rule ID as written: a base ID or a location/direction variant. */
   rules: Map<string, RuleSetting>;
+  /** In file order; the last match wins. */
+  overrides?: Override[];
+  /** Where stability (and later deprecation and sunset dates) are read from. */
+  lifecycle: LifecycleSettings;
   /** Sections not validated yet, as given. */
   raw: Record<string, unknown>;
 }
@@ -48,7 +54,7 @@ const SETTING_KEYS = ['severity', 'fix', 'explanation'] as const;
 const SEVERITIES = ['error', 'warn', 'info', 'off'] as const;
 
 export function emptyPolicy(): Policy {
-  return { rules: new Map(), raw: {} };
+  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, raw: {} };
 }
 
 /**
@@ -75,7 +81,7 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
 export function parsePolicy(data: unknown, file = 'policy'): Policy {
   const at = (path: string): string => `${file}: ${path}`;
   const obj = asObject(data, at('the policy'));
-  const policy: Policy = { file, rules: new Map(), raw: {} };
+  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, raw: {} };
   for (const [k, v] of Object.entries(obj)) {
     if (!(TOP_KEYS as readonly string[]).includes(k)) throw new PolicyError(`${at(k)}: unknown key${suggest(k, TOP_KEYS)}`);
     switch (k) {
@@ -93,7 +99,7 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
         }
         break;
       case 'rules':
-        for (const [id, setting] of Object.entries(asObject(v, at('rules')))) policy.rules.set(id, parseRuleSetting(id, setting, at(`rules.${id}`)));
+        policy.rules = parseRules(v, at('rules'));
         break;
       case 'ignore':
         if (!Array.isArray(v)) throw new PolicyError(`${at('ignore')}: must be a list`);
@@ -101,13 +107,43 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
         break;
       case 'overrides':
         if (!Array.isArray(v)) throw new PolicyError(`${at('overrides')}: must be a list`);
-        policy.raw[k] = v;
+        policy.overrides = parseOverrides(v, file, (r, where) => parseRules(r, where, true), suggest);
         break;
+      case 'lifecycle': {
+        const lc = asObject(v, at('lifecycle'));
+        policy.raw[k] = lc;
+        if (lc.stability !== undefined) policy.lifecycle.stability = extensionName(lc.stability, at('lifecycle.stability'));
+        if (lc['default-stability'] !== undefined) {
+          if (typeof lc['default-stability'] !== 'string') throw new PolicyError(`${at('lifecycle.default-stability')}: must be text`);
+          policy.lifecycle.defaultStability = lc['default-stability'];
+        }
+        break;
+      }
       default:
         policy.raw[k] = asObject(v, at(k));
     }
   }
   return policy;
+}
+
+/** Parses a `rules` map. In an override, only the severity and the conditional-case option can be set. */
+function parseRules(v: unknown, where: string, inOverride = false): Map<string, RuleSetting> {
+  const out = new Map<string, RuleSetting>();
+  for (const [id, setting] of Object.entries(asObject(v, where))) {
+    const s = parseRuleSetting(id, setting, `${where}.${id}`);
+    if (inOverride) {
+      const allowed = getRule(baseRuleId(id)!).conditionalOption;
+      const extra = Object.keys(s.options).filter((o) => o !== allowed);
+      if (extra.length) throw new PolicyError(`${where}.${id}.${extra[0]}: rule options can't be set in overrides, only in the top-level rules`);
+    }
+    out.set(id, s);
+  }
+  return out;
+}
+
+function extensionName(v: unknown, where: string): string {
+  if (typeof v !== 'string' || !v.startsWith('x-')) throw new PolicyError(`${where}: must be an x- extension name`);
+  return v;
 }
 
 /** Parses `rule-id: severity` or `rule-id: { severity, fix, explanation, ...options }`. */

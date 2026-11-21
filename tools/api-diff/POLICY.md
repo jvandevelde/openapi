@@ -116,6 +116,15 @@ overrides:
 
 All keys in one `match` must match (AND). A list value means any of them (OR). An override sets either `severity` (all rules) or `rules` (a map of rule IDs, same format as the top-level `rules`), not both.
 
+How matching works:
+
+- **Operation keys** (`path`, `method`, `operationId`, `tag`, `stability`) match the operation a finding is in. A finding about a shared component matches through the operations that use it (its `impact`). Findings with no operation (the document, a security scheme) never match operation keys.
+- **Per operation:** when the operations behind one finding get different severities, the finding is split into one finding per severity, each listing its operations. A split part has its own stable finding ID.
+- **`extension`** matches if the operation (or its path item), the component schema or the document root has that extension with one of the listed values.
+- **Last match wins**, counting only overrides that set something for the finding's rule: an override whose `rules` map doesn't name the rule is skipped, so an earlier one can still apply.
+- **`severity`** applies to every finding of every rule, including the conditional cases in section 4 (a draft operation's removed required header is `info` too). An override's `rules` map behaves like the top-level `rules`: it can set `severity` and the conditional-case option (`required-severity`, `closed-object-severity`), but no other rule options, which only the top-level `rules` can set.
+- The finding's `severitySource` names the override, e.g. `policy api-diff.yaml: overrides #2 (path /legacy/**, method ["delete"])`.
+
 ## 6. Extensions
 
 ```yaml

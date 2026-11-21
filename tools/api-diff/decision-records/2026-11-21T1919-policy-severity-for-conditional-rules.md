@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-21 19:19 UTC |
 | **Summary** | For rules whose default depends on the change (`response-header-removed`, `property-removed`, `format-changed`), a policy `severity` applies only to the other findings; the dependent case is set by its own option, and `off` turns off every finding. |
 | **Milestone** | M6 |

@@ -12,6 +12,7 @@ import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
+import { buildContext } from './policy/context.ts';
 import type { Policy } from './policy/policy.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
@@ -80,7 +81,9 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     diffs.push(...diffDocs(b.model, r.model, pairs));
     changes.push(...collapseBulk(diffs));
   }
-  const findings = classify(changes, opts.policy ? { profile, policy: opts.policy } : { profile });
+  const policy = opts.policy;
+  const context = policy?.overrides?.length ? buildContext(b.model, r.model, policy.lifecycle) : undefined;
+  const findings = classify(changes, policy ? (context ? { profile, policy, context } : { profile, policy }) : { profile });
   return {
     schemaVersion: 0,
     tool: { name: 'api-diff', version: VERSION },

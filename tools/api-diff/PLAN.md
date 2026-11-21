@@ -114,12 +114,18 @@ ERROR  Order.customer: $ref Customer → CustomerV2              (orders.yaml:23
 
 The parent finding takes the highest severity of its children. If the two schemas are identical, the only finding is the ref change itself.
 
-#### Two kinds of compatibility: wire and SDK
+#### Kinds of change: wire, SDK and docs
 
 A ref change can be harmless on the wire but still break generated SDKs, because code generators use component names as type names (`Customer` → `CustomerV2` breaks code that refers to `Customer`). So every rule declares which kind of compatibility it affects:
 
 - **`wire`**: the JSON on the wire. Old clients fail at runtime.
 - **`sdk`**: generated code. Old client code stops compiling (type renamed, ref inlined, an `anyOf` became a `oneOf`, an operationId renamed, a parameter renamed).
+- **`docs`**: annotations that don't change the wire or generated types, but are still changes: `description`, `summary`, `title`, `example`/`examples`, `externalDocs`, tag descriptions, and `x-` extensions not otherwise classified. They're `info` by default, shown in the **diff** view, and hidden from **breaking**.
+
+Some annotations aren't purely docs, so they get their own rules:
+- **`deprecated`** added or removed has lifecycle rules (deprecation period, sunset).
+- **`default`** changes server behaviour when a field is omitted, so it counts as `wire` (`warn`).
+- **`x-` extensions** can matter to code generators (e.g. `x-enum-varnames`, `x-go-type`). The policy file says which kind each extension is, e.g. `extensions: { x-enum-varnames: sdk, x-internal: wire }`, and the rest default to `docs`.
 
 Built-in **profiles** set different defaults: `--profile wire` (`sdk` rules are `info`) and `--profile sdk` (`sdk` rules are `warn` or `error`). For `ref-target-changed` with identical schemas, the default is `info` under `wire` and `error` under `sdk`. The policy file can override either.
 
@@ -149,10 +155,43 @@ Tarjan gives us the SCCs in reverse topological order, which is exactly the orde
 | **Diff** | Compares pairs (base node, revision node), cached per pair. If a pair comes up again while it's still being compared, we **assume they're equal** and stop there (the standard way to compare recursive types). Any real difference is still found on the non-cyclic part of the path. Pairs not on a cycle just use the cache. |
 | **Usages / direction** | Propagated over the **condensation** (each SCC collapsed to one node). Every member of an SCC reaches every other, so they share one usage set. Directions form a tiny set (`{in, out}`), so propagation always ends. |
 | **Impact paths** | No list of every path. Each usage stores **one shortest example path** (found by breadth-first search) and a **count**, e.g. `GET /shapes → 200 → Shape.oneOf[1] Group.children[] → Shape (+11 more paths)`. |
-| **Structural hashing** (rename detection, equality) | A Merkle hash over the condensation. Each recursive SCC is hashed as one unit in a canonical order, so self-referencing schemas get a stable hash. |
+| **Structural hashing** (rename detection, equality, completeness) | A Merkle hash over the condensation. Each recursive SCC is hashed as one unit in a canonical order, so self-referencing schemas get a stable hash. See *Content hashes* below. |
 | **Rendering** | Nothing is expanded past a back-edge. It's shown as `↻ Shape (recursive)`. A configurable `--max-depth` limits how deep the output goes, purely for readability. |
 
 The component graph is small even for an 8 MB spec (thousands of nodes), and Tarjan is O(V+E), so building the index takes milliseconds.
+
+### Content hashes: skip unchanged parts, check nothing was missed, count changes
+
+Every node in the schema index (each component, operation, parameter and response) gets **two hashes**, computed after the normalise step so cosmetic differences such as key order or `nullable` vs `type: [.., "null"]` don't count:
+
+- **`shape`**: everything that affects the wire or the SDK (types, constraints, required, refs by target *and* name, enum values, `default`, extensions classified `wire`/`sdk`).
+- **`full`**: `shape` plus every annotation (`description`, examples, `x-` extensions, …).
+
+Comparing the two hashes of each base/revision pair gives:
+
+| `shape` | `full` | Meaning | What we do |
+|---|---|---|---|
+| same | same | Unchanged | **Skip the subtree entirely.** Most of a large spec usually hasn't changed, so this is the main speed-up. |
+| same | differs | Annotations only | Diff only the annotations and emit `docs` findings. |
+| differs | — | Real change | Full diff and classification. |
+
+**Safety net: `unclassified-change`.** If a node's `shape` hash changed but no rule produced a `wire` or `sdk` finding for it, we emit `unclassified-change` (default `warn`) with the pointer and both values. This means the rules can never silently miss a change. It also tells us when the rules have a gap: every `unclassified-change` in the test corpus is a missing rule to write. CI can be strict with `unclassified-change: error`.
+
+**Counts.** Every change record has a `kind` (e.g. `schema.enum.value-added`) and a kind of change (`wire`/`sdk`/`docs`), so the summary is just a group-by:
+
+```
+Changes: 47  (wire 9, sdk 3, docs 35)
+  components changed: 6 of 412      operations changed: 18 of 1,203
+  error 2   warn 5   info 40
+
+  wire  schema.property.removed          2  error
+  wire  schema.enum.value-added          3  warn
+  sdk   ref.target-changed               1  error
+  docs  description.changed             31  info
+  ...
+```
+
+The hashes also give exact "changed / total" counts for components and operations without walking unchanged subtrees. `--summary` prints only this block, and the JSON output contains the same numbers for dashboards.
 
 ### Change record (draft)
 

@@ -23,8 +23,8 @@ Status: **planning**. No code yet. This directory has no `Makefile`, so the root
 | 1 | **Hundreds of hand-written checks.** Each keyword in each position (request, response, parameter) is its own rule, so gaps are easy to miss and behaviour is uneven. | **Variance-based classification.** Every schema change is first labelled *widened*, *narrowed*, *incompatible* or *neutral*. Then its **position** decides whether it breaks: data clients **send** (requests, parameters) may only widen, and data clients **receive** (responses) may only narrow. One core rule covers most cases. Named rules stay as overrides and for non-schema changes. |
 | 2 | **A shared `$ref` change is repeated** once for every operation that uses it, which buries the real change. | **Report root causes.** One finding per changed component, with an *impact* list of the affected operations and positions. Renderers can expand or collapse it. |
 | 3 | **Limited customisation.** One flat `check-id level` file, plus ignore files that match on free-text descriptions. | **Policy file.** Severity per rule, scoped by path, tag, operation, stability level or `x-` extension, with conditions. **Acknowledgements** point at a stable finding ID and carry a reason, owner and expiry date. Expired acknowledgements fail again. |
-| 4 | **No source locations.** Findings name an endpoint, not a file and line. | **Source maps.** Every finding has a JSON Pointer and a file/line/column in **both** documents, which feeds PR inline comments, SARIF and links in the HTML report. |
-| 5 | **Fixed message text and plain renderers.** | **Typed change records → separate renderers.** The engine never writes prose. Renderers for terminal, Markdown (PR comment with collapsible sections), HTML (side-by-side, filterable), JSON (versioned schema), SARIF and GitHub annotations. |
+| 4 | **No source locations.** Findings name an endpoint, not a file and line. | **Source maps.** Every finding has a JSON Pointer and a file/line/column in **both** documents, which feeds `file:line` references in text output and links in the HTML report. |
+| 5 | **Fixed message text and plain renderers.** | **Typed change records → separate renderers.** The engine never writes prose. Three output formats: **JSON** (versioned schema, the source of truth), **text** (terminal and logs) and **HTML** (one self-contained file). Any other format (Markdown, SARIF, JUnit, …) can be produced from the JSON by a small script outside the tool. |
 | 6 | **Known gaps:** no checks for parameters that use `content` instead of `schema`. `$dynamicRef` isn't resolved. 3.2 support is partial. | Model `content` parameters from the start. Normalise 3.0/3.1/3.2 into one internal model, so `nullable: true` and `type: [x, "null"]` don't show up as a diff. |
 | 7 | **allOf is approximate** unless you pass `--flatten-allof`. oneOf/anyOf changes often come out as WARN. | Always compare **effective** schemas (allOf merged), and keep the original structure for display. Match oneOf/anyOf branches by discriminator value, `$ref` target or structural similarity, not by array index. |
 | 8 | **Renames read as remove + add.** | **Rename detection:** an operation with the same `operationId` at a new path, a component with a new name but the same structure, a renamed path parameter. Reported as one *renamed* change. |
@@ -273,13 +273,21 @@ The engine produces one **result object** (JSON with a versioned schema): findin
 
 | Report | Reader | The question it answers | Includes | Grouped by | Formats | Where it goes |
 |---|---|---|---|---|---|---|
-| **`ci`** | The pipeline | Pass or fail? | Findings at or above `--fail-on`, excluding acknowledged ones | Severity | exit code, SARIF, JUnit, GitHub annotations | CI step, code scanning, inline annotations |
-| **`review`** | PR author and reviewers | What does this PR break, and how do I fix or accept it? | wire + sdk findings with fixes, a collapsed list of docs changes, acknowledged findings marked as such | Root cause (component or operation), worst first | Markdown, terminal | One PR comment, updated in place on each push |
-| **`changelog`** | API consumers | What changed for me in this release, and what do I need to do? | Plain-language entries: new, changed, deprecated (with sunset dates), removed, and migration notes. No internal paths, no acknowledgement details, no docs-only changes unless asked | Tag, then operation | Markdown, HTML | Release notes, developer portal |
-| **`sdk`** | SDK maintainers | Which generated types or methods change? | sdk findings, a table of old → new type and method names, the SDK semver bump | Generated type / operationId | Markdown, JSON | SDK release PR |
-| **`summary`** | Release or product manager | How big and how risky is this release? | Counts by kind and severity, the semver advice, the 5 most serious findings | — | terminal, Markdown, Slack-sized text | Release checklist, chat |
-| **`audit`** | API governance | Are we following our own rules? | Everything, including acknowledged findings (who, why, expiry), expired acknowledgements, `unclassified-change`, and which policy entry set each severity | Rule | JSON, HTML, CSV | Governance reviews, dashboards (trends across releases) |
+| **`ci`** | The pipeline | Pass or fail? | Findings at or above `--fail-on`, excluding acknowledged ones | Severity | exit code, text, JSON | CI step log, JSON kept as a build artifact |
+| **`review`** | PR author and reviewers | What does this PR break, and how do I fix or accept it? | wire + sdk findings with fixes, a collapsed list of docs changes, acknowledged findings marked as such | Root cause (component or operation), worst first | text, HTML | PR comment (text), linked HTML artifact |
+| **`changelog`** | API consumers | What changed for me in this release, and what do I need to do? | Plain-language entries: new, changed, deprecated (with sunset dates), removed, and migration notes. No internal paths, no acknowledgement details, no docs-only changes unless asked | Tag, then operation | HTML, text | Release notes, developer portal |
+| **`sdk`** | SDK maintainers | Which generated types or methods change? | sdk findings, a table of old → new type and method names, the SDK semver bump | Generated type / operationId | text, JSON | SDK release PR |
+| **`summary`** | Release or product manager | How big and how risky is this release? | Counts by kind and severity, the semver advice, the 5 most serious findings | — | text, JSON | Release checklist, chat |
+| **`audit`** | API governance | Are we following our own rules? | Everything, including acknowledged findings (who, why, expiry), expired acknowledgements, `unclassified-change`, and which policy entry set each severity | Rule | JSON, HTML | Governance reviews, dashboards (trends across releases) |
 | **`explore`** | Anyone investigating | Show me everything | All findings plus a side-by-side spec view, filters (kind, severity, tag, path), search, recursive schemas shown as `↻` | Interactive | Self-contained HTML (one file, works offline) | CI artifact linked from the `review` comment |
+
+### Output formats
+
+Only three: **`json`**, **`txt`** and **`html`**. Every report supports `json`, and the table lists the others each one supports.
+
+- **`json`**: the full result object with a versioned JSON Schema (`api-diff schema` prints it). This is the stable interface, and anything else (Markdown, SARIF, JUnit, dashboards) is built from it outside the tool.
+- **`txt`**: plain text for terminals, CI logs and PR comments (inside a code block). Colour only when writing to a TTY, and `NO_COLOR` is respected.
+- **`html`**: a single self-contained file (inline CSS/JS, no network), so it works as a CI artifact or opened locally.
 
 ### What makes these better than oasdiff's outputs
 
@@ -310,9 +318,9 @@ Several reports can be produced in one run, from one parse:
 ```sh
 api-diff base.yaml rev.yaml \
   --report ci \
-  --report review:md:out/review.md \
+  --report review:txt:out/review.txt \
   --report explore:html:out/report.html \
-  --report changelog:md:out/CHANGELOG-entry.md
+  --report changelog:html:out/changelog.html
 ```
 
 ## 5. Phases

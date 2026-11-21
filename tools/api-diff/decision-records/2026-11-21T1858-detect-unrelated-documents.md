@@ -20,40 +20,63 @@ Proving two documents are the same API isn't possible. Catching documents that a
 
 ## Alternatives considered
 
+In each group below, the chosen option is listed first and marked **✅ Chosen**; the rest are marked **Rejected**.
+
 ### Where the check lives
 
-- **A hard input error (exit code 2), with a `--allow-unrelated` flag**: simple, but it duplicates what rules already provide (severity, `off`, options, a generated rule page, golden test cases) and can't be tuned in the policy file. Not chosen.
-- **A warning finding alongside the full diff**: the one useful finding is buried under hundreds of meaningless removals. Not chosen.
-- **A rule whose finding replaces the diff (chosen)**: it gets the policy machinery for free. Its exit code follows `--fail-on` like every other finding, and `off` is the override.
+- **✅ Chosen: a rule whose finding replaces the diff.** It gets the policy machinery for free (severity, `off`, options, a generated rule page, golden test cases). Its exit code follows `--fail-on` like every other finding, and `off` is the override.
+- **Rejected: a hard input error (exit code 2), with a `--allow-unrelated` flag.** Simple, but it duplicates what rules already provide and can't be tuned in the policy file.
+- **Rejected: a warning finding alongside the full diff.** The one useful finding is buried under hundreds of meaningless removals.
 
 ### How to measure similarity
 
-All of these work on sets of keys built per signal (operations, `operationId`s, schema names), except where noted.
+All of these work on sets of keys built per signal (operations, `operationId`s, schema names), except where noted. Scores for three example pairs:
 
-- **Jaccard index**, \|A ∩ B\| / \|A ∪ B\|: the standard set similarity, but it punishes size differences. An API that keeps its 20 operations and adds 180 scores 20/200 = 0.10, the same as two mostly unrelated APIs. Growth and big removals are exactly the real changes we must not flag. Not chosen.
-- **Sørensen–Dice coefficient**, 2\|A ∩ B\| / (\|A\| + \|B\|): the same size bias as Jaccard, only milder (the 20 → 200 example scores 0.18). Not chosen.
-- **Containment**, \|A ∩ B\| / \|A\|: measures how much of one side survives, which is the right idea, but it is asymmetric. Base-in-revision handles growth and revision-in-base handles shrinking, so we'd need both. Taking the larger of the two is the overlap coefficient.
-- **Overlap coefficient (Szymkiewicz–Simpson)**, \|A ∩ B\| / min(\|A\|, \|B\|) (**chosen**): how much of the smaller document is in the larger one. Growth and shrinking both score 1.0 when nothing else changed, and unrelated APIs score close to 0. Its weakness is that a tiny document scores high by accident (1 shared `GET /health` out of 2 operations is 0.5), which `min-size` covers.
-- **Cosine similarity or TF-IDF over path and name tokens**: tolerant of renames, but it needs a tokenizer, a weighting scheme and a threshold that is hard to explain. Unrelated APIs in one company share many tokens (`id`, `list`, `users`, `v1`), which pushes scores up exactly where we need them low. Not chosen.
-- **MinHash / locality-sensitive hashing**: estimates Jaccard quickly for huge sets. Our sets have thousands of items at most, and exact set operations on them take microseconds, so an estimate adds error for no gain. It also estimates the wrong measure. Not chosen.
-- **Edit distance between paths (Levenshtein) with best matching**: catches renamed paths, but it is O(n² · path length) and needs an assignment step (e.g. Hungarian) to pair paths up. That is more than a precheck needs, and rename detection belongs to M8. Not chosen.
-- **Tree edit distance over the whole document**: the most precise and by far the most expensive (cubic in the worst case). Not chosen.
-- **Shape-hash overlap of schemas**: reuses the M4 hashes, but any schema change changes its hash, so a normal release with many edits looks unrelated. Names are more stable than shapes. Not chosen as a signal; it could be added later as an option.
-- **One weighted score over all signals**: needs weights nobody can justify, and one strong signal (e.g. every `operationId` kept while all paths moved) gets diluted by the others. Not chosen; each signal is scored on its own instead.
+| Measure | Formula | API grew, 20 → 200 ops | API shrank, 200 → 20 ops | Unrelated, 20 vs 40 ops, 1 shared | |
+|---|---|---|---|---|---|
+| **Overlap coefficient** | \|A ∩ B\| / min(\|A\|, \|B\|) | **1.00** | **1.00** | 0.05 | **✅ Chosen** |
+| Jaccard index | \|A ∩ B\| / \|A ∪ B\| | 0.10 | 0.10 | 0.02 | Rejected |
+| Sørensen–Dice | 2\|A ∩ B\| / (\|A\| + \|B\|) | 0.18 | 0.18 | 0.03 | Rejected |
+| Containment of base | \|A ∩ B\| / \|A\| | 1.00 | 0.10 | 0.05 | Rejected |
+
+A good measure scores the first two columns high and the third low. Only the overlap coefficient does both.
+
+- **✅ Chosen: overlap coefficient (Szymkiewicz–Simpson)**, \|A ∩ B\| / min(\|A\|, \|B\|). How much of the smaller document is in the larger one. Growth and shrinking both score 1.0 when nothing else changed, and unrelated APIs score close to 0. Its weakness is that a tiny document scores high by accident (1 shared `GET /health` out of 2 operations is 0.5), which `min-size` covers.
+- **Rejected: Jaccard index**, \|A ∩ B\| / \|A ∪ B\|. The standard set similarity, but it punishes size differences: an API that keeps its 20 operations and adds 180 scores 0.10, the same as two mostly unrelated APIs. Growth and big removals are exactly the real changes we must not flag.
+- **Rejected: Sørensen–Dice coefficient**, 2\|A ∩ B\| / (\|A\| + \|B\|). The same size bias as Jaccard, only milder.
+- **Rejected: containment**, \|A ∩ B\| / \|A\|. The right idea (how much of one side survives), but asymmetric: base-in-revision handles growth and revision-in-base handles shrinking, so we'd need both. The larger of the two is the overlap coefficient, so it was chosen in that form.
+- **Rejected: cosine similarity or TF-IDF over path and name tokens.** Tolerant of renames, but it needs a tokenizer, a weighting scheme and a threshold that is hard to explain. Unrelated APIs in one company share many tokens (`id`, `list`, `users`, `v1`), which pushes scores up exactly where we need them low.
+- **Rejected: MinHash / locality-sensitive hashing.** Estimates Jaccard quickly for huge sets. Our sets have thousands of items at most and exact set operations on them take microseconds, so an estimate adds error for no gain, and it estimates the wrong measure.
+- **Rejected: edit distance between paths (Levenshtein) with best matching.** Catches renamed paths, but it is O(n² · path length) and needs an assignment step (e.g. Hungarian) to pair paths up. More than a precheck needs; rename detection belongs to M8.
+- **Rejected: tree edit distance over the whole document.** The most precise and by far the most expensive (cubic in the worst case).
+- **Rejected: shape-hash overlap of schemas.** Reuses the M4 hashes, but any schema change changes its hash, so a normal release with many edits looks unrelated. Names are more stable than shapes. Could be added later as an extra signal.
+- **Rejected: one weighted score over all signals.** Needs weights nobody can justify, and one strong signal (e.g. every `operationId` kept while all paths moved) gets diluted by the others. Each signal is scored on its own instead.
 
 ### How to combine the signals
 
-- **All signals must pass**: a prefix rename fails the operations signal, so real changes get flagged. Not chosen.
-- **Any one signal passes (chosen)**: one strong sign of relatedness is enough. A signal that is empty on either side (e.g. no `operationId`s) is skipped rather than counted as 0.
-- **Identity check as a tie-break (chosen)**: even when every signal is low, the documents are treated as related if `info.title` is the same and they share a server host (when both declare hosts). A rewrite that kept its name and host is still the same API.
+- **✅ Chosen: any one signal passes.** One strong sign of relatedness is enough. A signal that is empty on either side (e.g. no `operationId`s) is skipped rather than counted as 0.
+- **✅ Chosen, as well: identity check as a tie-break.** Even when every signal is low, the documents are treated as related if `info.title` is the same and they share a server host (when both declare hosts). A rewrite that kept its name and host is still the same API.
+- **Rejected: all signals must pass.** A prefix rename fails the operations signal, so real changes get flagged.
 
 ### How to normalise paths
 
-- **Strip the longest common prefix of all paths**: works for a spec with one prefix, but large specs have several (`/billing/v1`, `/users/v2`), so the common prefix is usually just `/`. Not chosen.
-- **Match on the last N path segments**: tolerant of prefix changes, but unrelated APIs collide on common tails (`/{id}`, `/health`, `/status`). Not chosen.
-- **Drop version-like segments wherever they appear, plus configured prefixes (chosen)**: `/billing/v1/invoices` and `/users/v2/me` become `/billing/invoices` and `/users/me`, however many different prefixes the document has. Path-level and operation-level `servers` base paths are added in front first, so moving `/v1` between `servers` and `paths` doesn't matter. Path parameter names are replaced with `{}`. Prefix renames that this misses (`/api/billing` → `/billing`) are caught by the `operationId` and schema signals, or by `strip-prefixes`.
+- **✅ Chosen: drop version-like segments wherever they appear, plus configured prefixes.** `/billing/v1/invoices` and `/users/v2/me` become `/billing/invoices` and `/users/me`, however many different prefixes the document has. Path-level and operation-level `servers` base paths are added in front first, so moving `/v1` between `servers` and `paths` doesn't matter. Path parameter names are replaced with `{}`. Prefix renames that this misses (`/api/billing` → `/billing`) are caught by the `operationId` and schema signals, or by `strip-prefixes`.
+- **Rejected: strip the longest common prefix of all paths.** Works for a spec with one prefix, but large specs have several (`/billing/v1`, `/users/v2`), so the common prefix is usually just `/`.
+- **Rejected: match on the last N path segments.** Tolerant of prefix changes, but unrelated APIs collide on common tails (`/{id}`, `/health`, `/status`).
 
 ## Decision
+
+### Choices at a glance
+
+| Question | Chosen | Instead of |
+|---|---|---|
+| Where the check lives | A rule, `documents-unrelated`, whose finding replaces the diff | Input error with exit code 2; warning next to the full diff |
+| **Similarity measure** | **Overlap coefficient**: \|A ∩ B\| / min(\|A\|, \|B\|), per signal | Jaccard, Sørensen–Dice, containment, cosine/TF-IDF, MinHash, edit distance, tree edit distance |
+| What is compared | Three sets: operations, `operationId`s, schema names | Schema shape hashes; one weighted score |
+| Combining signals | Related if **any** signal reaches `min-overlap` (0.1); matching title and server host also count as related | All signals must pass |
+| Path normalisation | Drop version-like segments anywhere, plus `strip-prefixes` and server base paths | Longest common prefix; matching path tails |
+
+### Details
 
 A rule **`documents-unrelated`** in RULES.md section 11: kind `wire`, default `error`, implemented in M6.
 

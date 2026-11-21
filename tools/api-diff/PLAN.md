@@ -20,6 +20,52 @@ Surveyed in November 2026 from each project's own README and docs. "Not document
 | [Bump.sh](https://docs.bump.sh/help/changes-management/) | Hosted service, with CLI and GitHub Action | Active | Changelog published with the API docs; changes labelled documentation, structural or breaking; PR comments; `fail_on_breaking`; consumers subscribe by email or RSS; any two releases can be compared through a shareable link. Breaking-change rules aren't documented as configurable |
 | [Speakeasy](https://www.speakeasy.com/docs) | SDK generation platform | Active | Computes OpenAPI and SDK diffs internally (per its changelog), but has no documented standalone diff feature |
 
+### Tool details: features, pros and cons
+
+Features come from each project's docs. Pros and cons are our assessment for this project's needs: configurable rules, large specs, and several audiences.
+
+#### oasdiff
+
+- **Features:** commands `breaking`, `changelog`, `diff`, `summary`, `validate`, `flatten` (merge `allOf`) and `checks` (list rules). Levels `ERR`/`WARN`/`INFO` with `--fail-on`. A `--severity-levels` file (`<check-id> <level>`, or `none` to disable) and ignore files that match a method + path + description text. Deprecation days for stable and beta, and stability levels. Path filtering, prefix add/strip, path parameter rename matching, composed mode for specs split across files. Output: YAML, JSON, Markdown, HTML, text, JUnit, GitHub Actions annotations. Check messages in four languages.
+- **Pros:** the largest check set we found; actively maintained; mature CI story (exit codes, annotations); good lifecycle handling.
+- **Cons:** checks are written per keyword and position, so the set is large and behaviour depends on which checks exist; customisation is one level per check for the whole spec, with no scoping by path, tag or audience; ignoring a change means matching its description text; `allOf` is exact only with `--flatten-allof`; documented gaps: parameters using `content`, callbacks, `$dynamicRef`, and partial 3.2 support.
+
+#### openapi-changes (pb33f)
+
+- **Features:** commands `console` (interactive terminal UI), `summary`, `report` (JSON), `markdown-report` and `html-report`. Reads specs from git revisions (`HEAD~1:openapi.yaml`) or GitHub URLs, and walks a file's git history ("time machine"). Offline HTML report with a timeline, change graph and side-by-side, unified or inline diff views. Resolves multi-file `$ref`s per revision. A `changes-rules.yaml` file toggles `added`/`modified`/`removed` per change type. OpenAPI 3.0–3.2 and AsyncAPI 3.
+- **Pros:** the best history and presentation features we found; current OpenAPI versions; fully offline; npm and Docker distribution.
+- **Cons:** rule configuration is on/off per change type rather than a severity per rule; how changes are classified as breaking isn't documented on the pages we read; no request vs response direction model or audience-specific reports documented.
+
+#### openapi-diff (OpenAPITools)
+
+- **Features:** CLI, Maven plugin and Java library. Result state `no_changes` / `compatible` / `incompatible`, `--fail-on-incompatible` and `--fail-on-changed`. Per-check config properties (e.g. `incompatible.response.enum.increased: false`) from a YAML file or the command line. Pluggable `PathMatcher` and extension diffing via Java SPI. Output: HTML, Markdown, AsciiDoc, JSON, text.
+- **Pros:** simple to adopt in Java and Maven builds; usable as a library; the one-word state is handy in scripts; extension points for path matching and `x-` extensions.
+- **Cons:** only two compatibility outcomes (no "might break" level); OpenAPI 3.0 listed, 3.1/3.2 not; the default path matcher can fail on ambiguous paths (documented); many open issues and pull requests.
+
+#### Optic
+
+- **Features:** breaking-change detection and lint rules in one tool; rules applied to new and changed parts only ("forwards-only governance"); multi-file specs and `$ref`s; generating and updating specs from captured test traffic.
+- **Pros:** combining diff and lint, and checking only what changed, are useful ideas for large legacy specs.
+- **Cons:** **archived in January 2026** after Optic Labs joined Atlassian, so it's no longer maintained; details of its rules and outputs weren't in the pages we read.
+
+#### Azure openapi-diff (`oad`)
+
+- **Features:** about 50 numbered rules (1000–1050), each with a docs page giving description, cause and example. Version-aware rules: breaking changes need a new `api-version`, and a changed spec without a version change is flagged. Rules for Azure `x-ms-*` extensions. Ran as Azure's "Swagger Breaking Change" and cross-version checks.
+- **Pros:** well-documented rules; versioning built into the rules; proven on a very large spec repository.
+- **Cons:** **retired in July 2026** (AutoRest ecosystem, superseded by TypeSpec); Swagger 2.0 focused; Azure-specific; no configuration or suppression documented.
+
+#### Bump.sh
+
+- **Features:** hosted docs with a changelog entry per deployment, changes labelled documentation, structural or breaking, and breaking changes shown first. CLI and GitHub Action (`diff` posts a PR comment, `fail_on_breaking`). Compare any two releases, including across branches, through a shareable link. Consumers subscribe to weekly email or RSS summaries.
+- **Pros:** the best consumer-facing changelog and notifications we found; no tooling to run.
+- **Cons:** hosted service, so specs leave your network; breaking-change rules aren't documented as configurable; no SDK-oriented reporting.
+
+#### Speakeasy
+
+- **Features:** SDK generation platform. Its changelog shows OpenAPI and SDK diffs computed internally.
+- **Pros:** relevant for teams already generating SDKs with it.
+- **Cons:** no documented standalone diff or breaking-change feature; commercial.
+
 ### What most tools agree on (our baseline)
 
 - A **breaking / non-breaking** classification, usually with a middle "might break" level.

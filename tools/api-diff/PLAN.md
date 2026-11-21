@@ -295,7 +295,7 @@ exclusions:
 
 A set can be used at two levels:
 
-- **`hide`** (per report): still compared and counted, just left out of that report. Use it for audiences who shouldn't see something, e.g. internal paths in a public `changelog`.
+- **`exclude`** (per report): still compared and counted, just left out of that report. Use it for audiences who shouldn't see something, e.g. internal paths in a public `changelog`.
 - **`ignore`** (globally, in the policy): not compared at all. Use it for parts of the spec you don't own.
 
 ```yaml

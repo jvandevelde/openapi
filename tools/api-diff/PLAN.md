@@ -612,24 +612,76 @@ api-diff base.yaml rev.yaml \
   --report changelog:html:out/changelog.html
 ```
 
-## 6. Phases
+## 6. Implementation plan
 
-| Phase | Deliverable | Done when |
-|---|---|---|
-| **0. Corpus** | `test/cases/<name>/{base,revision}.yaml` plus `expected.yaml` (the findings we want). Start with about 40 cases covering every row in section 3, plus recursive schemas: one that refers to itself, a union whose member refers back to the base type in a collection, a cycle that passes through three schemas, an invalid `allOf` cycle, and a change deep inside a cycle. Optionally run oasdiff and openapi-diff on each case and record what they say, to compare. | We agree on the expected results. This is where we settle what "breaking" means. |
-| **1. Skeleton** | Filesystem and git document sources (`rev:path`, merge-base, shallow-clone detection). load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`, `--state`. | Phase 1 cases pass. |
-| **2. Schema engine** | Effective-schema merge (allOf), variance classifier, oneOf/anyOf branch matching, `$ref` root-cause aggregation. | All schema cases pass, and each shared-component change appears once. |
-| **3. Policy & CI** | Policy file, acknowledgements, source maps. The `ci` and `review` reports, `summary`. | Usable as a required PR check. |
-| **4. Presentation** | The `explore` HTML report, the history timeline, `changelog` (with redaction), `sdk`, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to the output of the tools in section 1. |
-| **5. Governance & consumers** | `audit`, custom reports and templates, consumer impact reports (`--uses`). | Release notes and governance reviews use it without manual editing. |
+### Layout
+
+```
+tools/api-diff/
+  package.json  tsconfig.json  Makefile  README.md
+  bin/api-diff.ts                 CLI entry
+  src/
+    cli/          argument parsing; commands: diff (default), history, rules, schema
+    sources/      document sources: fs.ts, git.ts (cat-file --batch, rev:path, merge-base)
+    load/         json.ts (jsonc-parser), yaml.ts (js-yaml), positions → source map, $ref resolution
+    normalize/    3.0/3.1/3.2 → one dialect; path templates; header names
+    model/        operations, parameters, bodies, responses, security, components
+    index/        schema graph, iterative Tarjan, productive-cycle check, shape/full hashes, usages
+    diff/         structural diff → change records (no severities)
+    rules/        rule metadata registry; one file per RULES.md section
+    classify/     variance, profiles, policy precedence, provenance
+    aggregate/    root causes, impacts, bulk-change collapsing, acknowledgements, semver, counts
+    policy/       load, JSON Schema validation, defaults
+    report/       presets (ci, review, changelog, …), filters, exclusions
+    render/       txt.ts, json.ts, html/ (self-contained page)
+    history/      commit listing, fingerprints, step diffs, revert links
+  test/
+    cases/<name>/{base.yaml, revision.yaml, expected.yaml[, policy.yaml]}
+    unit/         Tarjan, variance, hashing, git source, policy precedence
+    bench/        generated 8 MB spec + timing script
+```
+
+Each stage in section 4 is its own folder with a pure function as its entry point, so stages can be tested alone.
+
+### How we test
+
+- **Golden cases** (`test/cases/`): one folder per rule or scenario. `expected.yaml` lists the findings (rule, severity, location, usages). A runner compares results and can regenerate `expected.yaml` with `--update` for review. A test fails if any rule has no case.
+- **Unit tests** for the algorithms: Tarjan (including self-loops and deep graphs without stack overflow), variance, hashing stability, policy precedence, `rev:path` parsing.
+- **Property tests** (`fast-check`): random schemas and random edits. Invariants: diffing a spec against itself finds nothing; key order and 3.0 vs 3.1 nullability never produce findings; every changed shape hash yields at least one finding (no silent gaps).
+- **Performance budget**: the `bench/` script runs in CI (non-blocking at first) and reports parse and diff times for two 8 MB specs. Target under 1 s for the diff itself.
+- CI: `.github/workflows/api-diff.yml`, the same pattern as `operation-ids` (runs only when the tool changes, `make test`).
+
+### Milestones
+
+Each milestone is one or a few pull requests and ends with something that runs.
+
+| # | Milestone | Contents | Done when |
+|---|---|---|---|
+| **M0** | Scaffold | Package, tsconfig, Makefile, CI workflow, golden-case runner, rule metadata registry, `api-diff rules`, result JSON Schema v0 | `make test TOOL=api-diff` runs the (empty) case runner in CI |
+| **M1** | Phase-1 corpus | About 45 cases for RULES.md sections 2–6 and 11, and the recursive-schema cases | Expected results reviewed and agreed |
+| **M2** | Inputs | fs and git sources (`rev:path`, `main...`, shallow-clone detection), JSON/YAML loaders with positions, local and relative-file `$ref`s, normalise | Loads the test cases and an 8 MB spec from both files and git within the parse budget |
+| **M3** | Operation-level diff | Model, diff and rules for paths, operations, security, parameters, request bodies, responses; txt and json output; `--fail-on`, `--state` | **First usable version:** M1 cases pass, and it can gate a PR on operation-level changes |
+| **M4** | Schema index | Graph, iterative Tarjan, productive-cycle check, shape/full hashes, skipping unchanged subtrees, `unclassified-change` | Recursive cases load and hash, and no input causes a stack overflow |
+| **M5** | Schema engine | Effective `allOf` merge, pair-cached comparison for cycles, variance, union branch and discriminator matching, schema rules (section 7), usages and direction (incl. `readOnly`/`writeOnly`), root-cause aggregation, ref rules, docs rules, profiles, bulk-change collapsing, example re-validation | All schema cases pass, and each shared-component change appears once |
+| **M6** | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance | Every POLICY.md example is a passing test |
+| **M7** | PR check | Report presets, `ci`, `review` and `summary` reports (txt/json/html), multiple `--report`, versions header, cached base index | **Used as a required PR check on a real API repo** |
+| **M8** | Presentation | `explore` HTML, `changelog`, `sdk`, rename detection, semver advice, explanations and fixes, history timeline | Reviewers prefer it to the tools in section 1 |
+| **M9** | Governance | `audit`, custom reports and templates, `--uses` consumer reports, ownership routing | Release notes and governance reviews use it without manual editing |
+| **M10** | Distribution | esbuild bundle, npm publish (or GitHub Packages), release file, generated rule docs, README | Another repo runs it with `npx` and a pinned version |
+
+M10 can move earlier, e.g. straight after M3 or M7, if other repos want to try it sooner. Until then, they use the local `npx` path (section 4, *Inputs*).
+
+The backlog (section 8) is picked from after M7, except the low-effort ★ items already folded in above (bulk-change collapsing and example re-validation in M5, the cached base index in M7).
 
 Out of scope at first: **webhooks and callbacks** (if a spec has them, a single `info` notice says they weren't compared, so nothing is skipped silently; the direction model allows them to be added later by flipping direction), Swagger 2.0, external (`http://`) refs, specs split across many files (`--composed`), translations.
 
 ## 7. Decisions to make
 
-1. **Language.** Proposal: **TypeScript on Node ≥ 20**, matching `operation-ids` and using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go (like oasdiff and openapi-changes) would produce a single binary, but we'd need our own position-aware YAML handling.
+These need answers before M0 (1, 2, 5) or before M10 (6). 4 can wait until M7.
+
+1. **Language.** Proposal: **TypeScript on Node ≥ 22.18**, run directly with Node's built-in type stripping (no build step for development and tests; `tsc --noEmit` for type checks; `erasableSyntaxOnly`, so no `enum`s or namespaces), bundled with esbuild for publishing. Node 20 reached end of life in April 2026. Same ecosystem as `operation-ids`, matching `operation-ids` and using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go (like oasdiff and openapi-changes) would produce a single binary, but we'd need our own position-aware YAML handling.
 2. **OpenAPI versions.** Proposal: 3.0, 3.1 and 3.2 from the start, using the normalise step.
-3. **Default stance on ambiguous changes.** Examples: a new enum value in a response, a new optional request property where the server sets `additionalProperties: false`, a new required response header. Proposal: `warn` by default, and the policy can change it.
+3. ~~**Default stance on ambiguous changes.**~~ **Decided:** see the **Decided** defaults in RULES.md.
 4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 5 that matters more to you, or one that's missing?
 5. **Name.** `api-diff` is a placeholder. The published package name must be free on the registry we pick.
 6. **Distribution.** Proposal: publish to an npm registry (GitHub Packages if it should stay private), plus a single bundled file on each GitHub release for CI without registry access.

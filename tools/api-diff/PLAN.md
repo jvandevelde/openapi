@@ -15,7 +15,6 @@ Surveyed in November 2026 from each project's own README and docs. "Not document
 | [oasdiff](https://github.com/oasdiff/oasdiff) | Go CLI, Apache-2.0 | Active | `breaking`, `changelog` and `diff` views; `ERR`/`WARN`/`INFO` levels; a large set of checks, each with an ID whose level can be changed; deprecation periods and stability levels; path prefix and filter options |
 | [openapi-changes](https://github.com/pb33f/openapi-changes) (pb33f) | Go CLI, Apache-2.0 | Active | Reads specs straight from git (`HEAD~1:openapi.yaml`) and walks a file's git history; interactive terminal UI; offline HTML report with a timeline, change graph and side-by-side/unified diff views; OpenAPI 3.0–3.2 and AsyncAPI 3; rule file toggles `added`/`modified`/`removed` per change type |
 | [openapi-diff](https://github.com/OpenAPITools/openapi-diff) (OpenAPITools) | Java CLI, Maven plugin and library, Apache-2.0 | Active | One-word result (`no_changes` / `compatible` / `incompatible`); per-check config properties (e.g. `incompatible.response.enum.increased`); pluggable path matcher; extension diffing via plugins; HTML, Markdown, AsciiDoc, JSON, text |
-| [Optic](https://github.com/opticdev/optic) | Node CLI, MIT | **Archived** January 2026 (Optic Labs joined Atlassian) | Breaking-change checks and lint rules in one tool; "forwards-only governance" (rules applied to new and changed parts only); generating and testing specs from captured traffic |
 | [Azure openapi-diff](https://github.com/Azure/openapi-diff) (`oad`) | TypeScript CLI, MIT | **Retired** July 2026 | About 50 numbered rules (1000–1050), each with its own docs page (description, cause, example); version-aware rules (a breaking change needs a new `api-version`; a changed spec without a version change is flagged); Azure `x-ms-*` extension rules; Swagger 2.0 |
 | [Bump.sh](https://docs.bump.sh/help/changes-management/) | Hosted service, with CLI and GitHub Action | Active | Changelog published with the API docs; changes labelled documentation, structural or breaking; PR comments; `fail_on_breaking`; consumers subscribe by email or RSS; any two releases can be compared through a shareable link. Breaking-change rules aren't documented as configurable |
 | [Speakeasy](https://www.speakeasy.com/docs) | SDK generation platform | Active | Computes OpenAPI and SDK diffs internally (per its changelog), but has no documented standalone diff feature |
@@ -41,12 +40,6 @@ Features come from each project's docs. Pros and cons are our assessment for thi
 - **Features:** CLI, Maven plugin and Java library. Result state `no_changes` / `compatible` / `incompatible`, `--fail-on-incompatible` and `--fail-on-changed`. Per-check config properties (e.g. `incompatible.response.enum.increased: false`) from a YAML file or the command line. Pluggable `PathMatcher` and extension diffing via Java SPI. Output: HTML, Markdown, AsciiDoc, JSON, text.
 - **Pros:** simple to adopt in Java and Maven builds; usable as a library; the one-word state is handy in scripts; extension points for path matching and `x-` extensions.
 - **Cons:** only two compatibility outcomes (no "might break" level); OpenAPI 3.0 listed, 3.1/3.2 not; the default path matcher can fail on ambiguous paths (documented); many open issues and pull requests.
-
-#### Optic
-
-- **Features:** breaking-change detection and lint rules in one tool; rules applied to new and changed parts only ("forwards-only governance"); multi-file specs and `$ref`s; generating and updating specs from captured test traffic.
-- **Pros:** combining diff and lint, and checking only what changed, are useful ideas for large legacy specs.
-- **Cons:** **archived in January 2026** after Optic Labs joined Atlassian, so it's no longer maintained; details of its rules and outputs weren't in the pages we read.
 
 #### Azure openapi-diff (`oad`)
 
@@ -78,7 +71,7 @@ Features come from each project's docs. Pros and cons are our assessment for thi
 
 | Idea | Seen in | How we use it |
 |---|---|---|
-| Read specs from git revisions (`main:openapi.yaml`) without a checkout | openapi-changes | Accepted anywhere a file path is: `api-diff main:openapi.yaml openapi.yaml` (phase 1) |
+| Read specs from git revisions (`main:openapi.yaml`) without a checkout | openapi-changes | Accepted anywhere a file path is, with `$ref`s resolved at the same revision (see *Inputs: files and git revisions*, phase 1) |
 | Walk a spec's history and show a timeline | openapi-changes | `--history <range>` compares each consecutive pair of commits, and the `explore` report shows the timeline (backlog) |
 | Side-by-side, unified and inline diff views | openapi-changes | Options in the `explore` HTML report (phase 4) |
 | A one-word result for scripts | openapi-diff | `--state` prints `no-changes`, `compatible` or `breaking` (phase 1) |
@@ -86,10 +79,9 @@ Features come from each project's docs. Pros and cons are our assessment for thi
 | A docs page per rule with cause and example | Azure openapi-diff | Generated from rule metadata: `api-diff rules <id>` (see POLICY.md section 13) |
 | Version-aware rules | Azure openapi-diff, oasdiff | `version-bump-too-small` and `version-unchanged` (RULES.md section 9) |
 | Separate documentation, structural and breaking changes | Bump.sh | Our `docs` / `wire` / `sdk` kinds, plus severity |
-| Lint only what changed | Optic | Rule plugins can declare `scope: changed`, so house rules apply to new and changed parts only and legacy parts don't block a PR (backlog) |
 | Deprecation periods and stability levels | oasdiff | `operation-removed` options and the `lifecycle` policy section |
 
-**Out of scope:** hosted changelog pages and email/RSS subscriptions (Bump.sh); traffic capture (Optic); AsyncAPI (openapi-changes). The JSON output is enough for someone to build the first two on top.
+**Out of scope:** hosted changelog pages and email/RSS subscriptions (Bump.sh); AsyncAPI (openapi-changes). The JSON output is enough for someone to build the first two on top.
 
 ## 3. Gaps we aim to close
 
@@ -126,6 +118,43 @@ Features come from each project's docs. Pros and cons are our assessment for thi
 7. **render**: one renderer per format, all reading the same result object.
 
 Each stage is a pure function with its own tests, so the stages can be swapped or reused (for example, a different renderer, or the diff engine without the classifier).
+
+### Inputs: files and git revisions
+
+**Recommendation: build git reading into the tool, but keep it out of the engine.** The engine only sees a *document source*, an interface with one job: `read(path) → contents`. The CLI chooses the source for each side:
+
+- **Filesystem** (the default): `openapi.yaml`. Uncommitted edits are included.
+- **Git revision**: `main:openapi.yaml`, `v1.4.0:specs/orders.yaml`, `HEAD~3:openapi.yaml`, or `:openapi.yaml` (the staged version), using git's own syntax.
+
+```sh
+api-diff main:openapi.yaml openapi.yaml             # branch tip vs working tree
+api-diff v1.4.0:openapi.yaml v1.5.0:openapi.yaml    # two tags
+api-diff --base main... openapi.yaml                # merge-base with main (what a PR changed)
+```
+
+**Why built in rather than a helper script.** A script that runs `git show main:openapi.yaml > /tmp/base.yaml` and passes the temp file looks simpler, but it breaks in three ways:
+
+1. **Multi-file specs break.** `$ref: ./schemas/order.yaml` in the base must be read **from the same revision**, not from the working tree or a temp directory. Only a source that the `$ref` resolver calls into can do that.
+2. **Reports point at temp files.** File names and line numbers would refer to `/tmp/base.yaml`, not `main:openapi.yaml`.
+3. **Every team writes its own version** of the script, with its own bugs (shallow clones, merge-base, quoting).
+
+**How the git source works.**
+
+- **Shells out to the `git` binary** with `execFile` and an argument list, never a shell string. Revisions starting with `-` are rejected. No libgit2 or JavaScript git library: CI images already have git, and the real binary handles every repository layout (worktrees, submodules, partial clones).
+- **One long-running `git cat-file --batch` process** per run reads every file both sides need (the root file and all `$ref` targets), so a spec split into hundreds of files doesn't start hundreds of processes.
+- **Paths** in `rev:path` are relative to the current directory, like `git show rev:./path`. `$ref`s are resolved relative to the referring file at the same revision.
+- **Telling `rev:path` from a file name:** an argument is read as a git revision only if a local file with that exact name doesn't exist **and** the part before `:` resolves to a commit (`git rev-parse --verify <rev>^{commit}`). A Windows drive letter (`C:\specs\api.yaml`) is never read as a revision. `--base-rev` and `--revision-rev` flags avoid the syntax entirely.
+- **Merge-base.** `main...` (three dots, as in `git diff`) compares against the commit where the branch left `main`, so a PR's report shows only that PR's changes and not changes that landed on `main` since. This is the default for the `review` and `ci` reports when a branch is given.
+- **Shallow clones.** CI checkouts are often shallow, so the base commit may be missing. The tool detects this and fails with a clear fix (e.g. `fetch-depth: 0`, or `git fetch --depth=1 origin main`) instead of a raw git error.
+- **Recorded in reports.** The `compared` section records the revision as given, the resolved commit SHA and the blob SHA of each file, and `commit` is filled in automatically as a version label.
+- **Caching.** Git blob SHAs are already content hashes, so they're the cache key for the cached base index (backlog): an unchanged base costs one `cat-file` lookup.
+
+**What stays outside the core.** Workflows that need more than reading files go in a separate `git` module of the CLI, not the engine:
+
+- **History mode:** `api-diff history v1.0..HEAD openapi.yaml` lists the commits that touched the spec and its `$ref` files (`git log --follow`), then compares each consecutive pair (backlog).
+- **Changed specs in a monorepo:** `api-diff changed main...` finds the spec files a branch touched and compares each one.
+
+The library API takes a document source, so other callers (an editor plugin, a test) can supply their own, e.g. in-memory documents, without git.
 
 ### Performance (measured)
 
@@ -461,7 +490,7 @@ api-diff base.yaml rev.yaml \
 | Phase | Deliverable | Done when |
 |---|---|---|
 | **0. Corpus** | `test/cases/<name>/{base,revision}.yaml` plus `expected.yaml` (the findings we want). Start with about 40 cases covering every row in section 3, plus recursive schemas: one that refers to itself, a union whose member refers back to the base type in a collection, a cycle that passes through three schemas, an invalid `allOf` cycle, and a change deep inside a cycle. Optionally run oasdiff and openapi-diff on each case and record what they say, to compare. | We agree on the expected results. This is where we settle what "breaking" means. |
-| **1. Skeleton** | load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`, `--state`, and git revision inputs (`main:openapi.yaml`). | Phase 1 cases pass. |
+| **1. Skeleton** | Filesystem and git document sources (`rev:path`, merge-base, shallow-clone detection). load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`, `--state`. | Phase 1 cases pass. |
 | **2. Schema engine** | Effective-schema merge (allOf), variance classifier, oneOf/anyOf branch matching, `$ref` root-cause aggregation. | All schema cases pass, and each shared-component change appears once. |
 | **3. Policy & CI** | Policy file, acknowledgements, source maps. The `ci` and `review` reports, `summary`. | Usable as a required PR check. |
 | **4. Presentation** | The `explore` HTML report, `changelog` (with redaction), `sdk`, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to the output of the tools in section 1. |
@@ -516,8 +545,8 @@ Ideas aimed at large enterprise specs. None of the tools in section 1 document t
 | **Editor integration (LSP)** | Run the engine as a language server against `main`, so breaking changes show up as editor warnings while the spec is edited, before a PR exists. The engine is pure functions, so this is mostly a wrapper. | high / medium |
 | **`api-diff explain <finding-id>`** | Prints the full reasoning for one finding: the rule, the usages, where the severity came from, the counter-example and the fix. | medium / low |
 | **Rule plugins** | Custom rules written in TypeScript against the change-record API, tested with the same `base/revision/expected` corpus format as the built-in rules. Covers house rules such as "every list operation must keep its pagination parameters". | high / medium |
-| **History mode** | `--history v1.0..HEAD` compares each consecutive pair of commits that touched the spec, and the `explore` report shows a timeline of when each change landed (idea from openapi-changes). Cheap with the cached index. | medium / medium |
-| **Lint only what changed** | Rule plugins can declare `scope: changed`, so house rules apply only to new and changed parts and legacy parts don't block a PR (idea from Optic's forwards-only governance). | high / low |
+| **History mode** | `api-diff history v1.0..HEAD openapi.yaml` compares each consecutive pair of commits that touched the spec, and the `explore` report shows a timeline of when each change landed (idea from openapi-changes). Cheap with the cached index. | medium / medium |
+| **Lint only what changed** | Rule plugins can declare `scope: changed`, so house rules apply only to new and changed parts and legacy parts don't block a PR. | high / low |
 | **Watch mode** | `api-diff --watch` re-runs on save. Cheap with the cached base index. | low / low |
 
 ### Enterprise operation

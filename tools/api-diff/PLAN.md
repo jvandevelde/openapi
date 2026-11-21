@@ -123,6 +123,37 @@ A ref change can be harmless on the wire but still break generated SDKs, because
 
 Built-in **profiles** set different defaults: `--profile wire` (`sdk` rules are `info`) and `--profile sdk` (`sdk` rules are `warn` or `error`). For `ref-target-changed` with identical schemas, the default is `info` under `wire` and `error` under `sdk`. The policy file can override either.
 
+### Reference graph, deep nesting and cycles
+
+Recursive schemas usually crash diff tools in one of three ways:
+
+- **Infinite recursion**: inlining or walking `$ref`s never ends (a stack overflow).
+- **Path explosion**: listing every path to a schema grows exponentially when unions and collections fan out.
+- **Comparisons that never finish**: comparing `A` with `A′` leads back to `A` with `A′`.
+
+Typical shapes: `TreeNode.children: items: $ref TreeNode` (refers to itself), and `Shape: oneOf [Circle, Group]` with `Group.children: items: $ref Shape` (a union whose member refers back to the base type in a collection).
+
+**We never inline `$ref`s.** Each document gets a **schema index**, built once after loading. Documents don't change during a run, so there is nothing to keep up to date:
+
+- **Nodes**: every component schema, plus inline schemas keyed by their JSON pointer.
+- **Edges**: every `$ref` and subschema, labelled with how it's reached (`property:name`, `items`, `oneOf[i]`, `anyOf[i]`, `allOf[i]`, `additionalProperties`, discriminator mapping) and with `readOnly`/`writeOnly`.
+- **Reverse edges**: who refers to me (for working out usages).
+- **Tarjan's strongly connected components (SCCs)**, implemented **iteratively** with an explicit stack. A recursive implementation can itself overflow on deep graphs. Each node records `sccId`, whether it's recursive (an SCC of more than one node, **or** a single node with an edge to itself, which Tarjan doesn't flag on its own) and its topological order.
+
+Tarjan gives us the SCCs in reverse topological order, which is exactly the order the later stages need:
+
+| Stage | How the index is used |
+|---|---|
+| **Cycle validity** | A cycle is *productive* if it passes through at least one `property`, `items` or `additionalProperties` edge, meaning the data actually nests (fine). A cycle made only of `allOf`/`oneOf`/`anyOf`/`$ref` edges (e.g. `A: allOf [$ref A]`) describes nothing valid. It's reported as a spec error instead of looping. |
+| **Effective schemas** (allOf merge) | Computed bottom-up in topological order and stored per node. Inside a recursive SCC, a `$ref` that closes a cycle stays a reference and is never expanded. |
+| **Diff** | Compares pairs (base node, revision node), cached per pair. If a pair comes up again while it's still being compared, we **assume they're equal** and stop there (the standard way to compare recursive types). Any real difference is still found on the non-cyclic part of the path. Pairs not on a cycle just use the cache. |
+| **Usages / direction** | Propagated over the **condensation** (each SCC collapsed to one node). Every member of an SCC reaches every other, so they share one usage set. Directions form a tiny set (`{in, out}`), so propagation always ends. |
+| **Impact paths** | No list of every path. Each usage stores **one shortest example path** (found by breadth-first search) and a **count**, e.g. `GET /shapes → 200 → Shape.oneOf[1] Group.children[] → Shape (+11 more paths)`. |
+| **Structural hashing** (rename detection, equality) | A Merkle hash over the condensation. Each recursive SCC is hashed as one unit in a canonical order, so self-referencing schemas get a stable hash. |
+| **Rendering** | Nothing is expanded past a back-edge. It's shown as `↻ Shape (recursive)`. A configurable `--max-depth` limits how deep the output goes, purely for readability. |
+
+The component graph is small even for an 8 MB spec (thousands of nodes), and Tarjan is O(V+E), so building the index takes milliseconds.
+
 ### Change record (draft)
 
 ```jsonc
@@ -199,7 +230,7 @@ Every finding in the output also shows **where its severity came from** (e.g. `w
 
 | Phase | Deliverable | Done when |
 |---|---|---|
-| **0. Corpus** | `test/cases/<name>/{base,revision}.yaml` plus `expected.yaml` (the findings we want). Start with about 40 cases covering every row in section 2. Optionally record what oasdiff says for each case to compare. | We agree on the expected results. This is where we settle what "breaking" means. |
+| **0. Corpus** | `test/cases/<name>/{base,revision}.yaml` plus `expected.yaml` (the findings we want). Start with about 40 cases covering every row in section 2, plus recursive schemas: one that refers to itself, a union whose member refers back to the base type in a collection, a cycle that passes through three schemas, an invalid `allOf` cycle, and a change deep inside a cycle. Optionally record what oasdiff says for each case to compare. | We agree on the expected results. This is where we settle what "breaking" means. |
 | **1. Skeleton** | load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`. | Phase 1 cases pass. |
 | **2. Schema engine** | Effective-schema merge (allOf), variance classifier, oneOf/anyOf branch matching, `$ref` root-cause aggregation. | All schema cases pass, and each shared-component change appears once. |
 | **3. Policy & CI** | Policy file, acknowledgements, source maps, Markdown, SARIF and GitHub annotations. | Usable as a required PR check. |

@@ -486,6 +486,16 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
   'tag-removed': { description: 'A tag was removed from the top-level `tags` list.', why: 'Documentation only (operation tags are `operation-tags-changed`).', fix: 'Nothing to fix.' },
   'tag-description-changed': { description: "A tag's description changed.", why: 'Documentation only.', fix: 'Nothing to fix.' },
   'info-changed': { description: '`info` changed: contact, license or terms of service.', why: 'Documentation only.', fix: 'Nothing to fix.' },
+  'extension-changed-sdk': {
+    description: "An `x-` extension that the policy's `extensions` section classifies as `sdk` changed, e.g. `x-enum-varnames` or `x-go-type`, which code generators read.",
+    why: 'Generated SDK code changes (renamed constants, different types) even though the JSON on the wire is the same. `info` by default, `warn` under `--profile sdk`.',
+    fix: 'Keep the extension value, or treat the change as an SDK release with notes.',
+  },
+  'extension-changed-wire': {
+    description: "An `x-` extension that the policy's `extensions` section classifies as `wire` changed: one that changes what servers or gateways accept or send.",
+    why: "The extension affects behaviour on the wire, but api-diff can't tell how, so it might break clients.",
+    fix: 'Check what the extension controls; keep the old value if clients depend on it.',
+  },
   'extension-changed': { description: 'An `x-` extension the policy does not classify as `wire` or `sdk` changed.', why: 'Treated as documentation unless the policy says otherwise.', fix: 'Classify extensions that affect clients or SDKs in the policy `extensions` section.' },
 
   // 11. Notices

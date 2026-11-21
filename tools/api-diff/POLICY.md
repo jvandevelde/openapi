@@ -136,6 +136,8 @@ extensions:
   # any extension not listed is docs
 ```
 
+A change to an extension listed as `sdk` is `extension-changed-sdk` (`info`, `warn` under `--profile sdk`); as `wire`, `extension-changed-wire` (`warn`). Unlisted extensions, and those listed as `docs`, are `extension-changed` (`docs`, `info`). The lifecycle extensions (section 7) and `x-api-diff` are interpreted, not classified.
+
 ## 7. Lifecycle
 
 Where lifecycle information is read from. These settings are used by `operation-removed`, `sunset-moved-earlier`, `stability-decreased` and the stability `match` key.
@@ -166,7 +168,11 @@ exclusions:
 ignore: []                            # sets not compared at all, e.g. [internal]
 ```
 
-Reports leave sets out with `exclude` (section 10). Nothing is excluded unless configured.
+Nothing is excluded unless configured.
+
+- **Membership:** an operation is in a set if any of its keys match: a `paths` glob (`*` one segment, a trailing `/**` any depth), an `operationIds` glob, one of its `tags`, or an `extensions` entry on the operation or its path item. `extensions` is a list of names (`[x-internal]`: any value except `false`) or a mapping of names to values (`{ x-audience: [internal, ops] }`). A component schema is in a set if a `components` glob or an `extensions` entry on the schema matches.
+- **`ignore`:** sets listed here aren't compared. Their operations and components produce no findings; a shared component is still compared for the operations outside the set. One `not-compared` notice per set lists what was skipped.
+- **Every other set** is recorded on each finding that belongs to it (`exclusions` in JSON): the finding's operation, its component, or, for a component used by several operations, only when all of them are in the set. Reports leave sets out with `exclude` (section 10, milestone M7).
 
 ## 9. Versions
 

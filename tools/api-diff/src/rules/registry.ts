@@ -229,6 +229,13 @@ for (const [id, title] of [
   rule({ id, section: 10, kind: 'docs', title, severity: 'info', milestone: 5, message: (c) => `${title.charAt(0).toLowerCase() + title.slice(1)}${c.details.name !== undefined ? ` '${String(c.details.name)}'` : ''}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
 }
 
+const extMessage = (c: Change): string => {
+  const at = d(c, 'path').slice(0, d(c, 'path').lastIndexOf('/'));
+  return `${d(c, 'name')} changed${at ? ` at ${at}` : ''}`;
+};
+rule({ id: 'extension-changed-sdk', section: 10, kind: 'sdk', title: 'x- extension the policy classifies as sdk changed', severity: 'info', sdkProfile: 'warn', milestone: 6, message: extMessage });
+rule({ id: 'extension-changed-wire', section: 10, kind: 'wire', title: 'x- extension the policy classifies as wire changed', severity: 'warn', milestone: 6, message: extMessage });
+
 // 11. Spec and engine notices
 rule({ id: 'spec-invalid', section: 11, kind: 'wire', title: 'Document failed to load or validate', severity: 'error', milestone: 3, message: (c) => d(c, 'reason') });
 rule({ id: 'ref-unresolved', section: 11, kind: 'wire', title: '$ref points nowhere', severity: 'error', milestone: 3, message: (c) => `$ref '${d(c, 'ref')}' can't be resolved${c.details.reason ? `: ${d(c, 'reason')}` : ''}` });

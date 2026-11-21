@@ -77,7 +77,8 @@
         "base": { "$ref": "#/$defs/location" },
         "revision": { "$ref": "#/$defs/location" },
         "details": { "type": "object" },
-        "impact": { "type": "array", "items": { "type": "string" } }
+        "impact": { "type": "array", "items": { "type": "string" } },
+        "exclusions": { "description": "Policy exclusion sets the finding belongs to; reports can leave them out.", "type": "array", "items": { "type": "string" } }
       }
     }
   }

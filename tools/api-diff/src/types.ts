@@ -59,6 +59,8 @@ export interface Finding {
   revision?: Location;
   details: Record<string, unknown>;
   impact?: string[];
+  /** Policy exclusion sets the finding belongs to (POLICY.md section 8); reports can leave them out. */
+  exclusions?: string[];
 }
 
 export interface ComparedSide {

@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 128 rules, with their default severities. 124 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 130 rules, with their default severities. 126 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -178,6 +178,8 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`tag-description-changed`](tag-description-changed.md) | docs | info | M5 ✅ | Tag description changed |
 | [`info-changed`](info-changed.md) | docs | info | M5 ✅ | info (contact, license, terms) changed |
 | [`extension-changed`](extension-changed.md) | docs | info | M5 ✅ | Unclassified x- extension changed |
+| [`extension-changed-sdk`](extension-changed-sdk.md) | sdk | info (sdk: warn) | M6 ✅ | x- extension the policy classifies as sdk changed |
+| [`extension-changed-wire`](extension-changed-wire.md) | wire | warn | M6 ✅ | x- extension the policy classifies as wire changed |
 
 ## 11. Spec and engine notices
 

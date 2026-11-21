@@ -13,8 +13,9 @@ import { unrelatedOptions } from '../diff/unrelated.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { DEFAULT_LIFECYCLE, type LifecycleSettings } from './context.ts';
 import { parseOverrides, type Override } from './overrides.ts';
+import { parseExclusions, type ExclusionSet } from './exclusions.ts';
 import { allRuleIds, baseRuleId, getRule } from '../rules/registry.ts';
-import type { FailOn, Profile, Severity } from '../types.ts';
+import type { FailOn, Kind, Profile, Severity } from '../types.ts';
 
 export type RuleSeverity = Severity | 'off';
 
@@ -40,6 +41,12 @@ export interface Policy {
   overrides?: Override[];
   /** Where stability (and later deprecation and sunset dates) are read from. */
   lifecycle: LifecycleSettings;
+  /** Kind of each classified `x-` extension; unlisted ones are docs. */
+  extensions: Map<string, Kind>;
+  /** Named exclusion sets. */
+  exclusions: Map<string, ExclusionSet>;
+  /** Exclusion sets that are not compared at all. */
+  ignore: string[];
   /** Sections not validated yet, as given. */
   raw: Record<string, unknown>;
 }
@@ -56,7 +63,7 @@ const SETTING_KEYS = ['severity', 'fix', 'explanation'] as const;
 const SEVERITIES = ['error', 'warn', 'info', 'off'] as const;
 
 export function emptyPolicy(): Policy {
-  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, raw: {} };
+  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], raw: {} };
 }
 
 /**
@@ -83,7 +90,7 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
 export function parsePolicy(data: unknown, file = 'policy'): Policy {
   const at = (path: string): string => `${file}: ${path}`;
   const obj = asObject(data, at('the policy'));
-  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, raw: {} };
+  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], raw: {} };
   for (const [k, v] of Object.entries(obj)) {
     if (!(TOP_KEYS as readonly string[]).includes(k)) throw new PolicyError(`${at(k)}: unknown key${suggest(k, TOP_KEYS)}`);
     switch (k) {
@@ -104,8 +111,18 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
         policy.rules = parseRules(v, at('rules'));
         break;
       case 'ignore':
-        if (!Array.isArray(v)) throw new PolicyError(`${at('ignore')}: must be a list`);
-        policy.raw[k] = v;
+        if (!Array.isArray(v) || !v.every((s) => typeof s === 'string')) throw new PolicyError(`${at('ignore')}: must be a list of exclusion set names`);
+        policy.ignore = v as string[];
+        break;
+      case 'exclusions':
+        policy.exclusions = parseExclusions(asObject(v, at('exclusions')), at('exclusions'), suggest);
+        break;
+      case 'extensions':
+        for (const [x, kind] of Object.entries(asObject(v, at('extensions')))) {
+          if (!x.startsWith('x-')) throw new PolicyError(`${at(`extensions.${x}`)}: extension names start with x-`);
+          if (x === 'x-api-diff') throw new PolicyError(`${at('extensions.x-api-diff')}: x-api-diff configures api-diff and can't be classified`);
+          policy.extensions.set(x, oneOf(kind, ['wire', 'sdk', 'docs'] as const, at(`extensions.${x}`)));
+        }
         break;
       case 'overrides':
         if (!Array.isArray(v)) throw new PolicyError(`${at('overrides')}: must be a list`);
@@ -127,6 +144,7 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
         policy.raw[k] = asObject(v, at(k));
     }
   }
+  for (const name of policy.ignore) if (!policy.exclusions.has(name)) throw new PolicyError(`${at('ignore')}: '${name}' is not an exclusion set${suggest(name, [...policy.exclusions.keys()])}`);
   const levels = stabilityLevels(policy.rules.get('stability-decreased')?.options.levels);
   if (!levels.includes(policy.lifecycle.defaultStability)) throw new PolicyError(`${at('lifecycle.default-stability')}: '${policy.lifecycle.defaultStability}' is not one of the stability-decreased levels (${levels.join(', ')})`);
   return policy;

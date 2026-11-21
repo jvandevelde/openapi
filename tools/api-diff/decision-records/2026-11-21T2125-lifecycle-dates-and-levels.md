@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-21 21:25 UTC |
 | **Summary** | Deprecation periods and sunsets are checked against today (UTC) or `--as-of`; an undated deprecation counts as long enough unless `undated-deprecation: block`; an unknown stability level is `spec-invalid`. |
 | **Milestone** | M6 |

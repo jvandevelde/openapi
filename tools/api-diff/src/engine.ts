@@ -14,10 +14,12 @@ import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
-import { buildContext } from './policy/context.ts';
+import { buildContext, componentName, type SpecContext } from './policy/context.ts';
+import { componentInSet, operationInSet, setsFor, type ExclusionSet } from './policy/exclusions.ts';
 import { HintIndex } from './policy/hints.ts';
 import { parseHintRules } from './policy/policy.ts';
 import type { Policy } from './policy/policy.ts';
+import type { Kind } from './types.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
 
@@ -82,6 +84,9 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   const profile = opts.profile ?? opts.policy?.profile ?? 'wire';
   const [b, r] = await Promise.all([loadSide(base, 'base'), loadSide(revision, 'revision')]);
   let changes: Change[] = [...b.changes, ...r.changes];
+  const policy = opts.policy;
+  const context = b.model || r.model ? buildContext(b.model, r.model, policy?.lifecycle, { base: b.hints, revision: r.hints }) : undefined;
+  const ignoredSets = (policy?.ignore ?? []).map((n) => policy!.exclusions.get(n)!);
   const unrelated = b.model && r.model && !changes.some((c) => c.rule === 'spec-invalid') ? precheck(b.model, r.model, opts) : undefined;
   if (unrelated) changes = [unrelated];
   else if (b.model && r.model) {
@@ -91,17 +96,23 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     diffs.push(...diffLifecycle(b.model, r.model, pairs, lc));
     diffs.push(...diffSchemaEngine(b.model, r.model, pairs));
     diffs.push(...diffDocs(b.model, r.model, pairs, new Set([lc.lifecycle.stability, lc.lifecycle.deprecatedSince, lc.lifecycle.sunset])));
-    changes.push(...collapseBulk(applyIgnore(diffs, b, r)), ...ignoredNotices(b, r));
+    const classified = classifyExtensions(diffs, policy?.extensions);
+    changes.push(...collapseBulk(applyIgnore(classified, b, r, ignoredSets, context!)), ...ignoredNotices(b, r), ...ignoredSetNotices(ignoredSets, context!));
   }
-  const policy = opts.policy;
-  const hasHints = !!(b.hints?.size || r.hints?.size);
-  const context = policy?.overrides?.length || hasHints ? buildContext(b.model, r.model, policy?.lifecycle, { base: b.hints, revision: r.hints }) : undefined;
   const findings = classify(changes, {
     profile,
     ...(policy ? { policy } : {}),
     ...(context ? { context } : {}),
     hints: { base: b.hints, revision: r.hints },
   });
+  const tagged = policy?.exclusions.size && context ? [...policy.exclusions.values()].filter((s) => !policy.ignore.includes(s.name)) : [];
+  if (tagged.length) {
+    const sets = new Map(tagged.map((s) => [s.name, s]));
+    for (const f of findings) {
+      const names = setsFor(f.subject, f.impact, sets, context!);
+      if (names.length) f.exclusions = names;
+    }
+  }
   return {
     schemaVersion: 0,
     tool: { name: 'api-diff', version: VERSION },
@@ -128,21 +139,52 @@ function lifecycleOptions(opts: CompareOptions): LifecycleOptions {
  * side the change is on), and removes ignored operations from impact lists.
  * Runs before bulk collapsing, so a collapsed group never hides an ignored part.
  */
-function applyIgnore(changes: Change[], b: LoadedSide, r: LoadedSide): Change[] {
-  if (!b.hints?.ignored.length && !r.hints?.ignored.length) return changes;
+function applyIgnore(changes: Change[], b: LoadedSide, r: LoadedSide, sets: ExclusionSet[], ctx: SpecContext): Change[] {
+  if (!b.hints?.ignored.length && !r.hints?.ignored.length && !sets.length) return changes;
   const ignoredOps = new Set<string>();
   for (const s of [b, r]) {
-    for (const op of s.model?.operations.values() ?? []) if (s.hints!.isIgnored(s.model!.docs.location(op.at))) ignoredOps.add(`${op.method.toUpperCase()} ${op.path}`);
+    for (const op of s.model?.operations.values() ?? []) if (s.hints?.isIgnored(s.model!.docs.location(op.at))) ignoredOps.add(`${op.method.toUpperCase()} ${op.path}`);
   }
+  for (const [subject, op] of ctx.operations) if (sets.some((set) => operationInSet(set, op))) ignoredOps.add(subject);
+  const ignoredComponent = (subject: string): boolean => {
+    const name = componentName(subject);
+    return name !== undefined && sets.some((set) => componentInSet(set, name, ctx));
+  };
   const out: Change[] = [];
   for (const c of changes) {
-    if (b.hints?.isIgnored(c.base) || r.hints?.isIgnored(c.revision) || ignoredOps.has(c.subject)) continue;
+    if (b.hints?.isIgnored(c.base) || r.hints?.isIgnored(c.revision) || ignoredOps.has(c.subject) || ignoredComponent(c.subject)) continue;
     if (c.impact?.some((s) => ignoredOps.has(s))) {
       const impact = c.impact.filter((s) => !ignoredOps.has(s));
       if (impact.length) out.push({ ...c, impact }); // otherwise only ignored operations use it
     } else out.push(c);
   }
   return out;
+}
+
+/** One `not-compared` notice per ignored exclusion set that matched something. */
+function ignoredSetNotices(sets: ExclusionSet[], ctx: SpecContext): Change[] {
+  const out: Change[] = [];
+  for (const set of sets) {
+    const ops = [...ctx.operations.entries()].filter(([, op]) => operationInSet(set, op)).map(([s]) => s).sort();
+    const comps = [...ctx.components.keys()].filter((n) => componentInSet(set, n, ctx));
+    if (!ops.length && !comps.length) continue;
+    const parts = [ops.length ? `${ops.length} operation${ops.length === 1 ? '' : 's'}` : '', comps.length ? `${comps.length} component${comps.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ');
+    const c: Change = { rule: 'not-compared', subject: 'document', details: { what: `exclusion set '${set.name}' (${parts}; ignored by the policy)`, name: set.name } };
+    if (ops.length) c.impact = ops;
+    out.push(c);
+  }
+  return out;
+}
+
+/** extension-changed → extension-changed-sdk / -wire for extensions the policy classifies. */
+function classifyExtensions(changes: Change[], kinds: Map<string, Kind> | undefined): Change[] {
+  if (!kinds?.size) return changes;
+  return changes.map((c) => {
+    if (c.rule !== 'extension-changed') return c;
+    const key = typeof c.details.keyword === 'string' ? c.details.keyword : String(c.details.path ?? '').split('/').pop()!.replace(/~1/g, '/').replace(/~0/g, '~');
+    const kind = kinds.get(key);
+    return kind && kind !== 'docs' ? { ...c, rule: `extension-changed-${kind}`, details: { ...c.details, name: key } } : c;
+  });
 }
 
 /** One `not-compared` notice per ignored node (once if it is ignored on both sides). */

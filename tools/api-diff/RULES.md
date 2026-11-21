@@ -207,6 +207,13 @@ All `docs` kind, default `info`, phase 2. They appear in the **diff** view and i
 
 [`description-changed`](docs/rules/description-changed.md), [`summary-changed`](docs/rules/summary-changed.md), [`title-changed`](docs/rules/title-changed.md) (outside schemas; schema titles are in section 8), [`example-changed`](docs/rules/example-changed.md), [`external-docs-changed`](docs/rules/external-docs-changed.md), [`tag-added`](docs/rules/tag-added.md), [`tag-removed`](docs/rules/tag-removed.md), [`tag-description-changed`](docs/rules/tag-description-changed.md), [`info-changed`](docs/rules/info-changed.md) (contact, license, terms), [`extension-changed`](docs/rules/extension-changed.md) (any `x-` extension the policy doesn't classify as `wire` or `sdk`).
 
+Extensions the policy's `extensions` section classifies (POLICY.md section 6) have their own rules, outside the docs kind:
+
+| Rule | Meaning | Kind | Default | Phase |
+|---|---|---|---|---|
+| [`extension-changed-sdk`](docs/rules/extension-changed-sdk.md) | An extension classified `sdk` changed, e.g. `x-enum-varnames` | sdk | info · **sdk: warn** | 3 |
+| [`extension-changed-wire`](docs/rules/extension-changed-wire.md) | An extension classified `wire` changed | wire | warn | 3 |
+
 ## 11. Spec and engine notices
 
 | Rule | Meaning | Default | Phase |
@@ -224,7 +231,7 @@ All `docs` kind, default `info`, phase 2. They appear in the **diff** view and i
 | 1. Core fallbacks | 4 |
 | 2–6. Operations, security, parameters, request bodies, responses | 41 (parameter rules count once, not once per location) |
 | 7. Schemas (each one is a request/response pair) | 52 |
-| 8–11. References, lifecycle, docs, notices | 29 |
+| 8–11. References, lifecycle, docs, notices | 31 |
 | **Total** | **about 125** (about 180 counting both directions of each pair) |
 
 Phase 1 builds sections 2–6 and the notices. Phase 2 builds the schema, reference and docs rules.

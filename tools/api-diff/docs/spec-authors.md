@@ -21,8 +21,8 @@ Status: some of these are still being built in milestone M6. Each section says w
 | Any `x-…`, e.g. `x-audience: partner` | An operation, path item, component schema or the document | Policy overrides can match on it | `overrides[].match.extension` | Available |
 | `x-deprecated-since` | An operation | Date it was deprecated; removal is allowed after `deprecated-for-days` | `lifecycle.deprecated-since`, `operation-removed.unless` | Available |
 | `x-sunset` | An operation | Date it will be removed; removal is allowed once it passes, and moving it earlier is a finding | `lifecycle.sunset`, `operation-removed.unless.past-sunset` | Available |
-| `x-enum-varnames`, `x-go-type`, … | Anywhere | Changes to them count as `sdk` (or `wire`) changes instead of `docs` | `extensions` | M6 step 6 |
-| `x-internal` | An operation, path item or schema | Puts it in an exclusion set, left out of chosen reports (or not compared) | `exclusions.<set>.extensions` | M6 step 6 |
+| `x-enum-varnames`, `x-go-type`, … | Anywhere | Changes to them are `extension-changed-sdk` (or `-wire`) instead of `docs` | `extensions` | Available |
+| `x-internal` | An operation, path item or schema | Puts it in an exclusion set: not compared if the policy ignores the set; otherwise findings are tagged so reports can leave them out (M7) | `exclusions.<set>.extensions` | Available (report filtering in M7) |
 | `x-api-version`, `x-build-id`, `x-git.sha` | The document root | The version and labels recorded in reports | `versions` | M6 step 7 |
 | `x-owner` | An operation or schema | Routes findings to an owner | — | Backlog (M9) |
 
@@ -140,7 +140,7 @@ paths:
       x-internal: true
 ```
 
-The policy defines named exclusion sets, for example `internal` by path, tag or extension. Reports can leave a set out (the public changelog skips internal operations), or the policy can `ignore` a set so it isn't compared at all. Nothing is excluded unless the policy says so. *M6 step 6.*
+The policy defines named exclusion sets, for example `internal` by path, tag, operationId, component name or extension. `x-internal` works on an operation, its path item or a component schema; any value except `false` counts (a policy can also require specific values, e.g. `x-audience: internal`). If the policy `ignore`s the set, those operations and components aren't compared, and a `not-compared` notice lists them. Otherwise their findings are tagged with the set, so reports can leave them out (the public changelog skips internal operations; reports arrive in M7). Nothing is excluded unless the policy says so.
 
 ## 5. Extensions that change the kind of a change
 
@@ -153,7 +153,7 @@ extensions:
   x-go-type: sdk
 ```
 
-Changing such an extension is then an `sdk` finding, raised under `--profile sdk`. *M6 step 6.*
+Changing such an extension is then `extension-changed-sdk` (`info`, `warn` under `--profile sdk`), or `extension-changed-wire` (`warn`) for extensions classified `wire`.
 
 ## 6. Versions and labels
 

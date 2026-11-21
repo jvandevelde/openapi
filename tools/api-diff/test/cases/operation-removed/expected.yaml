@@ -1,0 +1,6 @@
+description: Removing an operation is an error.
+milestone: M3
+findings:
+- rule: operation-removed
+  severity: error
+  subject: DELETE /pets/{id}

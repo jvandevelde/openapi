@@ -1,0 +1,6 @@
+description: A new operation is info.
+milestone: M3
+findings:
+- rule: operation-added
+  severity: info
+  subject: GET /pets/{id}

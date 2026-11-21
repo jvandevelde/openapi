@@ -1,0 +1,8 @@
+description: Under --profile sdk, a changed operationId is an error.
+milestone: M3
+options:
+  profile: sdk
+findings:
+- rule: operation-id-changed
+  severity: error
+  subject: GET /pets

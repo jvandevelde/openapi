@@ -1,0 +1,6 @@
+description: Renaming a path parameter keeps the same endpoint.
+milestone: M3
+findings:
+- rule: path-param-renamed
+  severity: info
+  subject: GET /pets/{petId}

@@ -1,0 +1,6 @@
+description: A required scope was added.
+milestone: M3
+findings:
+- rule: security-scope-added
+  severity: error
+  subject: GET /pets

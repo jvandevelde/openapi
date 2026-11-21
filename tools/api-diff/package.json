@@ -1,0 +1,31 @@
+{
+  "name": "api-diff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Compare two OpenAPI documents and decide which changes break clients.",
+  "type": "module",
+  "bin": {
+    "api-diff": "./bin/api-diff.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit -p .",
+    "bench": "node test/bench/bench.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "js-yaml": "^5.5.0",
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "fast-check": "^4.10.3",
+    "typescript": "^7.0.2",
+    "yaml": "^2.9.1"
+  }
+}

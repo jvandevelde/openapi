@@ -1,0 +1,6 @@
+description: 'A: allOf [$ref A] describes nothing valid and is reported instead of looping.'
+milestone: M4
+findings:
+- rule: cycle-not-productive
+  severity: error
+  subject: '#/components/schemas/A'

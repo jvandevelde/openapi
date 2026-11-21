@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jvandevelde/openapi/tools/api-diff/schema/result-v0.schema.json",
+  "title": "api-diff result, schema version 0",
+  "description": "Output of `api-diff --format json`. Version 0 may still change before 1.0; fields are only added within a version.",
+  "type": "object",
+  "required": ["schemaVersion", "tool", "profile", "compared", "state", "counts", "findings"],
+  "properties": {
+    "schemaVersion": { "const": 0 },
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": { "name": { "const": "api-diff" }, "version": { "type": "string" } }
+    },
+    "profile": { "enum": ["wire", "sdk"] },
+    "compared": {
+      "type": "object",
+      "required": ["base", "revision"],
+      "properties": { "base": { "$ref": "#/$defs/side" }, "revision": { "$ref": "#/$defs/side" } }
+    },
+    "state": { "enum": ["no-changes", "compatible", "breaking"] },
+    "counts": {
+      "type": "object",
+      "required": ["total", "bySeverity", "byKind", "byRule"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "bySeverity": {
+          "type": "object",
+          "required": ["error", "warn", "info"],
+          "additionalProperties": { "type": "integer" }
+        },
+        "byKind": {
+          "type": "object",
+          "required": ["wire", "sdk", "docs"],
+          "additionalProperties": { "type": "integer" }
+        },
+        "byRule": { "type": "object", "additionalProperties": { "type": "integer" } }
+      }
+    },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
+  },
+  "$defs": {
+    "side": {
+      "type": "object",
+      "required": ["input", "file", "version"],
+      "properties": {
+        "input": { "type": "string", "description": "The input as given, e.g. main:openapi.yaml." },
+        "file": { "type": "string", "description": "Display name of the root file." },
+        "openapi": { "type": "string" },
+        "version": { "type": "string", "description": "info.version, or 'unknown'." },
+        "sha256": { "type": "string" },
+        "commit": { "type": "string", "description": "Resolved commit SHA for git inputs." }
+      }
+    },
+    "location": {
+      "type": "object",
+      "required": ["file", "pointer"],
+      "properties": {
+        "file": { "type": "string" },
+        "pointer": { "type": "string", "description": "JSON Pointer in that file." },
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "rule", "baseRule", "kind", "severity", "severitySource", "subject", "message", "details"],
+      "properties": {
+        "id": { "type": "string", "description": "Stable ID: the same change in the same place always gets the same ID." },
+        "rule": { "type": "string", "description": "Most specific rule ID, e.g. query-parameter-removed." },
+        "baseRule": { "type": "string", "description": "Rule ID without location or direction." },
+        "kind": { "enum": ["wire", "sdk", "docs"] },
+        "severity": { "enum": ["error", "warn", "info"] },
+        "severitySource": { "type": "string" },
+        "subject": { "type": "string", "description": "e.g. 'GET /pets/{id}' or 'document'." },
+        "message": { "type": "string" },
+        "base": { "$ref": "#/$defs/location" },
+        "revision": { "$ref": "#/$defs/location" },
+        "details": { "type": "object" },
+        "impact": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

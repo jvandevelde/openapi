@@ -1,0 +1,6 @@
+description: Path-level parameters apply to every operation, and an operation can override them.
+milestone: M3
+findings:
+- rule: query-parameter-became-required
+  severity: error
+  subject: GET /pets

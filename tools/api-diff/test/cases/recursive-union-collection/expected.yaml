@@ -1,0 +1,6 @@
+description: A union whose member holds a collection of the base type. The change is reported once, with both directions.
+milestone: M5
+findings:
+- rule: minimum-increased-in-request
+  severity: error
+  subject: '#/components/schemas/Circle'

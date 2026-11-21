@@ -1,0 +1,6 @@
+description: An alternative clients may use was removed.
+milestone: M3
+findings:
+- rule: security-alternative-removed
+  severity: error
+  subject: GET /pets

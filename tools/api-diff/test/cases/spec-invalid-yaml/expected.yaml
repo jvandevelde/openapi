@@ -1,0 +1,6 @@
+description: A revision that is not valid YAML.
+milestone: M3
+findings:
+- rule: spec-invalid
+  severity: error
+  subject: revision document

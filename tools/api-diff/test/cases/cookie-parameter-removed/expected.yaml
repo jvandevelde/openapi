@@ -1,0 +1,6 @@
+description: A removed cookie parameter.
+milestone: M3
+findings:
+- rule: cookie-parameter-removed
+  severity: warn
+  subject: GET /pets

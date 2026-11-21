@@ -1,0 +1,6 @@
+description: 'Same operationId and method at a new path: the path changed.'
+milestone: M3
+findings:
+- rule: operation-path-changed
+  severity: error
+  subject: GET /animals/{id}

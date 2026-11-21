@@ -1,0 +1,6 @@
+description: A parameter moved from query to header.
+milestone: M3
+findings:
+- rule: query-parameter-location-changed
+  severity: error
+  subject: GET /pets

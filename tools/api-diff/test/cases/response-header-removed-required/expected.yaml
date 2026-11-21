@@ -1,0 +1,6 @@
+description: A required response header removed is an error.
+milestone: M3
+findings:
+- rule: response-header-removed
+  severity: error
+  subject: GET /pets

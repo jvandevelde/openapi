@@ -1,0 +1,6 @@
+description: Adding an empty requirement ({}) makes auth optional.
+milestone: M3
+findings:
+- rule: security-requirement-removed
+  severity: info
+  subject: GET /pets

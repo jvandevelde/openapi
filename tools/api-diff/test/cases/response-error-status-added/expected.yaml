@@ -1,0 +1,6 @@
+description: A new 404 documented.
+milestone: M3
+findings:
+- rule: response-error-status-added
+  severity: info
+  subject: GET /pets

@@ -1,0 +1,6 @@
+description: A new optional query parameter.
+milestone: M3
+findings:
+- rule: query-parameter-added-optional
+  severity: info
+  subject: GET /pets

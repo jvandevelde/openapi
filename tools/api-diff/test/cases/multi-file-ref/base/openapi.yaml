@@ -1,0 +1,13 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/pets':
+    get:
+      operationId: listPets
+      parameters:
+      - $ref: parameters.yaml#/Limit
+      responses:
+        '200':
+          description: ok

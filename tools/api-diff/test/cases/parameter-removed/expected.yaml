@@ -1,0 +1,6 @@
+description: 'A removed query parameter is a warning: servers are assumed to ignore it.'
+milestone: M3
+findings:
+- rule: query-parameter-removed
+  severity: warn
+  subject: GET /pets

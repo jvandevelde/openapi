@@ -1,0 +1,6 @@
+description: Swagger 2.0 is not supported.
+milestone: M3
+findings:
+- rule: spec-invalid
+  severity: error
+  subject: revision document

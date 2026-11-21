@@ -1,0 +1,6 @@
+description: A request media type clients may send was removed.
+milestone: M3
+findings:
+- rule: request-media-type-removed
+  severity: error
+  subject: POST /pets

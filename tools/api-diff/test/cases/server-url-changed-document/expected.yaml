@@ -1,0 +1,6 @@
+description: A document-level server URL removed is reported once, not per operation.
+milestone: M3
+findings:
+- rule: server-url-changed
+  severity: warn
+  subject: document

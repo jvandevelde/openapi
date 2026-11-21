@@ -1,0 +1,6 @@
+description: 'A changed operationId is an sdk change: info under the wire profile.'
+milestone: M3
+findings:
+- rule: operation-id-changed
+  severity: info
+  subject: GET /pets

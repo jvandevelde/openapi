@@ -1,0 +1,6 @@
+description: A parameter in another file, referenced by a relative $ref, became required.
+milestone: M3
+findings:
+- rule: query-parameter-became-required
+  severity: error
+  subject: GET /pets

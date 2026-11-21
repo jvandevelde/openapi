@@ -1,0 +1,48 @@
+# One workflow per tool. It runs only when that tool (or this file) changes and
+# sets up only the toolchain that tool needs.
+name: api-diff
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/api-diff/**'
+      - '.github/workflows/api-diff.yml'
+  pull_request:
+    paths:
+      - 'tools/api-diff/**'
+      - '.github/workflows/api-diff.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/api-diff
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: tools/api-diff/package-lock.json
+      - run: make test
+
+  bench:
+    # Reports parse and compare times for two 8 MB specs. Informational only.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: tools/api-diff
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/api-diff/package-lock.json
+      - run: make bench

@@ -1,0 +1,9 @@
+description: Without a matching operationId, a moved operation is removed + added.
+milestone: M3
+findings:
+- rule: operation-removed
+  severity: error
+  subject: GET /pets/{id}
+- rule: operation-added
+  severity: info
+  subject: GET /animals/{id}

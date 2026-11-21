@@ -1,0 +1,6 @@
+description: A response that had a body now has none.
+milestone: M3
+findings:
+- rule: response-body-removed
+  severity: error
+  subject: GET /pets

@@ -1,0 +1,6 @@
+description: explode changed from the default (true for form) to false.
+milestone: M3
+findings:
+- rule: query-parameter-serialization-changed
+  severity: error
+  subject: GET /pets

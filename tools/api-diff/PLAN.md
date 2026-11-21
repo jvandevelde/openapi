@@ -1,6 +1,6 @@
 # api-diff: plan
 
-Status: **planning**. No code yet. The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
+Status: **M0–M3 done** (operation-level comparison works; see [README.md](README.md)). Next: M4 (schema index). The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
 
 `api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Several tools already do parts of this (section 1). We're building our own so that we decide what counts as breaking and how results are shown, and so the tool is built around the problems those tools leave open (section 3): shared and recursive schemas, request vs response direction, wire vs SDK compatibility, and reports for different readers.
 
@@ -143,7 +143,7 @@ api-diff --base main... openapi.yaml                # same file at the merge-bas
 - **Shells out to the `git` binary** with `execFile` and an argument list, never a shell string. Revisions starting with `-` are rejected. No libgit2 or JavaScript git library: CI images already have git, and the real binary handles every repository layout (worktrees, submodules, partial clones).
 - **One long-running `git cat-file --batch` process** per run reads every file both sides need (the root file and all `$ref` targets), so a spec split into hundreds of files doesn't start hundreds of processes.
 - **Paths** in `rev:path` are relative to the current directory, like `git show rev:./path`. `$ref`s are resolved relative to the referring file at the same revision.
-- **Telling `rev:path` from a file name:** an argument is read as a git revision only if a local file with that exact name doesn't exist **and** the part before `:` resolves to a commit (`git rev-parse --verify <rev>^{commit}`). A Windows drive letter (`C:\specs\api.yaml`) is never read as a revision. `--base-rev` and `--revision-rev` flags avoid the syntax entirely.
+- **Telling `rev:path` from a file name:** an argument is read as a git revision only if a local file with that exact name doesn't exist **and** the part before `:` resolves to a commit (`git rev-parse --verify <rev>^{commit}`). A Windows drive letter (`C:\specs\api.yaml`) is never read as a revision. `--base <rev>` and `--revision <rev>` with one shared path avoid the syntax entirely (see decision record *Command-line syntax for files and git revisions*).
 - **Merge-base.** `main...` (three dots, as in `git diff`) compares against the commit where the branch left `main`, so a PR's report shows only that PR's changes and not changes that landed on `main` since. This is the default for the `review` and `ci` reports when a branch is given.
 - **Shallow clones.** CI checkouts are often shallow, so the base commit may be missing. The tool detects this and fails with a clear fix (e.g. `fetch-depth: 0`, or `git fetch --depth=1 origin main`) instead of a raw git error.
 - **Recorded in reports.** The `compared` section records the revision as given, the resolved commit SHA and the blob SHA of each file, and `commit` is filled in automatically as a version label.
@@ -238,6 +238,8 @@ Measured on a generated 8 MB OpenAPI 3.1 spec (3,650 paths and schemas, about 24
 | Full recursive deep diff of two parsed docs | 58 ms |
 
 So TypeScript is fast enough, as long as we **don't use the `yaml` package for loading** (it's about 10× slower, because it builds a full CST that keeps comments). Use `JSON.parse` + `jsonc-parser` for JSON and `js-yaml` for YAML, and get positions from offsets. Load base and revision in parallel. The costs that grow with the work are allOf merging and `$ref` impact fan-out, so memoise results per component instead of re-walking for each operation. Target: under 1 s end to end for two 8 MB specs.
+
+**Measured with the implementation (M3)**, `node test/bench/bench.ts 8` on Node 22: parsing one 8 MB YAML spec with positions takes about 0.45–0.56 s and one JSON spec about 0.47 s; comparing two 8 MB YAML specs end to end takes about 1.8 s, mostly parsing. js-yaml 5 replaced the `listener` option with an event parser, which we now use (decision record *Get YAML positions from js-yaml 5 parser events*). Parsing the two sides in worker threads (later) would bring this close to the 1 s target.
 
 ### Shared components used in both requests and responses
 
@@ -665,10 +667,10 @@ Each milestone is one or a few pull requests and ends with something that runs.
 
 | # | Milestone | Contents | Done when |
 |---|---|---|---|
-| **M0** | Scaffold | Package, tsconfig, Makefile, CI workflow, golden-case runner, rule metadata registry, `api-diff rules`, result JSON Schema v0 | `make test TOOL=api-diff` runs the (empty) case runner in CI |
-| **M1** | Phase-1 corpus | About 45 cases for RULES.md sections 2–6 and 11, and the recursive-schema cases | Expected results reviewed and agreed |
-| **M2** | Inputs | fs and git sources (`rev:path`, `main...`, shallow-clone detection), JSON/YAML loaders with positions, local and relative-file `$ref`s, normalise | Loads the test cases and an 8 MB spec from both files and git within the parse budget |
-| **M3** | Operation-level diff | Model, diff and rules for paths, operations, security, parameters, request bodies, responses; txt and json output; `--fail-on`, `--state` | **First usable version:** M1 cases pass, and it can gate a PR on operation-level changes |
+| **M0** ✅ | Scaffold | Package, tsconfig, Makefile, CI workflow, golden-case runner, rule metadata registry, `api-diff rules`, result JSON Schema v0 | `make test TOOL=api-diff` runs the (empty) case runner in CI |
+| **M1** ✅ | Phase-1 corpus | About 45 cases (74 written, incl. 4 for M4/M5) for RULES.md sections 2–6 and 11, and the recursive-schema cases | Expected results reviewed and agreed |
+| **M2** ✅ | Inputs | fs and git sources (`rev:path`, `main...`, shallow-clone detection), JSON/YAML loaders with positions, local and relative-file `$ref`s, normalise | Loads the test cases and an 8 MB spec from both files and git within the parse budget |
+| **M3** ✅ | Operation-level diff | Model, diff and rules for paths, operations, security, parameters, request bodies, responses; txt and json output; `--fail-on`, `--state` | **First usable version:** M1 cases pass, and it can gate a PR on operation-level changes |
 | **M4** | Schema index | Graph, iterative Tarjan, productive-cycle check, shape/full hashes, skipping unchanged subtrees, `unclassified-change` | Recursive cases load and hash, and no input causes a stack overflow |
 | **M5** | Schema engine | Effective `allOf` merge, pair-cached comparison for cycles, variance, union branch and discriminator matching, schema rules (section 7), usages and direction (incl. `readOnly`/`writeOnly`), root-cause aggregation, ref rules, docs rules, profiles, bulk-change collapsing, example re-validation | All schema cases pass, and each shared-component change appears once |
 | **M6** | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance | Every POLICY.md example is a passing test |

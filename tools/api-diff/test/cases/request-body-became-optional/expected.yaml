@@ -1,0 +1,6 @@
+description: Required → optional.
+milestone: M3
+findings:
+- rule: request-body-became-optional
+  severity: info
+  subject: POST /pets

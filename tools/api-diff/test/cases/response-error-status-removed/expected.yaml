@@ -1,0 +1,6 @@
+description: A documented 404 removed.
+milestone: M3
+findings:
+- rule: response-error-status-removed
+  severity: info
+  subject: GET /pets

@@ -1,0 +1,6 @@
+description: A required body where there was none.
+milestone: M3
+findings:
+- rule: request-body-added-required
+  severity: error
+  subject: POST /pets

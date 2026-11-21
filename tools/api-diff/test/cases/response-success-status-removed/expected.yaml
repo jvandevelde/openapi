@@ -1,0 +1,6 @@
+description: A 2xx clients rely on was removed.
+milestone: M3
+findings:
+- rule: response-success-status-removed
+  severity: error
+  subject: GET /pets

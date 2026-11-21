@@ -1,0 +1,6 @@
+description: Document-level security applies to every operation without its own.
+milestone: M3
+findings:
+- rule: security-requirement-added
+  severity: error
+  subject: GET /pets

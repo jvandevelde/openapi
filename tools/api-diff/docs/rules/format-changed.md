@@ -38,6 +38,15 @@ Findings:
 
 - `format-changed-in-response` · error · #/components/schemas/Pet
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`format-changed`](../../test/cases/format-changed/) | `format-changed-in-response` · error · #/components/schemas/Pet | date-time → date in a response. |
+| [`format-changed-widening`](../../test/cases/format-changed-widening/) | `format-changed-in-request` · info · #/components/schemas/Pet | int32 → int64 in a request is widening, so info. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

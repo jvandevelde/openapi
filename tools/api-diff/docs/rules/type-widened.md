@@ -38,6 +38,16 @@ Findings:
 
 - `type-widened-in-response` · error · #/components/schemas/Pet
 
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`cycle-not-productive`](../../test/cases/cycle-not-productive/) | `type-widened-in-response` · error · #/components/schemas/A | A: allOf [$ref A] describes nothing valid and is reported instead of looping. Its only consistent reading is "any value", so the type also widened. |
+| [`schema-ref-unresolved`](../../test/cases/schema-ref-unresolved/) | `type-widened-in-response` · error · #/components/schemas/Pet<br>`type-widened-in-request` · info · #/components/schemas/Pet | A $ref inside a schema that points nowhere: ref-unresolved, and the property is compared as an empty schema (type widened). |
+| [`type-widened`](../../test/cases/type-widened/) | `type-widened-in-response` · error · #/components/schemas/Pet | integer → number in a response: clients parsing an int may fail. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

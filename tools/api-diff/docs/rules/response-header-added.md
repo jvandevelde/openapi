@@ -41,6 +41,16 @@ Findings:
 
 - `response-header-added` · info · GET /pets
 
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`bulk-change-below-threshold`](../../test/cases/bulk-change-below-threshold/) | `response-header-added` · info · GET /r0<br>`response-header-added` · info · GET /r1 | The same change in only 2 operations stays as 2 findings. |
+| [`bulk-change-collapsed`](../../test/cases/bulk-change-collapsed/) | `response-header-added` · info · 4 operations | The same response header added inline to 4 operations becomes one finding listing them. |
+| [`response-header-added`](../../test/cases/response-header-added/) | `response-header-added` · info · GET /pets | A new response header. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

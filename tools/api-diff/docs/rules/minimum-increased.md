@@ -38,6 +38,16 @@ Findings:
 
 - `minimum-increased-in-request` · error · #/components/schemas/Pet
 
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`exclusive-minimum-3-0`](../../test/cases/exclusive-minimum-3-0/) | `minimum-increased-in-request` · error · #/components/schemas/Pet | 3.0 boolean exclusiveMinimum and 3.1 numeric exclusiveMinimum: minimum 0 inclusive → exclusive is tighter. |
+| [`minimum-increased`](../../test/cases/minimum-increased/) | `minimum-increased-in-request` · error · #/components/schemas/Pet | minimum raised on a request number. |
+| [`recursive-union-collection`](../../test/cases/recursive-union-collection/) | `minimum-increased-in-request` · error · #/components/schemas/Circle<br>`minimum-increased-in-response` · info · #/components/schemas/Circle | A union whose member holds a collection of the base type. The change is found once per direction, without looping. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

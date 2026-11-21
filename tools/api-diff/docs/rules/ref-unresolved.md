@@ -22,7 +22,7 @@ The spec is broken there, and clients generated from it may be too.
 
 ## Example
 
-From test case [`ref-unresolved`](../../test/cases/ref-unresolved/): A $ref to a component that does not exist.
+From test case [`ref-unresolved`](../../test/cases/ref-unresolved/): A $ref to a component that does not exist. The parameter it should provide is treated as absent, so it also counts as removed.
 
 `openapi.yaml`, base → revision:
 
@@ -40,6 +40,15 @@ Findings:
 
 - `ref-unresolved` · error · revision document
 - `query-parameter-removed` · warn · GET /pets
+
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`ref-unresolved`](../../test/cases/ref-unresolved/) | `ref-unresolved` · error · revision document | A $ref to a component that does not exist. The parameter it should provide is treated as absent, so it also counts as removed. |
+| [`schema-ref-unresolved`](../../test/cases/schema-ref-unresolved/) | `ref-unresolved` · error · revision document | A $ref inside a schema that points nowhere: ref-unresolved, and the property is compared as an empty schema (type widened). |
 
 ## Policy options
 

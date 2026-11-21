@@ -37,6 +37,15 @@ Findings:
 
 - `min-length-increased-in-request` · error · #/components/schemas/Pet
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`min-length-increased`](../../test/cases/min-length-increased/) | `min-length-increased-in-request` · error · #/components/schemas/Pet | minLength raised on a request string. |
+| [`schema-change-root-cause`](../../test/cases/schema-change-root-cause/) | `min-length-increased-in-request` · error · #/components/schemas/Address<br>`min-length-increased-in-response` · info · #/components/schemas/Address | Pet references Address. A change inside Address is reported for Address only, not again for Pet. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

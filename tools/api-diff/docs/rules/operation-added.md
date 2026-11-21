@@ -47,6 +47,16 @@ Findings:
 
 - `operation-added` · info · GET /pets/{id}
 
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`operation-added`](../../test/cases/operation-added/) | `operation-added` · info · GET /pets/{id} | A new operation is info. |
+| [`operation-path-changed-without-id`](../../test/cases/operation-path-changed-without-id/) | `operation-added` · info · GET /animals/{id} | Without a matching operationId, a moved operation is removed + added. |
+| [`query-method-3-2`](../../test/cases/query-method-3-2/) | `operation-added` · info · QUERY /pets | OpenAPI 3.2 QUERY operations are compared. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

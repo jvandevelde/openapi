@@ -39,6 +39,15 @@ Findings:
 
 - `response-media-type-removed` · error · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`response-media-type-removed`](../../test/cases/response-media-type-removed/) | `response-media-type-removed` · error · GET /pets | A response media type clients may request was removed. |
+| [`response-status-range-narrowed-media-removed`](../../test/cases/response-status-range-narrowed-media-removed/) | `response-media-type-removed` · error · GET /pets<br>`response-media-type-removed` · error · GET /pets | 2XX split into 200 and 201, both without the XML media type. One narrowing finding, and each code is compared with 2XX. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

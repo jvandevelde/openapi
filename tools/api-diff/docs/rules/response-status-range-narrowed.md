@@ -40,6 +40,15 @@ Findings:
 
 - `response-status-range-narrowed` · info · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`response-status-range-narrowed`](../../test/cases/response-status-range-narrowed/) | `response-status-range-narrowed` · info · GET /pets | 2XX replaced by 200 is not a removal. The narrowing is reported as info, and 2XX is compared with 200. |
+| [`response-status-range-narrowed-media-removed`](../../test/cases/response-status-range-narrowed-media-removed/) | `response-status-range-narrowed` · info · GET /pets | 2XX split into 200 and 201, both without the XML media type. One narrowing finding, and each code is compared with 2XX. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

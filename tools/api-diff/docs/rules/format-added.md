@@ -37,6 +37,17 @@ Findings:
 
 - `format-added-in-request` · error · #/components/schemas/Pet
 
+## Test cases
+
+4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`format-added`](../../test/cases/format-added/) | `format-added-in-request` · error · #/components/schemas/Pet | A format added to a request string. |
+| [`read-only-property-ignored-in-requests`](../../test/cases/read-only-property-ignored-in-requests/) | `format-added-in-response` · info · #/components/schemas/Pet | A readOnly property changes only matter in responses: a shared schema reports the change for the response direction only. |
+| [`recursive-three-schema-cycle`](../../test/cases/recursive-three-schema-cycle/) | `format-added-in-response` · info · #/components/schemas/C | A → B → C → A. A change deep inside the cycle is found. |
+| [`schema-in-other-file`](../../test/cases/schema-in-other-file/) | `format-added-in-request` · error · schemas.yaml#/Pet<br>`format-added-in-response` · info · schemas.yaml#/Pet | A schema in another file, referenced with a relative $ref, is matched by file and pointer. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

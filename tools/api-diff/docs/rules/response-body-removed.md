@@ -40,6 +40,15 @@ Findings:
 
 - `response-body-removed` · error · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`response-body-removed`](../../test/cases/response-body-removed/) | `response-body-removed` · error · GET /pets | A response that had a body now has none. |
+| [`response-status-range-widened-body-removed`](../../test/cases/response-status-range-widened-body-removed/) | `response-body-removed` · error · GET /pets | 200 replaced by a 2XX that has no body. The widening is info, and losing the body is still an error. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

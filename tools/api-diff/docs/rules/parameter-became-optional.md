@@ -40,6 +40,11 @@ Findings:
 
 - `query-parameter-became-optional` · info · GET /pets
 
+## Test cases
+
+The example above is the only test case for this rule.
+
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

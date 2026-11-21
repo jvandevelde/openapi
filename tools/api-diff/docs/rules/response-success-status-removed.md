@@ -38,6 +38,15 @@ Findings:
 
 - `response-success-status-removed` · error · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`response-redirect-status-removed`](../../test/cases/response-redirect-status-removed/) | `response-success-status-removed` · error · GET /pets | 3xx responses count as success statuses, so removing a documented redirect is an error. |
+| [`response-success-status-removed`](../../test/cases/response-success-status-removed/) | `response-success-status-removed` · error · GET /pets | A 2xx clients rely on was removed. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

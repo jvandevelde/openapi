@@ -40,6 +40,16 @@ Findings:
 
 - `security-requirement-added` · error · GET /pets
 
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`security-additional-scheme`](../../test/cases/security-additional-scheme/) | `security-requirement-added` · error · GET /pets | An additional scheme is now required together with the existing one. |
+| [`security-document-level`](../../test/cases/security-document-level/) | `security-requirement-added` · error · GET /pets | Document-level security applies to every operation without its own. |
+| [`security-requirement-added`](../../test/cases/security-requirement-added/) | `security-requirement-added` · error · GET /pets | An operation that needed no auth now requires it. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

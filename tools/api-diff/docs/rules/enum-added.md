@@ -39,6 +39,15 @@ Findings:
 
 - `enum-added-in-request` · error · #/components/schemas/Pet
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`enum-added`](../../test/cases/enum-added/) | `enum-added-in-request` · error · #/components/schemas/Pet | A free request string became an enum. |
+| [`union-branch-changed`](../../test/cases/union-branch-changed/) | `enum-added-in-response` · info · #/components/schemas/Dog | A change inside a matched branch is found in that branch component. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

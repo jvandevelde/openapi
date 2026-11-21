@@ -38,6 +38,15 @@ Findings:
 
 - `type-changed-in-response` · error · #/components/schemas/Pet
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`schema-change-inline`](../../test/cases/schema-change-inline/) | `type-changed-in-request` · error · GET /pets | A schema written inline in an operation changed type: reported for that operation. |
+| [`type-changed`](../../test/cases/type-changed/) | `type-changed-in-response` · error · #/components/schemas/Pet | string → integer in a response. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

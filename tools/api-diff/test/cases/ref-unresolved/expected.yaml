@@ -1,4 +1,4 @@
-description: A $ref to a component that does not exist.
+description: A $ref to a component that does not exist. The parameter it should provide is treated as absent, so it also counts as removed.
 milestone: M3
 findings:
 - rule: ref-unresolved

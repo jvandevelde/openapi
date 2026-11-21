@@ -41,6 +41,15 @@ Findings:
 
 - `operation-removed` · error · DELETE /pets/{id}
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`operation-path-changed-without-id`](../../test/cases/operation-path-changed-without-id/) | `operation-removed` · error · GET /pets/{id} | Without a matching operationId, a moved operation is removed + added. |
+| [`operation-removed`](../../test/cases/operation-removed/) | `operation-removed` · error · DELETE /pets/{id} | Removing an operation is an error. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

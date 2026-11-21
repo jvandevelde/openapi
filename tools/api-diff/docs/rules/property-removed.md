@@ -38,6 +38,16 @@ Findings:
 
 - `property-removed-in-response` · error · #/components/schemas/Pet
 
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`property-removed`](../../test/cases/property-removed/) | `property-removed-in-response` · error · #/components/schemas/Pet | A property removed from a response. |
+| [`property-removed-closed-object`](../../test/cases/property-removed-closed-object/) | `property-removed-in-request` · error · #/components/schemas/Pet | A property removed from a request object that allows no other properties: clients still sending it are rejected. |
+| [`property-removed-request`](../../test/cases/property-removed-request/) | `property-removed-in-request` · warn · #/components/schemas/Pet | A property removed from a request: clients still send it, which the server ignores. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

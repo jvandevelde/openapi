@@ -38,6 +38,15 @@ Findings:
 
 - `response-success-status-added` · warn · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`response-redirect-status-added`](../../test/cases/response-redirect-status-added/) | `response-success-status-added` · warn · GET /pets | A new 3xx is treated like a new 2xx (clients may only handle 200). |
+| [`response-success-status-added`](../../test/cases/response-success-status-added/) | `response-success-status-added` · warn · GET /pets | A new 2xx alongside 200 is a warning. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

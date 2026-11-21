@@ -38,6 +38,18 @@ Findings:
 
 - `max-length-decreased-in-request` · error · #/components/schemas/Pet
 
+## Test cases
+
+5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`allof-shared-base`](../../test/cases/allof-shared-base/) | `max-length-decreased-in-response` · info · #/components/schemas/Base | Dog and Cat both extend Base with allOf. A change in Base is reported once, for Base, with both operations. |
+| [`array-items-changed`](../../test/cases/array-items-changed/) | `max-length-decreased-in-request` · error · #/components/schemas/Pet | A change inside array items is found through items. |
+| [`max-length-decreased`](../../test/cases/max-length-decreased/) | `max-length-decreased-in-request` · error · #/components/schemas/Pet | maxLength lowered on a request string. |
+| [`recursive-self-reference`](../../test/cases/recursive-self-reference/) | `max-length-decreased-in-response` · info · #/components/schemas/TreeNode | A schema that refers to itself through items. A change inside it is found once, without looping. |
+| [`schema-change-shared-component`](../../test/cases/schema-change-shared-component/) | `max-length-decreased-in-request` · error · #/components/schemas/Pet<br>`max-length-decreased-in-response` · info · #/components/schemas/Pet | A change inside a shared component used in requests and responses: one finding per direction, each listing the operations in that direction. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

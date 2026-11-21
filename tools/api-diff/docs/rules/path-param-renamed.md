@@ -44,6 +44,11 @@ Findings:
 
 - `path-param-renamed` · info · GET /pets/{petId}
 
+## Test cases
+
+The example above is the only test case for this rule.
+
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

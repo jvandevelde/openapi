@@ -24,6 +24,10 @@ Generated SDK type names change.
 
 _No example yet: one is added with the rule's test case when the rule is implemented._
 
+## Test cases
+
+_None yet._
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

@@ -213,6 +213,7 @@ for (const [id, title] of [
 rule({ id: 'spec-invalid', section: 11, kind: 'wire', title: 'Document failed to load or validate', severity: 'error', milestone: 3, message: (c) => d(c, 'reason') });
 rule({ id: 'ref-unresolved', section: 11, kind: 'wire', title: '$ref points nowhere', severity: 'error', milestone: 3, message: (c) => `$ref '${d(c, 'ref')}' can't be resolved${c.details.reason ? `: ${d(c, 'reason')}` : ''}` });
 rule({ id: 'cycle-not-productive', section: 11, kind: 'wire', title: 'Cycle with no property or items step', severity: 'error', milestone: 4, message: (c) => `schema cycle ${(c.details.cycle as string[]).join(' → ')} has no property or items step, so it describes no valid value` });
+rule({ id: 'documents-unrelated', section: 11, kind: 'wire', title: 'The two documents look like different APIs', severity: 'error', milestone: 6, message: (c) => `documents look unrelated: ${d(c, 'summary')}; set documents-unrelated: off in the policy to compare them anyway` });
 rule({ id: 'not-compared', section: 11, kind: 'wire', title: "Parts of the spec that weren't compared", severity: 'info', milestone: 3, message: (c) => `${d(c, 'what')} not compared` });
 
 export const RULES: readonly RuleMeta[] = R;

@@ -43,10 +43,13 @@ Findings:
 
 ## Test cases
 
-2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
+| [`documents-unrelated-off`](../../test/cases/documents-unrelated-off/) | `operation-removed` · error · DELETE /pets/{petId}<br>`operation-removed` · error · GET /owners<br>`operation-removed` · error · GET /owners/{ownerId}<br>`operation-removed` · error · GET /pets<br>`operation-removed` · error · GET /pets/{petId}<br>`operation-removed` · error · POST /pets | The same unrelated pair with documents-unrelated turned off in the policy: the full diff runs, e.g. for an intentional rewrite. |
+| [`documents-unrelated-too-small`](../../test/cases/documents-unrelated-too-small/) | `operation-removed` · error · GET /pets<br>`operation-removed` · error · POST /pets | Two unrelated documents with two operations each: below min-size (5), so the check is skipped and the diff runs. |
+| [`documents-unrelated-version-prefixes`](../../test/cases/documents-unrelated-version-prefixes/) | `operation-removed` · error · GET /billing/v1/invoices<br>`operation-removed` · error · GET /billing/v1/invoices/{invoiceId}<br>`operation-removed` · error · GET /orders/2024-01-01/orders<br>`operation-removed` · error · GET /users/v1/me<br>`operation-removed` · error · POST /orders/2024-01-01/orders | Several different prefixes, each with its own version segment (v1 → v2, 2024-01-01 → 2025-06-01), no operationIds or schemas and a new title. Version segments are dropped anywhere in the path, so the operations still match and the documents count as related; the diff reports the moved operations as usual. |
 | [`operation-path-changed-without-id`](../../test/cases/operation-path-changed-without-id/) | `operation-removed` · error · GET /pets/{id} | Without a matching operationId, a moved operation is removed + added. |
 | [`operation-removed`](../../test/cases/operation-removed/) | `operation-removed` · error · DELETE /pets/{id} | Removing an operation is an error. |
 

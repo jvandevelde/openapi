@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  title: Book Store
+  version: 1.0.0
+paths:
+  /books:
+    get:
+      operationId: listBooks
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+    post:
+      operationId: createBook
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+  /books/{isbn}:
+    get:
+      operationId: getBook
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+    delete:
+      operationId: deleteBook
+      responses:
+        '200':
+          description: ok
+  /authors:
+    get:
+      operationId: listAuthors
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+  /authors/{authorId}:
+    get:
+      operationId: getAuthor
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+components:
+  schemas:
+    Book:
+      type: object
+      properties:
+        name:
+          type: string
+    Author:
+      type: object
+      properties:
+        name:
+          type: string

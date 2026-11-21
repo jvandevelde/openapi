@@ -1,0 +1,18 @@
+description: 'Two unrelated documents with two operations each: below min-size (5), so the check is skipped and the diff runs.'
+milestone: M6
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: GET /pets
+  - rule: operation-removed
+    severity: error
+    subject: POST /pets
+  - rule: title-changed
+    severity: info
+    subject: document
+  - rule: operation-added
+    severity: info
+    subject: GET /books
+  - rule: operation-added
+    severity: info
+    subject: POST /books

@@ -1,0 +1,200 @@
+description: >-
+  The API grew from 6 to 70 operations and was renamed. Jaccard would score 6/70 ≈ 0.09, below the threshold; the
+  overlap coefficient scores 6/6 = 1.0, so the documents count as related.
+milestone: M6
+findings:
+  - rule: title-changed
+    severity: info
+    subject: document
+  - rule: operation-added
+    severity: info
+    subject: GET /resources1/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources10/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources11/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources12/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources13/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources14/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources15/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources16/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources17/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources18/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources19/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources2/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources20/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources21/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources22/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources23/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources24/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources25/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources26/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources27/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources28/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources29/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources3/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources30/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources31/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources32/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources4/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources5/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources6/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources7/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources8/{id}
+  - rule: operation-added
+    severity: info
+    subject: GET /resources9/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources1/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources10/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources11/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources12/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources13/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources14/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources15/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources16/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources17/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources18/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources19/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources2/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources20/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources21/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources22/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources23/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources24/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources25/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources26/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources27/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources28/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources29/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources3/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources30/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources31/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources32/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources4/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources5/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources6/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources7/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources8/{id}
+  - rule: operation-added
+    severity: info
+    subject: PUT /resources9/{id}

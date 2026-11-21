@@ -1,0 +1,321 @@
+openapi: 3.1.0
+info:
+  title: Pets Platform
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+    post:
+      responses:
+        '200':
+          description: ok
+  /pets/{petId}:
+    get:
+      responses:
+        '200':
+          description: ok
+    delete:
+      responses:
+        '200':
+          description: ok
+  /owners:
+    get:
+      responses:
+        '200':
+          description: ok
+  /owners/{ownerId}:
+    get:
+      responses:
+        '200':
+          description: ok
+  /resources1/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources2/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources3/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources4/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources5/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources6/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources7/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources8/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources9/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources10/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources11/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources12/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources13/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources14/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources15/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources16/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources17/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources18/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources19/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources20/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources21/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources22/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources23/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources24/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources25/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources26/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources27/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources28/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources29/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources30/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources31/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok
+  /resources32/{id}:
+    get:
+      responses:
+        '200':
+          description: ok
+    put:
+      responses:
+        '200':
+          description: ok

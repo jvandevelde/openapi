@@ -1,6 +1,6 @@
 # api-diff: initial rules
 
-Status: **draft for review**. This is the first set of rules, with their default severities. Every severity can be changed in the policy file (see [PLAN.md](PLAN.md)). **⚑** marks a judgement call where reasonable teams disagree; these are the ones to agree on in phase 0.
+Status: **draft for review**. This is the first set of rules, with their default severities. Every severity can be changed in the policy file. [POLICY.md](POLICY.md) documents the options each rule supports. **⚑** marks a judgement call where reasonable teams disagree; these are the ones to agree on in phase 0.
 
 ## How to read this
 

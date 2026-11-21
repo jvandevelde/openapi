@@ -87,10 +87,12 @@ Parameter **schemas** are always *request* direction, so they use the schema rul
 
 | Rule | Meaning | Kind | Default | Phase |
 |---|---|---|---|---|
-| `response-success-status-added` | New 2xx, e.g. 202 alongside 200 (clients may only handle 200). **Decided** | wire | warn | 1 |
-| `response-success-status-removed` | A 2xx clients rely on was removed | wire | error | 1 |
+| `response-success-status-added` | New 1xx/2xx/3xx, e.g. 202 alongside 200 (clients may only handle 200). **Decided** | wire | warn | 1 |
+| `response-success-status-removed` | A 1xx/2xx/3xx clients rely on was removed. **Decided:** 1xx and 3xx count as success statuses | wire | error | 1 |
 | `response-error-status-added` | New 4xx/5xx documented | wire | info | 1 |
 | `response-error-status-removed` | A documented 4xx/5xx was removed | wire | info | 1 |
+| `response-status-range-widened` | Specific codes replaced by their range (`200` → `2XX`): not a removal, but clients may now get other codes in the range. The two responses are compared. **Decided** | wire | info | 1 |
+| `response-status-range-narrowed` | A range replaced by specific codes (`2XX` → `200`): not a removal; the range response is compared with each code. **Decided** | wire | info | 1 |
 | `response-default-removed` | The `default` response was removed | wire | warn | 1 |
 | `response-media-type-added` | New media type (only sent if the client asks for it) | wire | info | 1 |
 | `response-media-type-removed` | A media type clients may request was removed | wire | error | 1 |

@@ -1,0 +1,6 @@
+description: 3xx responses count as success statuses, so removing a documented redirect is an error.
+milestone: M3
+findings:
+- rule: response-success-status-removed
+  severity: error
+  subject: GET /pets

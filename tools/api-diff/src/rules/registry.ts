@@ -86,10 +86,12 @@ rule({ id: 'request-media-type-added', section: 5, kind: 'wire', title: 'Request
 rule({ id: 'request-media-type-removed', section: 5, kind: 'wire', title: 'Request media type removed', severity: 'error', milestone: 3, message: (c) => `request media type '${d(c, 'mediaType')}' removed` });
 
 // 6. Responses
-rule({ id: 'response-success-status-added', section: 6, kind: 'wire', title: 'New 2xx response', severity: 'warn', milestone: 3, message: (c) => `success response ${d(c, 'status')} added` });
-rule({ id: 'response-success-status-removed', section: 6, kind: 'wire', title: '2xx response removed', severity: 'error', milestone: 3, message: (c) => `success response ${d(c, 'status')} removed` });
-rule({ id: 'response-error-status-added', section: 6, kind: 'wire', title: 'New non-2xx response documented', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'status')} added` });
-rule({ id: 'response-error-status-removed', section: 6, kind: 'wire', title: 'Non-2xx response removed', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'status')} removed` });
+rule({ id: 'response-success-status-added', section: 6, kind: 'wire', title: 'New 1xx/2xx/3xx response', severity: 'warn', milestone: 3, message: (c) => `success response ${d(c, 'status')} added` });
+rule({ id: 'response-success-status-removed', section: 6, kind: 'wire', title: '1xx/2xx/3xx response removed', severity: 'error', milestone: 3, message: (c) => `success response ${d(c, 'status')} removed` });
+rule({ id: 'response-error-status-added', section: 6, kind: 'wire', title: 'New 4xx/5xx response documented', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'status')} added` });
+rule({ id: 'response-error-status-removed', section: 6, kind: 'wire', title: '4xx/5xx response removed', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'status')} removed` });
+rule({ id: 'response-status-range-widened', section: 6, kind: 'wire', title: 'Specific status codes replaced by their range (e.g. 200 → 2XX)', severity: 'info', milestone: 3, message: (c) => `response ${list(c.details.from)} replaced by ${d(c, 'to')}` });
+rule({ id: 'response-status-range-narrowed', section: 6, kind: 'wire', title: 'A status range replaced by specific codes (e.g. 2XX → 200)', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'from')} narrowed to ${list(c.details.to)}` });
 rule({ id: 'response-default-removed', section: 6, kind: 'wire', title: 'default response removed', severity: 'warn', milestone: 3, message: () => 'default response removed' });
 rule({ id: 'response-media-type-added', section: 6, kind: 'wire', title: 'Response media type added', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'status')} media type '${d(c, 'mediaType')}' added` });
 rule({ id: 'response-media-type-removed', section: 6, kind: 'wire', title: 'Response media type removed', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} media type '${d(c, 'mediaType')}' removed` });

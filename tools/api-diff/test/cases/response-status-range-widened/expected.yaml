@@ -1,0 +1,6 @@
+description: 200 replaced by 2XX is not a removal. The widening is reported as info, and the two responses are compared (here they are the same).
+milestone: M3
+findings:
+- rule: response-status-range-widened
+  severity: info
+  subject: GET /pets

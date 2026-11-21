@@ -4,7 +4,7 @@
 
 import type { Ref } from '../load/documents.ts';
 import type { Model, Operation, Param, Requirement, Response } from '../model/model.ts';
-import { isSuccessStatus } from '../normalize/normalize.ts';
+import { isStatusRange, isSuccessStatus, statusRange } from '../normalize/normalize.ts';
 import type { Change, Location } from '../types.ts';
 
 interface Ctx {
@@ -258,17 +258,47 @@ function diffRequestBody(ctx: Ctx, b: Operation, r: Operation, subject: string):
 
 function diffResponses(ctx: Ctx, b: Operation, r: Operation, subject: string): void {
   const respAt = (op: Operation, side: 'base' | 'rev'): Location => (side === 'base' ? bLoc(ctx, { file: op.at.file, segs: [...op.at.segs, 'responses'] }) : rLoc(ctx, { file: op.at.file, segs: [...op.at.segs, 'responses'] }));
+  /** Revision keys already accounted for by range matching. */
+  const consumed = new Set<string>();
+  /** Range widening (200, 201 → 2XX), reported once per range. */
+  const widened = new Map<string, string[]>();
+
   for (const [key, br] of b.responses) {
     const rr = r.responses.get(key);
-    if (!rr) {
-      const rule = key === 'default' ? 'response-default-removed' : isSuccessStatus(key) ? 'response-success-status-removed' : 'response-error-status-removed';
-      push(ctx, { rule, subject, base: bLoc(ctx, br.at), revision: respAt(r, 'rev'), details: { status: br.status } });
+    if (rr) {
+      diffResponse(ctx, br, rr, subject);
       continue;
     }
-    diffResponse(ctx, br, rr, subject);
+    // A specific code now covered by its range, which the base didn't have.
+    const range = statusRange(key);
+    const rRange = range && !b.responses.has(range) ? r.responses.get(range) : undefined;
+    if (range && rRange) {
+      consumed.add(range);
+      widened.set(range, [...(widened.get(range) ?? []), br.status]);
+      diffResponse(ctx, br, rRange, subject);
+      continue;
+    }
+    // A range now split into specific codes the base didn't have.
+    if (isStatusRange(key)) {
+      const codes = [...r.responses.keys()].filter((k) => statusRange(k) === key && !b.responses.has(k));
+      if (codes.length) {
+        for (const c of codes) {
+          consumed.add(c);
+          diffResponse(ctx, br, r.responses.get(c)!, subject);
+        }
+        push(ctx, { rule: 'response-status-range-narrowed', subject, base: bLoc(ctx, br.at), revision: rLoc(ctx, r.responses.get(codes[0]!)!.at), details: { from: br.status, to: codes.map((c) => r.responses.get(c)!.status), status: br.status } });
+        continue;
+      }
+    }
+    const rule = key === 'default' ? 'response-default-removed' : isSuccessStatus(key) ? 'response-success-status-removed' : 'response-error-status-removed';
+    push(ctx, { rule, subject, base: bLoc(ctx, br.at), revision: respAt(r, 'rev'), details: { status: br.status } });
+  }
+  for (const [range, from] of widened) {
+    const rr = r.responses.get(range)!;
+    push(ctx, { rule: 'response-status-range-widened', subject, base: respAt(b, 'base'), revision: rLoc(ctx, rr.at), details: { from, to: rr.status, status: rr.status } });
   }
   for (const [key, rr] of r.responses) {
-    if (b.responses.has(key) || key === 'default') continue;
+    if (b.responses.has(key) || consumed.has(key) || key === 'default') continue;
     push(ctx, { rule: isSuccessStatus(key) ? 'response-success-status-added' : 'response-error-status-added', subject, base: respAt(b, 'base'), revision: rLoc(ctx, rr.at), details: { status: rr.status } });
   }
 }

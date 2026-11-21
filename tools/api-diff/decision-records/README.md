@@ -10,7 +10,7 @@ One file per decision, oldest first. Each record has a status, background, the a
 - **Accepted**: agreed; the current decision.
 - **Superseded**: replaced. The record links to the one that replaced it, and the new record links back with **Supersedes**.
 
-To change a decision, don't edit the old record's decision. Add a new record that supersedes it, and change only the old record's status line.
+Questions that come up during implementation are asked before deciding, and the answer is recorded here in the same commit as the change. To change a decision, don't edit the old record's decision. Add a new record that supersedes it, and change only the old record's status line.
 
 | Date (UTC) | Decision | Status | Summary |
 |---|---|---|---|
@@ -46,5 +46,6 @@ To change a decision, don't edit the old record's decision. Add a new record tha
 | 2026-11-21 04:36 | [Command-line syntax for files and git revisions](2026-11-21T0436-cli-input-syntax.md) | Accepted | Inputs are files or `rev:path`; `--base <rev>` and `--revision <rev>` take one shared path; `<rev>...` means the merge-base. |
 | 2026-11-21 04:36 | [Golden test cases define what each rule does](2026-11-21T0436-golden-test-cases.md) | Accepted | Each rule is defined by test cases (base, revision, expected findings); every implemented rule needs at least one. |
 | 2026-11-21 04:36 | [Problems in either document are findings](2026-11-21T0436-problems-in-either-document.md) | Accepted | Invalid documents and unresolved `$ref`s are reported as `spec-invalid` / `ref-unresolved` findings for the side they're on, instead of stopping the run. |
-| 2026-11-21 04:36 | [Only 2xx responses count as success statuses](2026-11-21T0436-response-status-classes.md) | Accepted | `response-success-status-*` rules apply to 2xx and `2XX`; every other status except `default` uses the `response-error-status-*` rules. |
+| 2026-11-21 04:36 | [Only 2xx responses count as success statuses](2026-11-21T0436-response-status-classes.md) | Superseded → [1xx/2xx/3xx are success statuses, and status ranges match their codes](2026-11-21T0524-response-status-classes-and-ranges.md) | `response-success-status-*` rules apply to 2xx and `2XX`; every other status except `default` uses the `response-error-status-*` rules. |
 | 2026-11-21 04:36 | [Get YAML positions from js-yaml 5 parser events](2026-11-21T0436-yaml-positions-from-parser-events.md) | Accepted | Use js-yaml 5's `parseEvents` stream for both values and positions, with merge keys enabled. |
+| 2026-11-21 05:24 | [1xx/2xx/3xx are success statuses, and status ranges match their codes](2026-11-21T0524-response-status-classes-and-ranges.md) | Accepted | 1xx, 2xx and 3xx use the success-status rules; a code and its range (`200` ↔ `2XX`) are matched and compared instead of reported as removed + added. |

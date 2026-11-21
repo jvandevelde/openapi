@@ -1,0 +1,6 @@
+description: A new 3xx is treated like a new 2xx (clients may only handle 200).
+milestone: M3
+findings:
+- rule: response-success-status-added
+  severity: warn
+  subject: GET /pets

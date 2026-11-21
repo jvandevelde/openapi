@@ -1,0 +1,9 @@
+description: 200 replaced by a 2XX that has no body. The widening is info, and losing the body is still an error.
+milestone: M3
+findings:
+- rule: response-status-range-widened
+  severity: info
+  subject: GET /pets
+- rule: response-body-removed
+  severity: error
+  subject: GET /pets

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted |
+| **Status** | Superseded by [1xx/2xx/3xx are success statuses, and status ranges match their codes](2026-11-21T0524-response-status-classes-and-ranges.md) |
 | **Date** | 2026-11-21 04:36 UTC |
 | **Summary** | `response-success-status-*` rules apply to 2xx and `2XX`; every other status except `default` uses the `response-error-status-*` rules. |
 | **Milestone** | M3 |

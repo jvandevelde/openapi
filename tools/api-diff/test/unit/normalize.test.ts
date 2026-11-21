@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { detectVersion, isSuccessStatus, mediaTypeKey, normalizeSchemaKeywords, pathKey, pathParamNames, statusKey } from '../../src/normalize/normalize.ts';
+import { detectVersion, isStatusRange, isSuccessStatus, mediaTypeKey, statusRange, normalizeSchemaKeywords, pathKey, pathParamNames, statusKey } from '../../src/normalize/normalize.ts';
 
 test('detectVersion', () => {
   assert.equal(detectVersion({ openapi: '3.0.3' }), '3.0');
@@ -20,8 +20,12 @@ test('path templates', () => {
 test('status and media type keys', () => {
   assert.equal(statusKey('2xx'), '2XX');
   assert.equal(statusKey('Default'), 'default');
-  assert.ok(isSuccessStatus('204') && isSuccessStatus('2xx'));
-  assert.ok(!isSuccessStatus('302') && !isSuccessStatus('default'));
+  assert.ok(isSuccessStatus('204') && isSuccessStatus('2xx') && isSuccessStatus('302') && isSuccessStatus('101'));
+  assert.ok(!isSuccessStatus('404') && !isSuccessStatus('5XX') && !isSuccessStatus('default'));
+  assert.equal(statusRange('201'), '2XX');
+  assert.equal(statusRange('2XX'), undefined);
+  assert.equal(statusRange('default'), undefined);
+  assert.ok(isStatusRange('2xx') && !isStatusRange('200'));
   assert.equal(mediaTypeKey('Application/JSON; Charset=UTF-8'), 'application/json;charset=utf-8');
 });
 

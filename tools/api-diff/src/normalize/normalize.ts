@@ -30,8 +30,19 @@ export function statusKey(status: string): string {
   return status.toUpperCase() === 'DEFAULT' ? 'default' : status.toUpperCase();
 }
 
+/** 1xx, 2xx and 3xx (and their ranges) are success statuses; 4xx/5xx are error statuses. */
 export function isSuccessStatus(status: string): boolean {
-  return /^2(\d\d|XX)$/.test(statusKey(status));
+  return /^[123](\d\d|XX)$/.test(statusKey(status));
+}
+
+/** The range a specific code belongs to (`200` → `2XX`), or undefined for ranges and `default`. */
+export function statusRange(status: string): string | undefined {
+  const k = statusKey(status);
+  return /^[1-5]\d\d$/.test(k) ? `${k[0]}XX` : undefined;
+}
+
+export function isStatusRange(status: string): boolean {
+  return /^[1-5]XX$/.test(statusKey(status));
 }
 
 /** Media types compare case-insensitively and without parameters' whitespace. */

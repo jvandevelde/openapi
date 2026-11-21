@@ -25,7 +25,7 @@ Status: **planning**. No code yet. This directory has no `Makefile`, so the root
 | 3 | **Limited customisation.** One flat `check-id level` file, plus ignore files that match on free-text descriptions. | **Policy file.** Severity per rule, scoped by path, tag, operation, stability level or `x-` extension, with conditions. **Acknowledgements** point at a stable finding ID and carry a reason, owner and expiry date. Expired acknowledgements fail again. |
 | 4 | **No source locations.** Findings name an endpoint, not a file and line. | **Source maps.** Every finding has a JSON Pointer and a file/line/column in **both** documents, which feeds PR inline comments, SARIF and links in the HTML report. |
 | 5 | **Fixed message text and plain renderers.** | **Typed change records → separate renderers.** The engine never writes prose. Renderers for terminal, Markdown (PR comment with collapsible sections), HTML (side-by-side, filterable), JSON (versioned schema), SARIF and GitHub annotations. |
-| 6 | **Known gaps:** no checks for callbacks, or for parameters that use `content` instead of `schema`. `$dynamicRef` isn't resolved. 3.2 support is partial. | Model callbacks, webhooks and `content` parameters from the start. Normalise 3.0/3.1/3.2 into one internal model, so `nullable: true` and `type: [x, "null"]` don't show up as a diff. |
+| 6 | **Known gaps:** no checks for parameters that use `content` instead of `schema`. `$dynamicRef` isn't resolved. 3.2 support is partial. | Model `content` parameters from the start. Normalise 3.0/3.1/3.2 into one internal model, so `nullable: true` and `type: [x, "null"]` don't show up as a diff. |
 | 7 | **allOf is approximate** unless you pass `--flatten-allof`. oneOf/anyOf changes often come out as WARN. | Always compare **effective** schemas (allOf merged), and keep the original structure for display. Match oneOf/anyOf branches by discriminator value, `$ref` target or structural similarity, not by array index. |
 | 8 | **Renames read as remove + add.** | **Rename detection:** an operation with the same `operationId` at a new path, a component with a new name but the same structure, a renamed path parameter. Reported as one *renamed* change. |
 | 9 | Says *what* broke. | Each finding also says **why** it breaks (an example client that fails) and **how to fix** it (e.g. "make the new property optional", "deprecate first"). |
@@ -42,7 +42,7 @@ Status: **planning**. No code yet. This directory has no `Makefile`, so the root
 
 1. **load**: parse JSON or YAML and keep the position of every node. Resolve local and file `$ref`s, but keep the reference graph instead of inlining it.
 2. **normalise**: convert to a single internal dialect (3.1/3.2 semantics). Normalise path templates (`/users/{id}` and `/users/{userId}` share a key) and lower-case header names.
-3. **model**: operations keyed by `METHOD normalised-path`, plus webhooks, callbacks, components and security schemes.
+3. **model**: operations keyed by `METHOD normalised-path`, plus components and security schemes.
 4. **diff**: a structural, type-aware diff that produces **change records** (below). No severity decisions here.
 5. **classify**: the rule engine. Variance core plus named rules plus policy, giving a severity and rule ID for each change.
 6. **aggregate**: group by root cause, compute impact, apply acknowledgements, work out the semver bump.
@@ -78,8 +78,6 @@ A component can't be breaking or safe on its own. That depends on **where it's u
 |---|---|
 | request body, parameters, request headers | `in` (the client sends it) |
 | response body, response headers | `out` (the client receives it) |
-| **webhook / callback** request body | `out`, because the direction **flips**: the server sends and the client receives |
-| webhook / callback response | `in` |
 | property marked `readOnly` | `out` only, even inside a request schema |
 | property marked `writeOnly` | `in` only, even inside a response schema |
 
@@ -207,7 +205,7 @@ Every finding in the output also shows **where its severity came from** (e.g. `w
 | **3. Policy & CI** | Policy file, acknowledgements, source maps, Markdown, SARIF and GitHub annotations. | Usable as a required PR check. |
 | **4. Presentation** | HTML report, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to oasdiff output. |
 
-Out of scope at first: Swagger 2.0, external (`http://`) refs, specs split across many files (`--composed`), translations.
+Out of scope at first: **webhooks and callbacks** (if a spec has them, a single `info` notice says they weren't compared, so nothing is skipped silently; the direction model allows them to be added later by flipping direction), Swagger 2.0, external (`http://`) refs, specs split across many files (`--composed`), translations.
 
 ## 5. Decisions to make
 

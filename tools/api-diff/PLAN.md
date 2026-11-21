@@ -1,6 +1,6 @@
 # api-diff: plan
 
-Status: **planning**. No code yet. This directory has no `Makefile`, so the root `make` ignores it for now.
+Status: **planning**. No code yet. The initial rule set is in [RULES.md](RULES.md). This directory has no `Makefile`, so the root `make` ignores it for now.
 
 `api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. It does the same job as [oasdiff](https://github.com/oasdiff/oasdiff), but we own it. That means we decide what counts as breaking and how results are shown, and we can change either without forking someone else's project.
 

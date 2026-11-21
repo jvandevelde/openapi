@@ -9,7 +9,7 @@ Summary changed
 | **Kind** | `docs` |
 | **Default severity** | `info` |
 | **Rule IDs** | `summary-changed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Docs (annotations only) ([RULES.md section 10](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,23 @@ Documentation only.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`summary-changed`](../../test/cases/summary-changed/): An operation's summary changed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+      get:
+        operationId: listPets
+-       summary: List pets
++       summary: List all pets
+        responses:
+          '200':
+```
+
+Findings:
+
+- `summary-changed` · info · GET /pets
 
 ## Policy options
 

@@ -9,7 +9,7 @@ Type narrowed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `type-narrowed` (both directions), `type-narrowed-in-request`, `type-narrowed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: clients sending the removed kinds of values are rejected. In respon
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`type-narrowed`](../../test/cases/type-narrowed/): number → integer in a request.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        properties:
+          name:
+-           type: number
++           type: integer
+```
+
+Findings:
+
+- `type-narrowed-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

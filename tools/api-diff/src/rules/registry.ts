@@ -8,7 +8,7 @@ import type { Change, Kind, Severity } from '../types.ts';
 export type Milestone = 3 | 4 | 5 | 6 | 8;
 
 /** The milestone the code currently implements. */
-export const CURRENT_MILESTONE = 4;
+export const CURRENT_MILESTONE = 5;
 
 export interface RuleMeta {
   id: string;
@@ -42,9 +42,9 @@ const rule = (m: RuleMeta): void => {
 };
 
 // 1. Core variance rules
-rule({ id: 'schema-narrowed', section: 1, kind: 'wire', title: 'The schema accepts fewer values', severity: { in: 'error', out: 'info' }, variants: 'direction', milestone: 5, message: () => 'schema accepts fewer values' });
-rule({ id: 'schema-widened', section: 1, kind: 'wire', title: 'The schema accepts more values', severity: { in: 'info', out: 'warn' }, variants: 'direction', milestone: 5, message: () => 'schema accepts more values' });
-rule({ id: 'schema-incompatible', section: 1, kind: 'wire', title: 'The schema is neither a subset nor a superset', severity: { in: 'error', out: 'error' }, variants: 'direction', milestone: 5, message: () => 'schema changed incompatibly' });
+rule({ id: 'schema-narrowed', section: 1, kind: 'wire', title: 'The schema accepts fewer values', severity: { in: 'error', out: 'info' }, variants: 'direction', milestone: 5, message: (c) => schemaMessage('Schema accepts fewer values', c) });
+rule({ id: 'schema-widened', section: 1, kind: 'wire', title: 'The schema accepts more values', severity: { in: 'info', out: 'warn' }, variants: 'direction', milestone: 5, message: (c) => schemaMessage('Schema accepts more values', c) });
+rule({ id: 'schema-incompatible', section: 1, kind: 'wire', title: 'The schema is neither a subset nor a superset', severity: { in: 'error', out: 'error' }, variants: 'direction', milestone: 5, message: (c) => schemaMessage('Schema changed incompatibly', c) });
 rule({ id: 'unclassified-change', section: 1, kind: 'wire', title: 'The shape changed but no rule matched', severity: 'warn', milestone: 4, message: (c) => {
   const changed = Array.isArray(c.details.changed) ? (c.details.changed as string[]) : [];
   const shown = changed.slice(0, 4).join(', ') + (changed.length > 4 ? `, … (${changed.length} in all)` : '');
@@ -106,11 +106,25 @@ rule({ id: 'response-header-removed', section: 6, kind: 'wire', title: 'Response
 rule({ id: 'response-header-became-optional', section: 6, kind: 'wire', title: 'Response header became optional', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} header '${d(c, 'name')}' became optional` });
 
 // 7. Schemas (all have request/response variants)
+/** Message for schema changes: what changed, the values, and where in the schema. */
+export function schemaMessage(title: string, c: Change): string {
+  const v = (x: unknown): string => (x === null || x === undefined ? 'none' : typeof x === 'string' ? `'${x}'` : JSON.stringify(x));
+  let m = title.charAt(0).toLowerCase() + title.slice(1);
+  if (c.details.name !== undefined) m += ` '${String(c.details.name)}'`;
+  if (Array.isArray(c.details.values)) m += `: ${(c.details.values as unknown[]).map(v).join(', ')}`;
+  if (c.details.value !== undefined) m += ` '${String(c.details.value)}'`;
+  if (c.details.branch !== undefined) m += `: ${String(c.details.branch)}`;
+  if (c.details.keyword !== undefined && c.details.from === undefined) m += ` (${String(c.details.keyword)})`;
+  if ('from' in c.details || 'to' in c.details) m += ` (${v(c.details.from)} → ${v(c.details.to)})`;
+  if (c.details.path) m += ` at ${String(c.details.path)}`;
+  return m;
+}
+
 const schemaRule = (id: string, title: string, inS: Severity, outS: Severity, extra: Partial<RuleMeta> = {}): void =>
-  rule({ id, section: 7, kind: 'wire', title, severity: { in: inS, out: outS }, variants: 'direction', milestone: 5, message: () => title.charAt(0).toLowerCase() + title.slice(1), ...extra });
+  rule({ id, section: 7, kind: 'wire', title, severity: { in: inS, out: outS }, variants: 'direction', milestone: 5, message: (c) => schemaMessage(title, c), ...extra });
 schemaRule('property-added-required', 'New required property', 'error', 'info');
 schemaRule('property-added-optional', 'New optional property', 'info', 'info');
-schemaRule('property-removed', 'Property removed', 'warn', 'error');
+schemaRule('property-removed', 'Property removed', 'warn', 'error', { conditional: (c) => (c.direction === 'in' && c.details.closed === true ? 'error' : undefined) });
 schemaRule('property-became-required', 'Property became required', 'error', 'info');
 schemaRule('property-became-optional', 'Property became optional', 'info', 'error');
 schemaRule('property-became-read-only', 'Property became readOnly', 'warn', 'info');
@@ -128,7 +142,7 @@ schemaRule('nullable-added', 'null now allowed', 'info', 'error');
 schemaRule('nullable-removed', 'null no longer allowed', 'error', 'info');
 schemaRule('format-added', 'Format added', 'error', 'info');
 schemaRule('format-removed', 'Format removed', 'info', 'warn');
-schemaRule('format-changed', 'Format changed', 'error', 'error');
+schemaRule('format-changed', 'Format changed', 'error', 'error', { conditional: (c) => (c.details.widening === true && c.direction === 'in' ? 'info' : undefined) });
 schemaRule('const-changed', 'const changed', 'error', 'error');
 schemaRule('default-changed', 'default changed', 'warn', 'warn');
 schemaRule('enum-value-added', 'Enum value added', 'info', 'warn');
@@ -162,14 +176,14 @@ schemaRule('discriminator-mapping-removed', 'Discriminator mapping removed', 'er
 schemaRule('discriminator-mapping-changed', 'Discriminator mapping changed', 'error', 'error');
 
 // 8. References and components
-rule({ id: 'ref-target-changed', section: 8, kind: 'sdk', title: '$ref points at a different component', severity: 'info', sdkProfile: 'error', milestone: 5, message: (c) => `$ref changed from ${d(c, 'from')} to ${d(c, 'to')}` });
-rule({ id: 'ref-inlined', section: 8, kind: 'sdk', title: '$ref replaced by an inline schema', severity: 'info', sdkProfile: 'error', milestone: 5, message: (c) => `$ref ${d(c, 'from')} inlined` });
-rule({ id: 'ref-extracted', section: 8, kind: 'sdk', title: 'Inline schema became a $ref', severity: 'info', sdkProfile: 'warn', milestone: 5, message: (c) => `inline schema extracted to ${d(c, 'to')}` });
+rule({ id: 'ref-target-changed', section: 8, kind: 'sdk', title: '$ref points at a different component', severity: 'info', sdkProfile: 'error', milestone: 5, message: (c) => `$ref changed from ${d(c, 'from')} to ${d(c, 'to')}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
+rule({ id: 'ref-inlined', section: 8, kind: 'sdk', title: '$ref replaced by an inline schema', severity: 'info', sdkProfile: 'error', milestone: 5, message: (c) => `$ref ${d(c, 'from')} replaced by an inline schema${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
+rule({ id: 'ref-extracted', section: 8, kind: 'sdk', title: 'Inline schema became a $ref', severity: 'info', sdkProfile: 'warn', milestone: 5, message: (c) => `inline schema replaced by $ref ${d(c, 'to')}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
 rule({ id: 'component-renamed', section: 8, kind: 'sdk', title: 'Component renamed (same structure)', severity: 'info', sdkProfile: 'error', milestone: 8, message: (c) => `component ${d(c, 'from')} renamed to ${d(c, 'to')}` });
-rule({ id: 'schema-title-changed', section: 8, kind: 'sdk', title: 'Schema title changed', severity: 'info', sdkProfile: 'warn', milestone: 5, message: () => 'schema title changed' });
+rule({ id: 'schema-title-changed', section: 8, kind: 'sdk', title: 'Schema title changed', severity: 'info', sdkProfile: 'warn', milestone: 5, message: (c) => schemaMessage('Schema title changed', c) });
 rule({ id: 'component-added', section: 8, kind: 'wire', title: 'Unused component added', severity: 'info', milestone: 5, message: () => 'component added' });
 rule({ id: 'component-removed', section: 8, kind: 'wire', title: 'Unused component removed', severity: 'info', milestone: 5, message: () => 'component removed' });
-rule({ id: 'component-unused', section: 8, kind: 'wire', title: 'Changed component has no usages', severity: 'info', milestone: 5, message: () => 'changed component is not used' });
+rule({ id: 'component-unused', section: 8, kind: 'wire', title: 'Changed component has no usages', severity: 'info', milestone: 5, message: (c) => `component changed (${(c.details.changed as string[] | undefined)?.slice(0, 4).join(', ') ?? ''}), but no operation uses it` });
 
 // 9. Lifecycle and versions
 rule({ id: 'deprecated-added', section: 9, kind: 'wire', title: 'Marked deprecated', severity: 'info', milestone: 6, message: () => 'marked deprecated' });
@@ -192,7 +206,7 @@ for (const [id, title] of [
   ['info-changed', 'info (contact, license, terms) changed'],
   ['extension-changed', 'Unclassified x- extension changed'],
 ] as const) {
-  rule({ id, section: 10, kind: 'docs', title, severity: 'info', milestone: 5, message: () => title.toLowerCase() });
+  rule({ id, section: 10, kind: 'docs', title, severity: 'info', milestone: 5, message: (c) => `${title.charAt(0).toLowerCase() + title.slice(1)}${c.details.name !== undefined ? ` '${String(c.details.name)}'` : ''}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
 }
 
 // 11. Spec and engine notices

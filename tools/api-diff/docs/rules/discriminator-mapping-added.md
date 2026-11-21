@@ -9,7 +9,7 @@ Discriminator mapping added
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `discriminator-mapping-added` (both directions), `discriminator-mapping-added-in-request`, `discriminator-mapping-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,22 @@ In requests: more values are valid. In responses: clients receive a variant name
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`discriminator-mapping-added`](../../test/cases/discriminator-mapping-added/): A discriminator value added to a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          mapping:
+            cat: '#/components/schemas/Cat'
++           dog: '#/components/schemas/Dog'
+      Cat:
+        type: object
+```
+
+Findings:
+
+- `discriminator-mapping-added-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

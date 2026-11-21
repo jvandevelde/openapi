@@ -1,0 +1,6 @@
+description: A tag's description changed.
+milestone: M5
+findings:
+- rule: tag-description-changed
+  severity: info
+  subject: document

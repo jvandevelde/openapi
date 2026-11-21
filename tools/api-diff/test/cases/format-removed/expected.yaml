@@ -1,0 +1,6 @@
+description: A format removed from a response string.
+milestone: M5
+findings:
+- rule: format-removed-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

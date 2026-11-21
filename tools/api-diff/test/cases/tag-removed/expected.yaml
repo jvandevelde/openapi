@@ -1,0 +1,6 @@
+description: A tag was removed from the top-level tags list.
+milestone: M5
+findings:
+- rule: tag-removed
+  severity: info
+  subject: document

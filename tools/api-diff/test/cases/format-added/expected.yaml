@@ -1,0 +1,6 @@
+description: A format added to a request string.
+milestone: M5
+findings:
+- rule: format-added-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

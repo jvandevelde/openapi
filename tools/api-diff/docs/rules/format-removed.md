@@ -9,7 +9,7 @@ Format removed
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `format-removed` (both directions), `format-removed-in-request`, `format-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: more values are valid. In responses: clients that parse the format 
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`format-removed`](../../test/cases/format-removed/): A format removed from a response string.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           format: date-time
+```
+
+Findings:
+
+- `format-removed-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

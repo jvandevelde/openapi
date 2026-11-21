@@ -9,7 +9,7 @@ minimum increased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `minimum-increased` (both directions), `minimum-increased-in-request`, `minimum-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,22 +22,21 @@ In requests: smaller numbers are rejected. In responses: clients receive larger 
 
 ## Example
 
-From test case [`recursive-union-collection`](../../test/cases/recursive-union-collection/): A union whose member holds a collection of the base type. The change is reported once, with both directions.
+From test case [`minimum-increased`](../../test/cases/minimum-increased/): minimum raised on a request number.
 
 `openapi.yaml`, base → revision:
 
 ```diff
   …
-          radius:
-            type: number
-+           minimum: 0
-      Group:
-        type: object
+          name:
+            type: integer
+-           minimum: 0
++           minimum: 1
 ```
 
 Findings:
 
-- `minimum-increased-in-request` · error · #/components/schemas/Circle
+- `minimum-increased-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

@@ -1,0 +1,6 @@
+description: 'A oneOf branch added to a response: clients may get a variant they do not handle.'
+milestone: M5
+findings:
+- rule: union-branch-added-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

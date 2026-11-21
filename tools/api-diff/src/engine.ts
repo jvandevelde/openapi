@@ -3,7 +3,9 @@
 
 import { classify, severityAtLeast } from './classify/classify.ts';
 import { diffOperations } from './diff/operations.ts';
-import { diffSchemas } from './diff/schemas.ts';
+import { collapseBulk } from './diff/bulk.ts';
+import { diffDocs } from './diff/docs.ts';
+import { diffSchemaEngine } from './diff/schema-engine.ts';
 import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
@@ -64,8 +66,10 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   const changes: Change[] = [...b.changes, ...r.changes];
   if (b.model && r.model) {
     const pairs: [Operation, Operation][] = [];
-    changes.push(...diffOperations(b.model, r.model, pairs));
-    changes.push(...diffSchemas(b.model, r.model, pairs));
+    const diffs = [...diffOperations(b.model, r.model, pairs)];
+    diffs.push(...diffSchemaEngine(b.model, r.model, pairs));
+    diffs.push(...diffDocs(b.model, r.model, pairs));
+    changes.push(...collapseBulk(diffs));
   }
   const findings = classify(changes, { profile });
   return {

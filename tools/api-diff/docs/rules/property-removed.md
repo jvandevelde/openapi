@@ -9,7 +9,7 @@ Property removed
 | **Kind** | `wire` |
 | **Default severity** | `warn` in requests, `error` in responses |
 | **Rule IDs** | `property-removed` (both directions), `property-removed-in-request`, `property-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: clients keep sending it; it is ignored, or rejected if the object d
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`property-removed`](../../test/cases/property-removed/): A property removed from a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-         age:
+-           type: integer
+```
+
+Findings:
+
+- `property-removed-in-response` · error · #/components/schemas/Pet
 
 ## Policy options
 

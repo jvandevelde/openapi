@@ -1,0 +1,6 @@
+description: minItems lowered on a response array.
+milestone: M5
+findings:
+- rule: min-items-decreased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

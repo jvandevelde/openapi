@@ -1,0 +1,6 @@
+description: 'A schema written inline in an operation changed type: reported for that operation.'
+milestone: M5
+findings:
+  - rule: type-changed-in-request
+    severity: error
+    subject: GET /pets

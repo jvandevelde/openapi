@@ -1,0 +1,3 @@
+description: 'A property moved from Dog into its allOf base: the effective schema is the same, so nothing is reported.'
+milestone: M5
+findings: []

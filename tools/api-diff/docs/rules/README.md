@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 127 rules, with their default severities. 46 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 127 rules, with their default severities. 118 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -10,9 +10,9 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 
 | Rule | Kind | Default | Status | Summary |
 |---|---|---|---|---|
-| [`schema-narrowed`](schema-narrowed.md) | wire | error / info | M5 | The schema accepts fewer values |
-| [`schema-widened`](schema-widened.md) | wire | info / warn | M5 | The schema accepts more values |
-| [`schema-incompatible`](schema-incompatible.md) | wire | error / error | M5 | The schema is neither a subset nor a superset |
+| [`schema-narrowed`](schema-narrowed.md) | wire | error / info | M5 ✅ | The schema accepts fewer values |
+| [`schema-widened`](schema-widened.md) | wire | info / warn | M5 ✅ | The schema accepts more values |
+| [`schema-incompatible`](schema-incompatible.md) | wire | error / error | M5 ✅ | The schema is neither a subset nor a superset |
 | [`unclassified-change`](unclassified-change.md) | wire | warn | M4 ✅ | The shape changed but no rule matched |
 
 ## 2. Paths and operations
@@ -87,71 +87,71 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 
 | Rule | Kind | Default | Status | Summary |
 |---|---|---|---|---|
-| [`property-added-required`](property-added-required.md) | wire | error / info | M5 | New required property |
-| [`property-added-optional`](property-added-optional.md) | wire | info / info | M5 | New optional property |
-| [`property-removed`](property-removed.md) | wire | warn / error | M5 | Property removed |
-| [`property-became-required`](property-became-required.md) | wire | error / info | M5 | Property became required |
-| [`property-became-optional`](property-became-optional.md) | wire | info / error | M5 | Property became optional |
-| [`property-became-read-only`](property-became-read-only.md) | wire | warn / info | M5 | Property became readOnly |
-| [`property-became-write-only`](property-became-write-only.md) | wire | info / error | M5 | Property became writeOnly |
-| [`additional-properties-restricted`](additional-properties-restricted.md) | wire | error / info | M5 | additionalProperties restricted |
-| [`additional-properties-allowed`](additional-properties-allowed.md) | wire | info / warn | M5 | additionalProperties allowed |
-| [`min-properties-increased`](min-properties-increased.md) | wire | error / info | M5 | minProperties increased |
-| [`max-properties-decreased`](max-properties-decreased.md) | wire | error / info | M5 | maxProperties decreased |
-| [`min-properties-decreased`](min-properties-decreased.md) | wire | info / warn | M5 | minProperties decreased |
-| [`max-properties-increased`](max-properties-increased.md) | wire | info / warn | M5 | maxProperties increased |
-| [`type-changed`](type-changed.md) | wire | error / error | M5 | Type changed incompatibly |
-| [`type-widened`](type-widened.md) | wire | info / error | M5 | Type widened |
-| [`type-narrowed`](type-narrowed.md) | wire | error / info | M5 | Type narrowed |
-| [`nullable-added`](nullable-added.md) | wire | info / error | M5 | null now allowed |
-| [`nullable-removed`](nullable-removed.md) | wire | error / info | M5 | null no longer allowed |
-| [`format-added`](format-added.md) | wire | error / info | M5 | Format added |
-| [`format-removed`](format-removed.md) | wire | info / warn | M5 | Format removed |
-| [`format-changed`](format-changed.md) | wire | error / error | M5 | Format changed |
-| [`const-changed`](const-changed.md) | wire | error / error | M5 | const changed |
-| [`default-changed`](default-changed.md) | wire | warn / warn | M5 | default changed |
-| [`enum-value-added`](enum-value-added.md) | wire | info / warn | M5 | Enum value added |
-| [`enum-value-removed`](enum-value-removed.md) | wire | error / info | M5 | Enum value removed |
-| [`enum-added`](enum-added.md) | wire | error / info | M5 | Enum added to a free value |
-| [`enum-removed`](enum-removed.md) | wire | info / warn | M5 | Enum removed |
-| [`max-length-decreased`](max-length-decreased.md) | wire | error / info | M5 | maxLength decreased |
-| [`min-length-increased`](min-length-increased.md) | wire | error / info | M5 | minLength increased |
-| [`max-length-increased`](max-length-increased.md) | wire | info / warn | M5 | maxLength increased |
-| [`min-length-decreased`](min-length-decreased.md) | wire | info / warn | M5 | minLength decreased |
-| [`maximum-decreased`](maximum-decreased.md) | wire | error / info | M5 | maximum decreased |
-| [`minimum-increased`](minimum-increased.md) | wire | error / info | M5 | minimum increased |
-| [`maximum-increased`](maximum-increased.md) | wire | info / warn | M5 | maximum increased |
-| [`minimum-decreased`](minimum-decreased.md) | wire | info / warn | M5 | minimum decreased |
-| [`multiple-of-changed`](multiple-of-changed.md) | wire | error / warn | M5 | multipleOf changed |
-| [`max-items-decreased`](max-items-decreased.md) | wire | error / info | M5 | maxItems decreased |
-| [`min-items-increased`](min-items-increased.md) | wire | error / info | M5 | minItems increased |
-| [`max-items-increased`](max-items-increased.md) | wire | info / warn | M5 | maxItems increased |
-| [`min-items-decreased`](min-items-decreased.md) | wire | info / warn | M5 | minItems decreased |
-| [`unique-items-added`](unique-items-added.md) | wire | error / info | M5 | uniqueItems added |
-| [`unique-items-removed`](unique-items-removed.md) | wire | info / warn | M5 | uniqueItems removed |
-| [`pattern-added`](pattern-added.md) | wire | error / info | M5 | Pattern added |
-| [`pattern-removed`](pattern-removed.md) | wire | info / warn | M5 | Pattern removed |
-| [`pattern-changed`](pattern-changed.md) | wire | warn / warn | M5 | Pattern changed |
-| [`union-branch-added`](union-branch-added.md) | wire | info / warn | M5 | oneOf/anyOf branch added |
-| [`union-branch-removed`](union-branch-removed.md) | wire | error / info | M5 | oneOf/anyOf branch removed |
-| [`union-kind-changed`](union-kind-changed.md) | wire | warn / warn (sdk: error) | M5 | anyOf/oneOf kind changed |
-| [`discriminator-property-changed`](discriminator-property-changed.md) | wire | error / error | M5 | Discriminator property changed |
-| [`discriminator-mapping-added`](discriminator-mapping-added.md) | wire | info / warn | M5 | Discriminator mapping added |
-| [`discriminator-mapping-removed`](discriminator-mapping-removed.md) | wire | error / info | M5 | Discriminator mapping removed |
-| [`discriminator-mapping-changed`](discriminator-mapping-changed.md) | wire | error / error | M5 | Discriminator mapping changed |
+| [`property-added-required`](property-added-required.md) | wire | error / info | M5 ✅ | New required property |
+| [`property-added-optional`](property-added-optional.md) | wire | info / info | M5 ✅ | New optional property |
+| [`property-removed`](property-removed.md) | wire | warn / error | M5 ✅ | Property removed |
+| [`property-became-required`](property-became-required.md) | wire | error / info | M5 ✅ | Property became required |
+| [`property-became-optional`](property-became-optional.md) | wire | info / error | M5 ✅ | Property became optional |
+| [`property-became-read-only`](property-became-read-only.md) | wire | warn / info | M5 ✅ | Property became readOnly |
+| [`property-became-write-only`](property-became-write-only.md) | wire | info / error | M5 ✅ | Property became writeOnly |
+| [`additional-properties-restricted`](additional-properties-restricted.md) | wire | error / info | M5 ✅ | additionalProperties restricted |
+| [`additional-properties-allowed`](additional-properties-allowed.md) | wire | info / warn | M5 ✅ | additionalProperties allowed |
+| [`min-properties-increased`](min-properties-increased.md) | wire | error / info | M5 ✅ | minProperties increased |
+| [`max-properties-decreased`](max-properties-decreased.md) | wire | error / info | M5 ✅ | maxProperties decreased |
+| [`min-properties-decreased`](min-properties-decreased.md) | wire | info / warn | M5 ✅ | minProperties decreased |
+| [`max-properties-increased`](max-properties-increased.md) | wire | info / warn | M5 ✅ | maxProperties increased |
+| [`type-changed`](type-changed.md) | wire | error / error | M5 ✅ | Type changed incompatibly |
+| [`type-widened`](type-widened.md) | wire | info / error | M5 ✅ | Type widened |
+| [`type-narrowed`](type-narrowed.md) | wire | error / info | M5 ✅ | Type narrowed |
+| [`nullable-added`](nullable-added.md) | wire | info / error | M5 ✅ | null now allowed |
+| [`nullable-removed`](nullable-removed.md) | wire | error / info | M5 ✅ | null no longer allowed |
+| [`format-added`](format-added.md) | wire | error / info | M5 ✅ | Format added |
+| [`format-removed`](format-removed.md) | wire | info / warn | M5 ✅ | Format removed |
+| [`format-changed`](format-changed.md) | wire | error / error | M5 ✅ | Format changed |
+| [`const-changed`](const-changed.md) | wire | error / error | M5 ✅ | const changed |
+| [`default-changed`](default-changed.md) | wire | warn / warn | M5 ✅ | default changed |
+| [`enum-value-added`](enum-value-added.md) | wire | info / warn | M5 ✅ | Enum value added |
+| [`enum-value-removed`](enum-value-removed.md) | wire | error / info | M5 ✅ | Enum value removed |
+| [`enum-added`](enum-added.md) | wire | error / info | M5 ✅ | Enum added to a free value |
+| [`enum-removed`](enum-removed.md) | wire | info / warn | M5 ✅ | Enum removed |
+| [`max-length-decreased`](max-length-decreased.md) | wire | error / info | M5 ✅ | maxLength decreased |
+| [`min-length-increased`](min-length-increased.md) | wire | error / info | M5 ✅ | minLength increased |
+| [`max-length-increased`](max-length-increased.md) | wire | info / warn | M5 ✅ | maxLength increased |
+| [`min-length-decreased`](min-length-decreased.md) | wire | info / warn | M5 ✅ | minLength decreased |
+| [`maximum-decreased`](maximum-decreased.md) | wire | error / info | M5 ✅ | maximum decreased |
+| [`minimum-increased`](minimum-increased.md) | wire | error / info | M5 ✅ | minimum increased |
+| [`maximum-increased`](maximum-increased.md) | wire | info / warn | M5 ✅ | maximum increased |
+| [`minimum-decreased`](minimum-decreased.md) | wire | info / warn | M5 ✅ | minimum decreased |
+| [`multiple-of-changed`](multiple-of-changed.md) | wire | error / warn | M5 ✅ | multipleOf changed |
+| [`max-items-decreased`](max-items-decreased.md) | wire | error / info | M5 ✅ | maxItems decreased |
+| [`min-items-increased`](min-items-increased.md) | wire | error / info | M5 ✅ | minItems increased |
+| [`max-items-increased`](max-items-increased.md) | wire | info / warn | M5 ✅ | maxItems increased |
+| [`min-items-decreased`](min-items-decreased.md) | wire | info / warn | M5 ✅ | minItems decreased |
+| [`unique-items-added`](unique-items-added.md) | wire | error / info | M5 ✅ | uniqueItems added |
+| [`unique-items-removed`](unique-items-removed.md) | wire | info / warn | M5 ✅ | uniqueItems removed |
+| [`pattern-added`](pattern-added.md) | wire | error / info | M5 ✅ | Pattern added |
+| [`pattern-removed`](pattern-removed.md) | wire | info / warn | M5 ✅ | Pattern removed |
+| [`pattern-changed`](pattern-changed.md) | wire | warn / warn | M5 ✅ | Pattern changed |
+| [`union-branch-added`](union-branch-added.md) | wire | info / warn | M5 ✅ | oneOf/anyOf branch added |
+| [`union-branch-removed`](union-branch-removed.md) | wire | error / info | M5 ✅ | oneOf/anyOf branch removed |
+| [`union-kind-changed`](union-kind-changed.md) | wire | warn / warn (sdk: error) | M5 ✅ | anyOf/oneOf kind changed |
+| [`discriminator-property-changed`](discriminator-property-changed.md) | wire | error / error | M5 ✅ | Discriminator property changed |
+| [`discriminator-mapping-added`](discriminator-mapping-added.md) | wire | info / warn | M5 ✅ | Discriminator mapping added |
+| [`discriminator-mapping-removed`](discriminator-mapping-removed.md) | wire | error / info | M5 ✅ | Discriminator mapping removed |
+| [`discriminator-mapping-changed`](discriminator-mapping-changed.md) | wire | error / error | M5 ✅ | Discriminator mapping changed |
 
 ## 8. References and components
 
 | Rule | Kind | Default | Status | Summary |
 |---|---|---|---|---|
-| [`ref-target-changed`](ref-target-changed.md) | sdk | info (sdk: error) | M5 | $ref points at a different component |
-| [`ref-inlined`](ref-inlined.md) | sdk | info (sdk: error) | M5 | $ref replaced by an inline schema |
-| [`ref-extracted`](ref-extracted.md) | sdk | info (sdk: warn) | M5 | Inline schema became a $ref |
+| [`ref-target-changed`](ref-target-changed.md) | sdk | info (sdk: error) | M5 ✅ | $ref points at a different component |
+| [`ref-inlined`](ref-inlined.md) | sdk | info (sdk: error) | M5 ✅ | $ref replaced by an inline schema |
+| [`ref-extracted`](ref-extracted.md) | sdk | info (sdk: warn) | M5 ✅ | Inline schema became a $ref |
 | [`component-renamed`](component-renamed.md) | sdk | info (sdk: error) | M8 | Component renamed (same structure) |
-| [`schema-title-changed`](schema-title-changed.md) | sdk | info (sdk: warn) | M5 | Schema title changed |
-| [`component-added`](component-added.md) | wire | info | M5 | Unused component added |
-| [`component-removed`](component-removed.md) | wire | info | M5 | Unused component removed |
-| [`component-unused`](component-unused.md) | wire | info | M5 | Changed component has no usages |
+| [`schema-title-changed`](schema-title-changed.md) | sdk | info (sdk: warn) | M5 ✅ | Schema title changed |
+| [`component-added`](component-added.md) | wire | info | M5 ✅ | Unused component added |
+| [`component-removed`](component-removed.md) | wire | info | M5 ✅ | Unused component removed |
+| [`component-unused`](component-unused.md) | wire | info | M5 ✅ | Changed component has no usages |
 
 ## 9. Lifecycle and versions
 
@@ -168,16 +168,16 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 
 | Rule | Kind | Default | Status | Summary |
 |---|---|---|---|---|
-| [`description-changed`](description-changed.md) | docs | info | M5 | Description changed |
-| [`summary-changed`](summary-changed.md) | docs | info | M5 | Summary changed |
-| [`title-changed`](title-changed.md) | docs | info | M5 | Title changed |
-| [`example-changed`](example-changed.md) | docs | info | M5 | Example changed |
-| [`external-docs-changed`](external-docs-changed.md) | docs | info | M5 | externalDocs changed |
-| [`tag-added`](tag-added.md) | docs | info | M5 | Tag added |
-| [`tag-removed`](tag-removed.md) | docs | info | M5 | Tag removed |
-| [`tag-description-changed`](tag-description-changed.md) | docs | info | M5 | Tag description changed |
-| [`info-changed`](info-changed.md) | docs | info | M5 | info (contact, license, terms) changed |
-| [`extension-changed`](extension-changed.md) | docs | info | M5 | Unclassified x- extension changed |
+| [`description-changed`](description-changed.md) | docs | info | M5 ✅ | Description changed |
+| [`summary-changed`](summary-changed.md) | docs | info | M5 ✅ | Summary changed |
+| [`title-changed`](title-changed.md) | docs | info | M5 ✅ | Title changed |
+| [`example-changed`](example-changed.md) | docs | info | M5 ✅ | Example changed |
+| [`external-docs-changed`](external-docs-changed.md) | docs | info | M5 ✅ | externalDocs changed |
+| [`tag-added`](tag-added.md) | docs | info | M5 ✅ | Tag added |
+| [`tag-removed`](tag-removed.md) | docs | info | M5 ✅ | Tag removed |
+| [`tag-description-changed`](tag-description-changed.md) | docs | info | M5 ✅ | Tag description changed |
+| [`info-changed`](info-changed.md) | docs | info | M5 ✅ | info (contact, license, terms) changed |
+| [`extension-changed`](extension-changed.md) | docs | info | M5 ✅ | Unclassified x- extension changed |
 
 ## 11. Spec and engine notices
 

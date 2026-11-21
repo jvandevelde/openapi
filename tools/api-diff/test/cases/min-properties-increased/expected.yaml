@@ -1,0 +1,6 @@
+description: minProperties added to a request object.
+milestone: M5
+findings:
+- rule: min-properties-increased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

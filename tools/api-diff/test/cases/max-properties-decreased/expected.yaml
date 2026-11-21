@@ -1,0 +1,6 @@
+description: maxProperties lowered on a request object.
+milestone: M5
+findings:
+- rule: max-properties-decreased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

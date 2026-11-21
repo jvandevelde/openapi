@@ -9,7 +9,7 @@ Discriminator mapping changed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `error` in responses |
 | **Rule IDs** | `discriminator-mapping-changed` (both directions), `discriminator-mapping-changed-in-request`, `discriminator-mapping-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,23 @@ Clients send or parse the old shape for that value.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`discriminator-mapping-changed`](../../test/cases/discriminator-mapping-changed/): A discriminator value now maps to a different schema.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          propertyName: kind
+          mapping:
+-           pet: '#/components/schemas/Cat'
++           pet: '#/components/schemas/Dog'
+      Cat:
+        type: object
+```
+
+Findings:
+
+- `discriminator-mapping-changed-in-response` · error · #/components/schemas/Pet
 
 ## Policy options
 

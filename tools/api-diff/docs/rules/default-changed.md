@@ -9,7 +9,7 @@ default changed
 | **Kind** | `wire` |
 | **Default severity** | `warn` in requests, `warn` in responses |
 | **Rule IDs** | `default-changed` (both directions), `default-changed-in-request`, `default-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ When a client omits the field, the server now behaves differently. The JSON is s
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`default-changed`](../../test/cases/default-changed/): A default changed: behaviour changes when clients omit the field.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           default: a
++           default: b
+```
+
+Findings:
+
+- `default-changed-in-request` · warn · #/components/schemas/Pet
 
 ## Policy options
 

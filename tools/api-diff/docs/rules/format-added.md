@@ -9,7 +9,7 @@ Format added
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `format-added` (both directions), `format-added-in-request`, `format-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,20 +22,20 @@ In requests: clients' existing values may not match the format and are rejected.
 
 ## Example
 
-From test case [`recursive-three-schema-cycle`](../../test/cases/recursive-three-schema-cycle/): A → B → C → A. A change deep inside the cycle is found.
+From test case [`format-added`](../../test/cases/format-added/): A format added to a request string.
 
 `openapi.yaml`, base → revision:
 
 ```diff
   …
-          note:
+          name:
             type: string
 +           format: uuid
 ```
 
 Findings:
 
-- `format-added-in-response` · info · #/components/schemas/C
+- `format-added-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

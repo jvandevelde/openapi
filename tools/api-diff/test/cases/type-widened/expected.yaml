@@ -1,0 +1,6 @@
+description: "integer \u2192 number in a response: clients parsing an int may fail."
+milestone: M5
+findings:
+- rule: type-widened-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

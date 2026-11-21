@@ -1,6 +1,6 @@
 # api-diff: plan
 
-Status: **M0–M4 done** (operation-level comparison and the schema index work; see [README.md](README.md)). Next: M5 (schema engine). The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
+Status: **M0–M5 done** (operation, schema, reference and docs changes are classified; see [README.md](README.md)). Next: M6 (policy). The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
 
 `api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Several tools already do parts of this (section 1). We're building our own so that we decide what counts as breaking and how results are shown, and so the tool is built around the problems those tools leave open (section 3): shared and recursive schemas, request vs response direction, wire vs SDK compatibility, and reports for different readers.
 
@@ -672,7 +672,7 @@ Each milestone is one or a few pull requests and ends with something that runs.
 | **M2** ✅ | Inputs | fs and git sources (`rev:path`, `main...`, shallow-clone detection), JSON/YAML loaders with positions, local and relative-file `$ref`s, normalise | Loads the test cases and an 8 MB spec from both files and git within the parse budget |
 | **M3** ✅ | Operation-level diff | Model, diff and rules for paths, operations, security, parameters, request bodies, responses; txt and json output; `--fail-on`, `--state` | **First usable version:** M1 cases pass, and it can gate a PR on operation-level changes |
 | **M4** ✅ | Schema index | Graph, iterative Tarjan, productive-cycle check, shape/full hashes, skipping unchanged subtrees, `unclassified-change` | Recursive cases load and hash, and no input causes a stack overflow |
-| **M5** | Schema engine | Effective `allOf` merge, pair-cached comparison for cycles, variance, union branch and discriminator matching, schema rules (section 7), usages and direction (incl. `readOnly`/`writeOnly`), root-cause aggregation, ref rules, docs rules, profiles, bulk-change collapsing, example re-validation | All schema cases pass, and each shared-component change appears once |
+| **M5** ✅ | Schema engine | Effective `allOf` merge, pair-cached comparison for cycles, variance, union branch and discriminator matching, schema rules (section 7), usages and direction (incl. `readOnly`/`writeOnly`), root-cause aggregation, ref rules, docs rules, profiles, bulk-change collapsing (3+ operations). Example re-validation moved to the backlog | All schema cases pass, and each shared-component change appears once |
 | **M6** | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance | Every POLICY.md example is a passing test |
 | **M7** | PR check | Report presets, `ci`, `review` and `summary` reports (txt/json/html), multiple `--report`, versions header, cached base index | **Used as a required PR check on a real API repo** |
 | **M8** | Presentation | `explore` HTML, `changelog`, `sdk`, rename detection, semver advice, explanations and fixes, history timeline | Reviewers prefer it to the tools in section 1 |
@@ -681,7 +681,7 @@ Each milestone is one or a few pull requests and ends with something that runs.
 
 M10 can move earlier, e.g. straight after M3 or M7, if other repos want to try it sooner. Until then, they use a local clone or a second checkout (section 4, *Using it in other repositories*).
 
-The backlog (section 8) is picked from after M7, except the low-effort ★ items already folded in above (bulk-change collapsing and example re-validation in M5, the cached base index in M7).
+The backlog (section 8) is picked from after M7, except the low-effort ★ items already folded in above (bulk-change collapsing in M5, the cached base index in M7). Example re-validation is not scheduled.
 
 Out of scope at first: **webhooks and callbacks** (if a spec has them, a single `info` notice says they weren't compared, so nothing is skipped silently; the direction model allows them to be added later by flipping direction), Swagger 2.0, external (`http://`) refs, specs split across many files (`--composed`), translations.
 

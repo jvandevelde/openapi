@@ -1,0 +1,6 @@
+description: 'A request property became readOnly: it is no longer part of requests.'
+milestone: M5
+findings:
+- rule: property-became-read-only-in-request
+  severity: warn
+  subject: '#/components/schemas/Pet'

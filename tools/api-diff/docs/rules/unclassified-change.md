@@ -22,23 +22,21 @@ The change might matter, and no rule has decided it doesn't. Every occurrence po
 
 ## Example
 
-From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/): A: allOf [$ref A] describes nothing valid and is reported instead of looping. The change to A itself is unclassified until M5.
+From test case [`unclassified-change`](../../test/cases/unclassified-change/): An 'xml' change has no rule yet: the safety net reports it once for the schema.
 
 `openapi.yaml`, base → revision:
 
 ```diff
   …
-    schemas:
-      A:
--       type: object
-+       allOf:
-+       - $ref: '#/components/schemas/A'
+            type: string
+        xml:
+-         name: pet
++         name: animal
 ```
 
 Findings:
 
-- `unclassified-change` · warn · #/components/schemas/A
-- `cycle-not-productive` · error · #/components/schemas/A
+- `unclassified-change` · warn · #/components/schemas/Pet
 
 ## Policy options
 

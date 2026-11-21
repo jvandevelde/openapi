@@ -9,7 +9,7 @@ The schema is neither a subset nor a superset
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `error` in responses |
 | **Rule IDs** | `schema-incompatible` (both directions), `schema-incompatible-in-request`, `schema-incompatible-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Core variance rules (fallbacks) ([RULES.md section 1](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ Some old values become invalid and some new values are unfamiliar, so clients br
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`schema-incompatible`](../../test/cases/schema-incompatible/): contentMediaType changed: old and new values differ in both directions.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          data:
+            type: string
+-           contentMediaType: image/png
++           contentMediaType: image/jpeg
+```
+
+Findings:
+
+- `schema-incompatible-in-response` · error · #/components/schemas/Pet
 
 ## Policy options
 

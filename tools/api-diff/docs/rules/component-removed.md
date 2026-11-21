@@ -9,7 +9,7 @@ Unused component removed
 | **Kind** | `wire` |
 | **Default severity** | `info` |
 | **Rule IDs** | `component-removed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,24 @@ It affected no operation.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`component-removed`](../../test/cases/component-removed/): A component nothing used was removed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-     Owner:
+-       type: object
+-       properties:
+-         name:
+-           type: string
+```
+
+Findings:
+
+- `component-removed` · info · #/components/schemas/Owner
 
 ## Policy options
 

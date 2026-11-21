@@ -9,7 +9,7 @@ $ref points at a different component
 | **Kind** | `sdk` |
 | **Default severity** | `info` · `--profile sdk`: `error` |
 | **Rule IDs** | `ref-target-changed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,33 @@ If the schemas are identical, the wire format is unchanged, but generated SDKs u
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`ref-target-changed`](../../test/cases/ref-target-changed/): An operation now references a different but identical component: ref-target-changed (an sdk change), and nothing else.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+            content:
+              application/json:
+-               schema: &id001
+-                 $ref: '#/components/schemas/Pet'
++               schema:
++                 $ref: '#/components/schemas/Pet2'
+      post:
+        operationId: createPet
+  …
+          content:
+            application/json:
+-             schema: *id001
++             schema:
++               $ref: '#/components/schemas/Pet'
+        responses:
+          '201':
+```
+
+Findings:
+
+- `ref-target-changed` · info · GET /pets
 
 ## Policy options
 

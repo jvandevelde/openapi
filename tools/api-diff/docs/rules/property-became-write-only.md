@@ -9,7 +9,7 @@ Property became writeOnly
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `error` in responses |
 | **Rule IDs** | `property-became-write-only` (both directions), `property-became-write-only-in-request`, `property-became-write-only-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: nothing changes. In responses: clients that read it get nothing.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`property-became-write-only`](../../test/cases/property-became-write-only/): A response property became writeOnly: it is no longer returned.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          secret:
+            type: string
++           writeOnly: true
+```
+
+Findings:
+
+- `property-became-write-only-in-response` · error · #/components/schemas/Pet
 
 ## Policy options
 

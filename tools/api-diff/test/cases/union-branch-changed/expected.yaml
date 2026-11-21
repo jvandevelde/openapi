@@ -1,0 +1,6 @@
+description: A change inside a matched branch is found in that branch component.
+milestone: M5
+findings:
+- rule: enum-added-in-response
+  severity: info
+  subject: '#/components/schemas/Dog'

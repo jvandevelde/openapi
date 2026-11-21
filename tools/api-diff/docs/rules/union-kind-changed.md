@@ -9,7 +9,7 @@ anyOf/oneOf kind changed
 | **Kind** | `wire` |
 | **Default severity** | `warn` in requests, `warn` in responses · `--profile sdk`: `error` |
 | **Rule IDs** | `union-kind-changed` (both directions), `union-kind-changed-in-request`, `union-kind-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,23 @@ On the wire, values matching several branches change validity. In generated SDKs
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`union-kind-changed`](../../test/cases/union-kind-changed/): anyOf became oneOf.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+    schemas:
+      Pet:
+-       anyOf:
++       oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+```
+
+Findings:
+
+- `union-kind-changed-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

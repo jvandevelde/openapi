@@ -1,0 +1,6 @@
+description: minimum raised on a request number.
+milestone: M5
+findings:
+- rule: minimum-increased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

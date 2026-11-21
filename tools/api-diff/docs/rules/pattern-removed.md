@@ -9,7 +9,7 @@ Pattern removed
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `pattern-removed` (both directions), `pattern-removed-in-request`, `pattern-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: more values are valid. In responses: clients that parse values by t
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`pattern-removed`](../../test/cases/pattern-removed/): A pattern removed from a response string.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           pattern: ^[a-z]+$
+```
+
+Findings:
+
+- `pattern-removed-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

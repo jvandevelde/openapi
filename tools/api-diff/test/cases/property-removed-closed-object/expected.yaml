@@ -1,0 +1,6 @@
+description: 'A property removed from a request object that allows no other properties: clients still sending it are rejected.'
+milestone: M5
+findings:
+- rule: property-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

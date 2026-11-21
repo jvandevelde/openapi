@@ -9,7 +9,7 @@ New required property
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `property-added-required` (both directions), `property-added-required-in-request`, `property-added-required-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,23 @@ In requests: old clients don't send it and are rejected. In responses: clients r
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`property-added-required`](../../test/cases/property-added-required/): A new required property in a request body.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++         age:
++           type: integer
++       required:
++       - age
+```
+
+Findings:
+
+- `property-added-required-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

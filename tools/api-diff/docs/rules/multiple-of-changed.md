@@ -9,7 +9,7 @@ multipleOf changed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `warn` in responses |
 | **Rule IDs** | `multiple-of-changed` (both directions), `multiple-of-changed-in-request`, `multiple-of-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: values valid before may be rejected. In responses: clients may rece
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`multiple-of-changed`](../../test/cases/multiple-of-changed/): multipleOf changed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: number
+-           multipleOf: 0.5
++           multipleOf: 0.25
+```
+
+Findings:
+
+- `multiple-of-changed-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

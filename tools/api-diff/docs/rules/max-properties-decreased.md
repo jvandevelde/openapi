@@ -9,7 +9,7 @@ maxProperties decreased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `max-properties-decreased` (both directions), `max-properties-decreased-in-request`, `max-properties-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: objects with more properties are now rejected. In responses: client
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`max-properties-decreased`](../../test/cases/max-properties-decreased/): maxProperties lowered on a request object.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-       maxProperties: 10
++       maxProperties: 5
+```
+
+Findings:
+
+- `max-properties-decreased-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

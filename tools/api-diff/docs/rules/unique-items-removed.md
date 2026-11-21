@@ -9,7 +9,7 @@ uniqueItems removed
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `unique-items-removed` (both directions), `unique-items-removed-in-request`, `unique-items-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: more arrays are valid. In responses: clients that treat the array a
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`unique-items-removed`](../../test/cases/unique-items-removed/): uniqueItems removed from a response array.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+            items:
+              type: string
+-           uniqueItems: true
+```
+
+Findings:
+
+- `unique-items-removed-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

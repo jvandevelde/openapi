@@ -9,7 +9,7 @@ maxLength decreased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `max-length-decreased` (both directions), `max-length-decreased-in-request`, `max-length-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,7 @@ In requests: longer strings are rejected. In responses: clients receive shorter 
 
 ## Example
 
-From test case [`recursive-self-reference`](../../test/cases/recursive-self-reference/): A schema that refers to itself through items. A change inside it is found once, without looping.
+From test case [`max-length-decreased`](../../test/cases/max-length-decreased/): maxLength lowered on a request string.
 
 `openapi.yaml`, base → revision:
 
@@ -30,14 +30,13 @@ From test case [`recursive-self-reference`](../../test/cases/recursive-self-refe
   …
           name:
             type: string
-+           maxLength: 100
-          children:
-            type: array
+-           maxLength: 100
++           maxLength: 50
 ```
 
 Findings:
 
-- `max-length-decreased-in-response` · info · #/components/schemas/TreeNode
+- `max-length-decreased-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

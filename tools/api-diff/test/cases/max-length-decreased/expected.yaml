@@ -1,0 +1,6 @@
+description: maxLength lowered on a request string.
+milestone: M5
+findings:
+- rule: max-length-decreased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

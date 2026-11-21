@@ -1,9 +1,11 @@
-description: 'A: allOf [$ref A] describes nothing valid and is reported instead of looping. The change to A itself is unclassified until M5.'
-milestone: M4
+description: >-
+  A: allOf [$ref A] describes nothing valid and is reported instead of looping. Its only consistent reading is "any
+  value", so the type also widened.
+milestone: M5
 findings:
-- rule: unclassified-change
-  severity: warn
-  subject: '#/components/schemas/A'
-- rule: cycle-not-productive
-  severity: error
-  subject: '#/components/schemas/A'
+  - rule: cycle-not-productive
+    severity: error
+    subject: '#/components/schemas/A'
+  - rule: type-widened-in-response
+    severity: error
+    subject: '#/components/schemas/A'

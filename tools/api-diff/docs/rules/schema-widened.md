@@ -9,7 +9,7 @@ The schema accepts more values
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `schema-widened` (both directions), `schema-widened-in-request`, `schema-widened-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Core variance rules (fallbacks) ([RULES.md section 1](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: old clients keep sending values that are still valid. In responses:
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`schema-widened`](../../test/cases/schema-widened/): 'not' removed: the schema accepts more values.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           not:
+-             const: ''
+```
+
+Findings:
+
+- `schema-widened-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

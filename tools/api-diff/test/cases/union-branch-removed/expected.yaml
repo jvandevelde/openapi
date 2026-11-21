@@ -1,0 +1,6 @@
+description: A oneOf branch removed from a request.
+milestone: M5
+findings:
+- rule: union-branch-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

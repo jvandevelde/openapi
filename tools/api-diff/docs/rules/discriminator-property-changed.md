@@ -9,7 +9,7 @@ Discriminator property changed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `error` in responses |
 | **Rule IDs** | `discriminator-property-changed` (both directions), `discriminator-property-changed-in-request`, `discriminator-property-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,23 @@ Clients send or read the variant name in the old property.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`discriminator-property-changed`](../../test/cases/discriminator-property-changed/): The discriminator property changed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        - $ref: '#/components/schemas/Dog'
+        discriminator:
+-         propertyName: kind
++         propertyName: type
+          mapping:
+            cat: '#/components/schemas/Cat'
+```
+
+Findings:
+
+- `discriminator-property-changed-in-response` · error · #/components/schemas/Pet
 
 ## Policy options
 

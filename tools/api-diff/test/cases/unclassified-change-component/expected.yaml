@@ -1,7 +1,0 @@
-description: A change inside a shared component schema is reported once, with the operations that use it, until M5 classifies
-  it.
-milestone: M4
-findings:
-- rule: unclassified-change
-  severity: warn
-  subject: '#/components/schemas/Pet'

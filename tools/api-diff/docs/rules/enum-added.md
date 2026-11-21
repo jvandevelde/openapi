@@ -9,7 +9,7 @@ Enum added to a free value
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `enum-added` (both directions), `enum-added-in-request`, `enum-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,22 @@ In requests: clients sending other values are rejected. In responses: clients re
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`enum-added`](../../test/cases/enum-added/): A free request string became an enum.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++           enum:
++           - a
++           - b
+```
+
+Findings:
+
+- `enum-added-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

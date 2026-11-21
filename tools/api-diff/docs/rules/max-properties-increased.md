@@ -9,7 +9,7 @@ maxProperties increased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `max-properties-increased` (both directions), `max-properties-increased-in-request`, `max-properties-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: more objects are valid. In responses: clients may receive larger ob
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`max-properties-increased`](../../test/cases/max-properties-increased/): maxProperties raised on a response object.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-       maxProperties: 5
++       maxProperties: 10
+```
+
+Findings:
+
+- `max-properties-increased-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

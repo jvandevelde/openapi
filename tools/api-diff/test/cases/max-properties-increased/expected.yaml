@@ -1,0 +1,6 @@
+description: maxProperties raised on a response object.
+milestone: M5
+findings:
+- rule: max-properties-increased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

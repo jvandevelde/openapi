@@ -1,6 +1,9 @@
 description: A schema in another file, referenced with a relative $ref, is matched by file and pointer.
-milestone: M4
+milestone: M5
 findings:
-- rule: unclassified-change
-  severity: warn
-  subject: schemas.yaml#/Pet
+  - rule: format-added-in-request
+    severity: error
+    subject: schemas.yaml#/Pet
+  - rule: format-added-in-response
+    severity: info
+    subject: schemas.yaml#/Pet

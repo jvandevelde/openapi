@@ -1,0 +1,6 @@
+description: A required response property became optional.
+milestone: M5
+findings:
+- rule: property-became-optional-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

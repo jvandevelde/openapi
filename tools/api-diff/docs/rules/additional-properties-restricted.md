@@ -9,7 +9,7 @@ additionalProperties restricted
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `additional-properties-restricted` (both directions), `additional-properties-restricted-in-request`, `additional-properties-restricted-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: clients sending extra fields are rejected. In responses: clients re
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`additional-properties-restricted`](../../test/cases/additional-properties-restricted/): additionalProperties became false on a request body.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++       additionalProperties: false
+```
+
+Findings:
+
+- `additional-properties-restricted-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

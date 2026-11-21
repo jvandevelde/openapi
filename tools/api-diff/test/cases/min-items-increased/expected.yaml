@@ -1,0 +1,6 @@
+description: minItems raised on a request array.
+milestone: M5
+findings:
+- rule: min-items-increased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

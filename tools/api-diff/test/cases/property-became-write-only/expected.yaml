@@ -1,0 +1,6 @@
+description: 'A response property became writeOnly: it is no longer returned.'
+milestone: M5
+findings:
+- rule: property-became-write-only-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

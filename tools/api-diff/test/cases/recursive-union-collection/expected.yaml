@@ -1,6 +1,9 @@
-description: A union whose member holds a collection of the base type. The change is reported once, with both directions.
+description: A union whose member holds a collection of the base type. The change is found once per direction, without looping.
 milestone: M5
 findings:
-- rule: minimum-increased-in-request
-  severity: error
-  subject: '#/components/schemas/Circle'
+  - rule: minimum-increased-in-request
+    severity: error
+    subject: '#/components/schemas/Circle'
+  - rule: minimum-increased-in-response
+    severity: info
+    subject: '#/components/schemas/Circle'

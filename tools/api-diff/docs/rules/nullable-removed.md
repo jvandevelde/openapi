@@ -9,7 +9,7 @@ null no longer allowed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `nullable-removed` (both directions), `nullable-removed-in-request`, `nullable-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,23 @@ In requests: clients sending null are rejected. In responses: clients no longer 
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`nullable-removed`](../../test/cases/nullable-removed/): null no longer allowed in a request.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        properties:
+          name:
+-           type:
+-           - string
+-           - 'null'
++           type: string
+```
+
+Findings:
+
+- `nullable-removed-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

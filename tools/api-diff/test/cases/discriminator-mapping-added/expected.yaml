@@ -1,0 +1,6 @@
+description: A discriminator value added to a response.
+milestone: M5
+findings:
+- rule: discriminator-mapping-added-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

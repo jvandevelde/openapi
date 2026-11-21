@@ -9,7 +9,7 @@ maxItems decreased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `max-items-decreased` (both directions), `max-items-decreased-in-request`, `max-items-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: longer arrays are rejected. In responses: clients receive shorter a
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`max-items-decreased`](../../test/cases/max-items-decreased/): maxItems lowered on a request array.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+            items:
+              type: string
+-           maxItems: 10
++           maxItems: 5
+```
+
+Findings:
+
+- `max-items-decreased-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

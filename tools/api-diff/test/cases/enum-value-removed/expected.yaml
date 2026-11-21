@@ -1,0 +1,6 @@
+description: A value removed from a request enum.
+milestone: M5
+findings:
+- rule: enum-value-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

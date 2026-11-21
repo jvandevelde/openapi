@@ -1,0 +1,6 @@
+description: 'contentMediaType changed: old and new values differ in both directions.'
+milestone: M5
+findings:
+- rule: schema-incompatible-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

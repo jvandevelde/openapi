@@ -22,7 +22,7 @@ Tools that expand it loop forever; the schema is meaningless.
 
 ## Example
 
-From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/): A: allOf [$ref A] describes nothing valid and is reported instead of looping. The change to A itself is unclassified until M5.
+From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/): A: allOf [$ref A] describes nothing valid and is reported instead of looping. Its only consistent reading is "any value", so the type also widened.
 
 `openapi.yaml`, base → revision:
 
@@ -37,8 +37,8 @@ From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/):
 
 Findings:
 
-- `unclassified-change` · warn · #/components/schemas/A
 - `cycle-not-productive` · error · #/components/schemas/A
+- `type-widened-in-response` · error · #/components/schemas/A
 
 ## Policy options
 

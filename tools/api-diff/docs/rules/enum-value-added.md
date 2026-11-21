@@ -9,7 +9,7 @@ Enum value added
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `enum-value-added` (both directions), `enum-value-added-in-request`, `enum-value-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: old clients never send it. In responses: clients with exhaustive sw
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`enum-value-added`](../../test/cases/enum-value-added/): A value added to a response enum: exhaustive clients may break.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+            - a
+            - b
++           - c
+```
+
+Findings:
+
+- `enum-value-added-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

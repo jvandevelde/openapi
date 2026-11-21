@@ -9,7 +9,7 @@ Pattern added
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `pattern-added` (both directions), `pattern-added-in-request`, `pattern-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: values that do not match are rejected. In responses: clients receiv
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`pattern-added`](../../test/cases/pattern-added/): A pattern added to a request string.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++           pattern: ^[a-z]+$
+```
+
+Findings:
+
+- `pattern-added-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

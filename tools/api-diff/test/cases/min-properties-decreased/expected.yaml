@@ -1,0 +1,6 @@
+description: minProperties lowered on a response object.
+milestone: M5
+findings:
+- rule: min-properties-decreased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

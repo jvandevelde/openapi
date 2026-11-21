@@ -1,0 +1,6 @@
+description: A tag was added to the top-level tags list.
+milestone: M5
+findings:
+- rule: tag-added
+  severity: info
+  subject: document

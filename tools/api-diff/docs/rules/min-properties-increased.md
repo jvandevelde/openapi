@@ -9,7 +9,7 @@ minProperties increased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `min-properties-increased` (both directions), `min-properties-increased-in-request`, `min-properties-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: objects with fewer properties are now rejected. In responses: clien
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`min-properties-increased`](../../test/cases/min-properties-increased/): minProperties added to a request object.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++       minProperties: 1
+```
+
+Findings:
+
+- `min-properties-increased-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

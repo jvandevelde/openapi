@@ -1,0 +1,6 @@
+description: 'A new optional property in a response: tolerant clients ignore it.'
+milestone: M5
+findings:
+- rule: property-added-optional-in-response
+  severity: info
+  subject: '#/components/schemas/Pet'

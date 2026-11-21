@@ -9,7 +9,7 @@ Tag description changed
 | **Kind** | `docs` |
 | **Default severity** | `info` |
 | **Rule IDs** | `tag-description-changed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Docs (annotations only) ([RULES.md section 10](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,23 @@ Documentation only.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`tag-description-changed`](../../test/cases/tag-description-changed/): A tag's description changed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+  tags:
+  - name: pets
+-   description: Pets
++   description: Everything about pets
+  paths:
+    '/pets':
+```
+
+Findings:
+
+- `tag-description-changed` · info · document
 
 ## Policy options
 

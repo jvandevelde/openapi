@@ -1,0 +1,6 @@
+description: maximum raised on a response number.
+milestone: M5
+findings:
+- rule: maximum-increased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

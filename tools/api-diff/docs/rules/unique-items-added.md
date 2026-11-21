@@ -9,7 +9,7 @@ uniqueItems added
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `unique-items-added` (both directions), `unique-items-added-in-request`, `unique-items-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: arrays with duplicates are rejected. In responses: clients receive 
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`unique-items-added`](../../test/cases/unique-items-added/): uniqueItems added to a request array.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+            items:
+              type: string
++           uniqueItems: true
+```
+
+Findings:
+
+- `unique-items-added-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

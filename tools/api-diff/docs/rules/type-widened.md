@@ -9,7 +9,7 @@ Type widened
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `error` in responses |
 | **Rule IDs** | `type-widened` (both directions), `type-widened-in-request`, `type-widened-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: old values are still valid. In responses: clients parsing the old t
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`type-widened`](../../test/cases/type-widened/): integer → number in a response: clients parsing an int may fail.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        properties:
+          name:
+-           type: integer
++           type: number
+```
+
+Findings:
+
+- `type-widened-in-response` · error · #/components/schemas/Pet
 
 ## Policy options
 

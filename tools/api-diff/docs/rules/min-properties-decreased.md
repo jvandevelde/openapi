@@ -9,7 +9,7 @@ minProperties decreased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `min-properties-decreased` (both directions), `min-properties-decreased-in-request`, `min-properties-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: more objects are valid. In responses: clients may receive smaller o
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`min-properties-decreased`](../../test/cases/min-properties-decreased/): minProperties lowered on a response object.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-       minProperties: 2
++       minProperties: 1
+```
+
+Findings:
+
+- `min-properties-decreased-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

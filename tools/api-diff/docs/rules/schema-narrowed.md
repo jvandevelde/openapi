@@ -9,7 +9,7 @@ The schema accepts fewer values
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `schema-narrowed` (both directions), `schema-narrowed-in-request`, `schema-narrowed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Core variance rules (fallbacks) ([RULES.md section 1](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ In requests: clients may send values that are now rejected. In responses: client
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`schema-narrowed`](../../test/cases/schema-narrowed/): 'not' added: the schema accepts fewer values (no specific rule covers 'not').
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++           not:
++             const: ''
+```
+
+Findings:
+
+- `schema-narrowed-in-request` · error · #/components/schemas/Pet
 
 ## Policy options
 

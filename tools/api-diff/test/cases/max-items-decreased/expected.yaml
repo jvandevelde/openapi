@@ -1,0 +1,6 @@
+description: maxItems lowered on a request array.
+milestone: M5
+findings:
+- rule: max-items-decreased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

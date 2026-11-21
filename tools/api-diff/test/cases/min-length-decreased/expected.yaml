@@ -1,0 +1,6 @@
+description: minLength lowered on a response string.
+milestone: M5
+findings:
+- rule: min-length-decreased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

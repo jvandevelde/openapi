@@ -9,7 +9,7 @@ Inline schema became a $ref
 | **Kind** | `sdk` |
 | **Default severity** | `info` · `--profile sdk`: `warn` |
 | **Rule IDs** | `ref-extracted` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ Generated SDKs get a new named type in place of an anonymous one; code may need 
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`ref-extracted`](../../test/cases/ref-extracted/): An inline schema replaced by a $ref to an identical component.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+              application/json:
+                schema:
+-                 type: object
+-                 properties:
+-                   name:
+-                     type: string
++                 $ref: '#/components/schemas/Pet'
+  components:
+    schemas:
+```
+
+Findings:
+
+- `ref-extracted` · info · GET /pets
 
 ## Policy options
 

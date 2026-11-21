@@ -1,9 +1,14 @@
-description: 'A $ref inside a schema that points nowhere: ref-unresolved, and the schema change itself.'
-milestone: M4
+description: >-
+  A $ref inside a schema that points nowhere: ref-unresolved, and the property is compared as an empty schema (type
+  widened).
+milestone: M5
 findings:
-- rule: ref-unresolved
-  severity: error
-  subject: revision document
-- rule: unclassified-change
-  severity: warn
-  subject: '#/components/schemas/Pet'
+  - rule: type-widened-in-response
+    severity: error
+    subject: '#/components/schemas/Pet'
+  - rule: ref-unresolved
+    severity: error
+    subject: revision document
+  - rule: type-widened-in-request
+    severity: info
+    subject: '#/components/schemas/Pet'

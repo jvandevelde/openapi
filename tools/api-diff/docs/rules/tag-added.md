@@ -9,7 +9,7 @@ Tag added
 | **Kind** | `docs` |
 | **Default severity** | `info` |
 | **Rule IDs** | `tag-added` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Docs (annotations only) ([RULES.md section 10](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,22 @@ Documentation only.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`tag-added`](../../test/cases/tag-added/): A tag was added to the top-level tags list.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+  tags:
+  - name: pets
++ - name: owners
+  paths:
+    '/pets':
+```
+
+Findings:
+
+- `tag-added` · info · document
 
 ## Policy options
 

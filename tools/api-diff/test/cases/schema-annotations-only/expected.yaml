@@ -1,3 +1,12 @@
-description: Changed descriptions, examples and x- extensions are not shape changes (docs rules report them in M5).
-milestone: M4
-findings: []
+description: Changed descriptions, examples and x- extensions are docs changes (info), not schema changes.
+milestone: M5
+findings:
+  - rule: description-changed
+    severity: info
+    subject: '#/components/schemas/Pet'
+  - rule: example-changed
+    severity: info
+    subject: '#/components/schemas/Pet'
+  - rule: extension-changed
+    severity: info
+    subject: '#/components/schemas/Pet'

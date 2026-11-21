@@ -1,0 +1,6 @@
+description: additionalProperties became false on a request body.
+milestone: M5
+findings:
+- rule: additional-properties-restricted-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

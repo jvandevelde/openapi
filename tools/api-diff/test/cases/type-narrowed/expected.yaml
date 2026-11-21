@@ -1,0 +1,6 @@
+description: "number \u2192 integer in a request."
+milestone: M5
+findings:
+- rule: type-narrowed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

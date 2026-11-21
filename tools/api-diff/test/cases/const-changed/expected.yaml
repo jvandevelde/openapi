@@ -1,0 +1,6 @@
+description: A const value changed.
+milestone: M5
+findings:
+- rule: const-changed-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

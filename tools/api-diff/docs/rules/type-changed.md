@@ -9,7 +9,7 @@ Type changed incompatibly
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `error` in responses |
 | **Rule IDs** | `type-changed` (both directions), `type-changed-in-request`, `type-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ Clients send or parse the old type and fail in both directions.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`type-changed`](../../test/cases/type-changed/): string → integer in a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        properties:
+          name:
+-           type: string
++           type: integer
+```
+
+Findings:
+
+- `type-changed-in-response` · error · #/components/schemas/Pet
 
 ## Policy options
 

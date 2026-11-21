@@ -1,0 +1,6 @@
+description: The contact in info changed.
+milestone: M5
+findings:
+- rule: info-changed
+  severity: info
+  subject: document

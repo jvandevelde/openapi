@@ -89,13 +89,13 @@ test('files nested too deeply to parse are spec-invalid, not a crash', async () 
   assert.match(r.findings[0]!.message, /nested too deeply to parse/);
 });
 
-test('a change deep inside a cycle is reported once, for the schema that changed', async () => {
+test('a change deep inside a cycle is reported once, for the schema that changed, with the operations that reach it', async () => {
   const mk = (fmt?: string) =>
     dump(doc({ A: { type: 'object', properties: { b: ref('B') } }, B: { type: 'object', properties: { c: ref('C') } }, C: { type: 'object', properties: { a: ref('A'), note: { type: 'string', ...(fmt ? { format: fmt } : {}) } } } }));
   const r = await compareOpened({ source: new MemorySource({ 'a.yaml': mk() }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': mk('uuid') }), root: 'b.yaml' });
   assert.deepEqual(
     r.findings.map((f) => [f.rule, f.subject, f.details.changed, f.impact]),
-    [['unclassified-change', '#/components/schemas/C', ['/properties/note/format'], ['GET /a']]],
+    [['format-added-in-response', '#/components/schemas/C', undefined, ['GET /a']]],
   );
 });
 
@@ -126,7 +126,38 @@ test('hashes do not depend on key order, on random schema graphs with cycles', a
         assert.equal(m.local.shape, n.local.shape, n.logical);
         assert.equal(m.recursive, n.recursive, n.logical);
       }
+      // The full engine finds no changes either (generated graphs can contain invalid cycles, which are reported on both sides).
+      const text = dump(doc(schemas));
+      const r = await compareOpened({ source: new MemorySource({ 'a.yaml': text }), root: 'a.yaml' }, { source: new MemorySource({ 'b.json': JSON.stringify(reverseKeys(doc(schemas))) }), root: 'b.json' });
+      assert.deepEqual(r.findings.filter((f) => f.rule !== 'cycle-not-productive').map((f) => `${f.rule} ${f.subject} ${f.message}`), []);
     }),
     { numRuns: 200 },
+  );
+});
+
+test('comparing two different random schema graphs terminates and is deterministic', async () => {
+  const { default: fc } = await import('fast-check');
+  const names = ['A', 'B', 'C', 'D'];
+  const schema = fc.letrec((tie) => ({
+    s: fc.oneof({ depthSize: 'small' }, fc.constantFrom(...names).map(ref), fc.record({ type: fc.constantFrom('string', 'integer', 'number'), maxLength: fc.option(fc.integer({ min: 1, max: 9 }), { nil: undefined }) }, { requiredKeys: ['type'] }), tie('obj'), tie('arr'), tie('union'), tie('all')),
+    obj: fc.record({ type: fc.constant('object'), properties: fc.dictionary(fc.constantFrom('a', 'b', 'c'), tie('s'), { maxKeys: 3 }), required: fc.subarray(['a', 'b']) }),
+    arr: fc.record({ type: fc.constant('array'), items: tie('s') }),
+    union: fc.record({ oneOf: fc.array(tie('s'), { minLength: 1, maxLength: 3 }) }),
+    all: fc.record({ allOf: fc.array(tie('s'), { minLength: 1, maxLength: 2 }) }),
+  })).s;
+  const graph = fc.record(Object.fromEntries(names.map((n) => [n, schema])));
+  const both = (s: Record<string, unknown>) => {
+    const d = doc(s);
+    d.paths['/a'].get = { ...d.paths['/a'].get, requestBody: { content: { 'application/json': { schema: ref('B') } } } } as typeof d.paths['/a']['get'];
+    return dump(d);
+  };
+  await fc.assert(
+    fc.asyncProperty(graph, graph, async (x, y) => {
+      const run = () => compareOpened({ source: new MemorySource({ 'a.yaml': both(x) }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': both(y) }), root: 'b.yaml' });
+      const r1 = await run();
+      const r2 = await run();
+      assert.deepEqual(r1.findings.map((f) => f.id), r2.findings.map((f) => f.id));
+    }),
+    { numRuns: 300 },
   );
 });

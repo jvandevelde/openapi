@@ -1,0 +1,6 @@
+description: 'A schema title changed: some generators name types after it.'
+milestone: M5
+findings:
+- rule: schema-title-changed
+  severity: info
+  subject: '#/components/schemas/Pet'

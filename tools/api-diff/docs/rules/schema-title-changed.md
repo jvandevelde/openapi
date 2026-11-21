@@ -9,7 +9,7 @@ Schema title changed
 | **Kind** | `sdk` |
 | **Default severity** | `info` · `--profile sdk`: `warn` |
 | **Rule IDs** | `schema-title-changed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,21 @@ Some SDK generators name types after the title.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`schema-title-changed`](../../test/cases/schema-title-changed/): A schema title changed: some generators name types after it.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-       title: Pet
++       title: Animal
+```
+
+Findings:
+
+- `schema-title-changed` · info · #/components/schemas/Pet
 
 ## Policy options
 

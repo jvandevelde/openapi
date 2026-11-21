@@ -9,7 +9,7 @@ Property became readOnly
 | **Kind** | `wire` |
 | **Default severity** | `warn` in requests, `info` in responses |
 | **Rule IDs** | `property-became-read-only` (both directions), `property-became-read-only-in-request`, `property-became-read-only-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: clients that send it have it ignored (or rejected). In responses: n
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`property-became-read-only`](../../test/cases/property-became-read-only/): A request property became readOnly: it is no longer part of requests.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          id:
+            type: string
++           readOnly: true
+```
+
+Findings:
+
+- `property-became-read-only-in-request` · warn · #/components/schemas/Pet
 
 ## Policy options
 

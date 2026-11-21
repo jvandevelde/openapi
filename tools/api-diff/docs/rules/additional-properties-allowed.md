@@ -9,7 +9,7 @@ additionalProperties allowed
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `additional-properties-allowed` (both directions), `additional-properties-allowed-in-request`, `additional-properties-allowed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,20 @@ In requests: more requests are valid. In responses: clients may receive fields t
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`additional-properties-allowed`](../../test/cases/additional-properties-allowed/): additionalProperties false was removed from a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-       additionalProperties: false
+```
+
+Findings:
+
+- `additional-properties-allowed-in-response` · warn · #/components/schemas/Pet
 
 ## Policy options
 

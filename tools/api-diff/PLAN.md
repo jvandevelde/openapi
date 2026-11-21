@@ -98,7 +98,32 @@ Policy overrides apply **per usage**. An override on `/internal/**` turns off on
 
 **Which document's usages count?** Existing clients were built against the **base**, so usages come from the base graph. Usages that are new in the revision (e.g. `Order` now also used in `PATCH /orders`) are already reported as changes to that operation, so they aren't counted again here. An unused component (no usages) gets `info` with the rule `component-unused`.
 
-**When an operation switches to a different `$ref`** (e.g. `Order` → `OrderV2`), we don't report "ref changed". We compare the two **effective** schemas structurally at that operation, the same way as inline schemas.
+**This applies to every schema change, not just enums.** Required added or removed, type or format changed, a property removed, length, pattern or min/max limits, `additionalProperties`, `oneOf` branches and so on all work the same way. A change in a nested component (`Order → Customer → Address`) reaches every place `Address` is used, through `Customer` and `Order`.
+
+#### When a `$ref` changes target
+
+For example, `Order.customer` changes from `$ref: Customer` to `$ref: CustomerV2`, or an inline schema becomes a `$ref` or the other way round. This produces **two kinds of finding**, shown together:
+
+1. **The ref change itself.** `ref-target-changed` (or `ref-inlined` / `ref-extracted`) at `Order.customer`. It's always reported, so reviewers see it.
+2. **What actually changed in the data.** We compare the base and revision schemas field by field (`Customer` vs `CustomerV2`) **at that location**, and report each difference (e.g. `email` removed) as a child finding with the usages of `Order`.
+
+```
+ERROR  Order.customer: $ref Customer → CustomerV2              (orders.yaml:230)
+       ├─ ERROR property 'email' removed            used as out in 14 ops
+       ├─ WARN  enum value added to 'tier'           used as out in 14 ops
+       └─ INFO  optional property 'locale' added     used as in  in  3 ops
+```
+
+The parent finding takes the highest severity of its children. If the two schemas are identical, the only finding is the ref change itself.
+
+#### Two kinds of compatibility: wire and SDK
+
+A ref change can be harmless on the wire but still break generated SDKs, because code generators use component names as type names (`Customer` → `CustomerV2` breaks code that refers to `Customer`). So every rule declares which kind of compatibility it affects:
+
+- **`wire`**: the JSON on the wire. Old clients fail at runtime.
+- **`sdk`**: generated code. Old client code stops compiling (type renamed, ref inlined, an `anyOf` became a `oneOf`, an operationId renamed, a parameter renamed).
+
+Built-in **profiles** set different defaults: `--profile wire` (`sdk` rules are `info`) and `--profile sdk` (`sdk` rules are `warn` or `error`). For `ref-target-changed` with identical schemas, the default is `info` under `wire` and `error` under `sdk`. The policy file can override either.
 
 ### Change record (draft)
 

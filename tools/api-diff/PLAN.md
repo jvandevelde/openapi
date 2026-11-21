@@ -66,6 +66,40 @@ Measured on a generated 8 MB OpenAPI 3.1 spec (3,650 paths and schemas, about 24
 
 So TypeScript is fast enough, as long as we **don't use the `yaml` package for loading** (it's about 10× slower, because it builds a full CST that keeps comments). Use `JSON.parse` + `jsonc-parser` for JSON and `js-yaml` for YAML, and get positions from offsets. Load base and revision in parallel. The costs that grow with the work are allOf merging and `$ref` impact fan-out, so memoise results per component instead of re-walking for each operation. Target: under 1 s end to end for two 8 MB specs.
 
+### Shared components used in both requests and responses
+
+A component can't be breaking or safe on its own. That depends on **where it's used**. So we split the work into two steps:
+
+**Step 1: classify the change once, at the component.** The diff compares `#/components/schemas/X` in base and revision and labels each change by variance only (`widened` / `narrowed` / `incompatible`), with no severity yet. For example, "enum value added to `Order.status`" is `widened`.
+
+**Step 2: work out the component's usages from the reference graph.** Starting from each operation, walk every `$ref` and record where the component is reached, with a **direction**:
+
+| Reached from | Direction |
+|---|---|
+| request body, parameters, request headers | `in` (the client sends it) |
+| response body, response headers | `out` (the client receives it) |
+| **webhook / callback** request body | `out`, because the direction **flips**: the server sends and the client receives |
+| webhook / callback response | `in` |
+| property marked `readOnly` | `out` only, even inside a request schema |
+| property marked `writeOnly` | `in` only, even inside a response schema |
+
+Each usage carries a full path (`POST /orders → requestBody → Order.items[] → LineItem.sku`), so `readOnly`/`writeOnly` and nested `$ref`s resolve per property, not per component. Cycles are handled by memoising on *(component, direction)*.
+
+**Step 3: score each usage, then combine.** Every usage gets its own severity from the rules (`enum-value-added-in-request` → info, `…-in-response` → warn). The finding's severity is the **worst** usage, and the output lists all of them:
+
+```
+WARN  enum value 'refunded' added to Order.status            components/schemas/Order (orders.yaml:212)
+      used as  out  in 14 operations   → warn  (enum-value-added-in-response)
+               in   in  3 operations   → info  (enum-value-added-in-request)
+      fix: mark the enum open (x-api-diff: { enum: open }) or split into OrderRequest / OrderResponse
+```
+
+Policy overrides apply **per usage**. An override on `/internal/**` turns off only those usages, and the rest still count.
+
+**Which document's usages count?** Existing clients were built against the **base**, so usages come from the base graph. Usages that are new in the revision (e.g. `Order` now also used in `PATCH /orders`) are already reported as changes to that operation, so they aren't counted again here. An unused component (no usages) gets `info` with the rule `component-unused`.
+
+**When an operation switches to a different `$ref`** (e.g. `Order` → `OrderV2`), we don't report "ref changed". We compare the two **effective** schemas structurally at that operation, the same way as inline schemas.
+
 ### Change record (draft)
 
 ```jsonc

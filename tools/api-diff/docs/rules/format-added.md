@@ -9,7 +9,7 @@ Format added
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `format-added` (both directions), `format-added-in-request`, `format-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,20 +22,31 @@ In requests: clients' existing values may not match the format and are rejected.
 
 ## Example
 
-From test case [`recursive-three-schema-cycle`](../../test/cases/recursive-three-schema-cycle/): A → B → C → A. A change deep inside the cycle is found.
+From test case [`format-added`](../../test/cases/format-added/): A format added to a request string.
 
 `openapi.yaml`, base → revision:
 
 ```diff
   …
-          note:
+          name:
             type: string
 +           format: uuid
 ```
 
 Findings:
 
-- `format-added-in-response` · info · #/components/schemas/C
+- `format-added-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`format-added`](../../test/cases/format-added/) | `format-added-in-request` · error · #/components/schemas/Pet | A format added to a request string. |
+| [`read-only-property-ignored-in-requests`](../../test/cases/read-only-property-ignored-in-requests/) | `format-added-in-response` · info · #/components/schemas/Pet | A readOnly property changes only matter in responses: a shared schema reports the change for the response direction only. |
+| [`recursive-three-schema-cycle`](../../test/cases/recursive-three-schema-cycle/) | `format-added-in-response` · info · #/components/schemas/C | A → B → C → A. A change deep inside the cycle is found. |
+| [`schema-in-other-file`](../../test/cases/schema-in-other-file/) | `format-added-in-request` · error · schemas.yaml#/Pet<br>`format-added-in-response` · info · schemas.yaml#/Pet | A schema in another file, referenced with a relative $ref, is matched by file and pointer. |
 
 ## Policy options
 

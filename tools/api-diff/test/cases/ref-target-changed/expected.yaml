@@ -1,0 +1,6 @@
+description: 'An operation now references a different but identical component: ref-target-changed (an sdk change), and nothing else.'
+milestone: M5
+findings:
+  - rule: ref-target-changed
+    severity: info
+    subject: GET /pets

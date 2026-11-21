@@ -9,7 +9,7 @@ maximum increased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `maximum-increased` (both directions), `maximum-increased-in-request`, `maximum-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: more numbers are valid. In responses: clients may store values in t
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`maximum-increased`](../../test/cases/maximum-increased/): maximum raised on a response number.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: integer
+-           maximum: 50
++           maximum: 100
+```
+
+Findings:
+
+- `maximum-increased-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

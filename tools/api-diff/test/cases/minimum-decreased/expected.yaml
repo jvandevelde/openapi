@@ -1,0 +1,6 @@
+description: minimum lowered on a response number.
+milestone: M5
+findings:
+- rule: minimum-decreased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

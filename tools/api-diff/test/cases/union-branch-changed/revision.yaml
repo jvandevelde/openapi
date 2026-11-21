@@ -1,0 +1,44 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/pets':
+    get:
+      operationId: getPet
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      oneOf:
+      - $ref: '#/components/schemas/Cat'
+      - $ref: '#/components/schemas/Dog'
+    Cat:
+      type: object
+      properties:
+        kind:
+          type: string
+        meow:
+          type: string
+    Dog:
+      type: object
+      properties:
+        kind:
+          type: string
+        bark:
+          type: string
+          enum:
+          - woof
+    Bird:
+      type: object
+      properties:
+        kind:
+          type: string
+        wings:
+          type: integer

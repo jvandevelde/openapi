@@ -9,7 +9,7 @@ minimum decreased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `minimum-decreased` (both directions), `minimum-decreased-in-request`, `minimum-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: more numbers are valid. In responses: clients may receive values (e
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`minimum-decreased`](../../test/cases/minimum-decreased/): minimum lowered on a response number.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: integer
+-           minimum: 1
++           minimum: 0
+```
+
+Findings:
+
+- `minimum-decreased-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

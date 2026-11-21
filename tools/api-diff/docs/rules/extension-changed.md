@@ -9,7 +9,7 @@ Unclassified x- extension changed
 | **Kind** | `docs` |
 | **Default severity** | `info` |
 | **Rule IDs** | `extension-changed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Docs (annotations only) ([RULES.md section 10](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,32 @@ Treated as documentation unless the policy says otherwise.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`schema-annotations-only`](../../test/cases/schema-annotations-only/): Changed descriptions, examples and x- extensions are docs changes (info), not schema changes.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-       description: A pet
++       description: A pet you own
+        example:
+-         id: '1'
++         id: '2'
++       x-owner: pets-team
+```
+
+Findings:
+
+- `description-changed` · info · #/components/schemas/Pet
+- `example-changed` · info · #/components/schemas/Pet
+- `extension-changed` · info · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

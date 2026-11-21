@@ -40,6 +40,15 @@ Findings:
 
 - `operation-id-changed` · info · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`operation-id-changed`](../../test/cases/operation-id-changed/) | `operation-id-changed` · info · GET /pets | A changed operationId is an sdk change: info under the wire profile. |
+| [`operation-id-changed-sdk-profile`](../../test/cases/operation-id-changed-sdk-profile/) | `operation-id-changed` · error · GET /pets | Under --profile sdk, a changed operationId is an error. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

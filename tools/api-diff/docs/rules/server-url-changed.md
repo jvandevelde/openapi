@@ -40,6 +40,15 @@ Findings:
 
 - `server-url-changed` · warn · document
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`server-url-changed-document`](../../test/cases/server-url-changed-document/) | `server-url-changed` · warn · document | A document-level server URL removed is reported once, not per operation. |
+| [`server-url-changed-operation`](../../test/cases/server-url-changed-operation/) | `server-url-changed` · warn · GET /pets | An operation-level server URL removed. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

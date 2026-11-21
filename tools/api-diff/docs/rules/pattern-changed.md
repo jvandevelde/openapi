@@ -9,7 +9,7 @@ Pattern changed
 | **Kind** | `wire` |
 | **Default severity** | `warn` in requests, `warn` in responses |
 | **Rule IDs** | `pattern-changed` (both directions), `pattern-changed-in-request`, `pattern-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ The new pattern may reject old values or produce new ones; it can't be decided f
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`pattern-changed`](../../test/cases/pattern-changed/): A pattern changed: the direction cannot be decided.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           pattern: ^[a-z]+$
++           pattern: ^[a-z0-9]+$
+```
+
+Findings:
+
+- `pattern-changed-in-request` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

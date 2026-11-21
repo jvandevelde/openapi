@@ -9,7 +9,7 @@ maxLength increased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `max-length-increased` (both directions), `max-length-increased-in-request`, `max-length-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: more strings are valid. In responses: clients may store values in b
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`max-length-increased`](../../test/cases/max-length-increased/): maxLength raised on a response string.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           maxLength: 50
++           maxLength: 100
+```
+
+Findings:
+
+- `max-length-increased-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

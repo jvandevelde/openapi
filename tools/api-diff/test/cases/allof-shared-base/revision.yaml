@@ -1,0 +1,49 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/dogs':
+    get:
+      operationId: getDog
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dog'
+  '/cats':
+    get:
+      operationId: getCat
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cat'
+components:
+  schemas:
+    Base:
+      type: object
+      properties:
+        id:
+          type: string
+          maxLength: 36
+      required:
+      - id
+    Dog:
+      allOf:
+      - $ref: '#/components/schemas/Base'
+      - type: object
+        properties:
+          bark:
+            type: string
+    Cat:
+      allOf:
+      - $ref: '#/components/schemas/Base'
+      - type: object
+        properties:
+          meow:
+            type: string

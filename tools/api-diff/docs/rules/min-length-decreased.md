@@ -9,7 +9,7 @@ minLength decreased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `min-length-decreased` (both directions), `min-length-decreased-in-request`, `min-length-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: more strings are valid. In responses: clients may receive shorter (
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`min-length-decreased`](../../test/cases/min-length-decreased/): minLength lowered on a response string.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           minLength: 2
++           minLength: 1
+```
+
+Findings:
+
+- `min-length-decreased-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

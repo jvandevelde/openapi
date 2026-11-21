@@ -9,7 +9,7 @@ maxLength decreased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `max-length-decreased` (both directions), `max-length-decreased-in-request`, `max-length-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,7 @@ In requests: longer strings are rejected. In responses: clients receive shorter 
 
 ## Example
 
-From test case [`recursive-self-reference`](../../test/cases/recursive-self-reference/): A schema that refers to itself through items. A change inside it is found once, without looping.
+From test case [`max-length-decreased`](../../test/cases/max-length-decreased/): maxLength lowered on a request string.
 
 `openapi.yaml`, base → revision:
 
@@ -30,14 +30,25 @@ From test case [`recursive-self-reference`](../../test/cases/recursive-self-refe
   …
           name:
             type: string
-+           maxLength: 100
-          children:
-            type: array
+-           maxLength: 100
++           maxLength: 50
 ```
 
 Findings:
 
-- `max-length-decreased-in-response` · info · #/components/schemas/TreeNode
+- `max-length-decreased-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`allof-shared-base`](../../test/cases/allof-shared-base/) | `max-length-decreased-in-response` · info · #/components/schemas/Base | Dog and Cat both extend Base with allOf. A change in Base is reported once, for Base, with both operations. |
+| [`array-items-changed`](../../test/cases/array-items-changed/) | `max-length-decreased-in-request` · error · #/components/schemas/Pet | A change inside array items is found through items. |
+| [`max-length-decreased`](../../test/cases/max-length-decreased/) | `max-length-decreased-in-request` · error · #/components/schemas/Pet | maxLength lowered on a request string. |
+| [`recursive-self-reference`](../../test/cases/recursive-self-reference/) | `max-length-decreased-in-response` · info · #/components/schemas/TreeNode | A schema that refers to itself through items. A change inside it is found once, without looping. |
+| [`schema-change-shared-component`](../../test/cases/schema-change-shared-component/) | `max-length-decreased-in-request` · error · #/components/schemas/Pet<br>`max-length-decreased-in-response` · info · #/components/schemas/Pet | A change inside a shared component used in requests and responses: one finding per direction, each listing the operations in that direction. |
 
 ## Policy options
 

@@ -9,7 +9,7 @@ Property became required
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `property-became-required` (both directions), `property-became-required-in-request`, `property-became-required-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: clients that didn't send it are rejected. In responses: clients now
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`property-became-required`](../../test/cases/property-became-required/): An optional request property became required.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++       required:
++       - name
+```
+
+Findings:
+
+- `property-became-required-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

@@ -1,0 +1,6 @@
+description: A free request string became an enum.
+milestone: M5
+findings:
+- rule: enum-added-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

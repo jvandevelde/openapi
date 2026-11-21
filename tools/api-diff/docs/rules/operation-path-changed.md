@@ -40,6 +40,15 @@ Findings:
 
 - `operation-path-changed` · error · GET /animals/{id}
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`operation-path-changed`](../../test/cases/operation-path-changed/) | `operation-path-changed` · error · GET /animals/{id} | Same operationId and method at a new path: the path changed. |
+| [`operation-path-param-removed`](../../test/cases/operation-path-param-removed/) | `operation-path-changed` · error · GET /pets | Removing a path parameter changes the path, so it is reported as operation-path-changed, not as a parameter change. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

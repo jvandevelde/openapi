@@ -9,7 +9,7 @@ $ref replaced by an inline schema
 | **Kind** | `sdk` |
 | **Default severity** | `info` · `--profile sdk`: `error` |
 | **Rule IDs** | `ref-inlined` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,31 @@ The named type disappears from generated SDKs (replaced by an anonymous one).
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`ref-inlined`](../../test/cases/ref-inlined/): A $ref replaced by an identical inline schema: the named type disappears from generated SDKs.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+              application/json:
+                schema:
+-                 $ref: '#/components/schemas/Pet'
++                 type: object
++                 properties:
++                   name:
++                     type: string
+  components:
+    schemas:
+```
+
+Findings:
+
+- `ref-inlined` · info · GET /pets
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

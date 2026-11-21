@@ -1,0 +1,6 @@
+description: A new required property in a request body.
+milestone: M5
+findings:
+- rule: property-added-required-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

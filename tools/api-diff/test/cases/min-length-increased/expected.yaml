@@ -1,0 +1,6 @@
+description: minLength raised on a request string.
+milestone: M5
+findings:
+- rule: min-length-increased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

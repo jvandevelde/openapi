@@ -1,0 +1,6 @@
+description: uniqueItems added to a request array.
+milestone: M5
+findings:
+- rule: unique-items-added-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

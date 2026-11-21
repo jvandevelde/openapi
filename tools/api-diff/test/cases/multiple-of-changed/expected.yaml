@@ -1,0 +1,6 @@
+description: multipleOf changed.
+milestone: M5
+findings:
+- rule: multiple-of-changed-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

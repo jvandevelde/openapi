@@ -1,0 +1,6 @@
+description: 'A pattern changed: the direction cannot be decided.'
+milestone: M5
+findings:
+- rule: pattern-changed-in-request
+  severity: warn
+  subject: '#/components/schemas/Pet'

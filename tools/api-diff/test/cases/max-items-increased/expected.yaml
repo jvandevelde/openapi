@@ -1,0 +1,6 @@
+description: maxItems raised on a response array.
+milestone: M5
+findings:
+- rule: max-items-increased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

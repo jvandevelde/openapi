@@ -9,7 +9,7 @@ Unused component added
 | **Kind** | `wire` |
 | **Default severity** | `info` |
 | **Rule IDs** | `component-added` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,29 @@ It affects no operation.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`component-added`](../../test/cases/component-added/): A component nothing uses was added.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++     Owner:
++       type: object
++       properties:
++         name:
++           type: string
+```
+
+Findings:
+
+- `component-added` · info · #/components/schemas/Owner
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

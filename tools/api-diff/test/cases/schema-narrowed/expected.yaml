@@ -1,0 +1,6 @@
+description: '''not'' added: the schema accepts fewer values (no specific rule covers ''not'').'
+milestone: M5
+findings:
+- rule: schema-narrowed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

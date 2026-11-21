@@ -9,7 +9,7 @@ null now allowed
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `error` in responses |
 | **Rule IDs** | `nullable-added` (both directions), `nullable-added-in-request`, `nullable-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,28 @@ In requests: old clients never send null. In responses: clients that don't expec
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`nullable-added`](../../test/cases/nullable-added/): null now allowed in a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        properties:
+          name:
+-           type: string
++           type:
++           - string
++           - 'null'
+```
+
+Findings:
+
+- `nullable-added-in-response` · error · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

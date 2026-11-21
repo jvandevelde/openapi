@@ -1,0 +1,6 @@
+description: additionalProperties false was removed from a response.
+milestone: M5
+findings:
+- rule: additional-properties-allowed-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

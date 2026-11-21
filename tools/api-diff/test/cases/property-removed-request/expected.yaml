@@ -1,0 +1,6 @@
+description: 'A property removed from a request: clients still send it, which the server ignores.'
+milestone: M5
+findings:
+- rule: property-removed-in-request
+  severity: warn
+  subject: '#/components/schemas/Pet'

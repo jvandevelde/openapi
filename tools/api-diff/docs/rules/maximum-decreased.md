@@ -9,7 +9,7 @@ maximum decreased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `maximum-decreased` (both directions), `maximum-decreased-in-request`, `maximum-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: larger numbers are rejected. In responses: clients receive smaller 
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`maximum-decreased`](../../test/cases/maximum-decreased/): maximum lowered on a request number.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: integer
+-           maximum: 100
++           maximum: 50
+```
+
+Findings:
+
+- `maximum-decreased-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

@@ -40,6 +40,15 @@ Findings:
 
 - `response-status-range-widened` · info · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`response-status-range-widened`](../../test/cases/response-status-range-widened/) | `response-status-range-widened` · info · GET /pets | 200 replaced by 2XX is not a removal. The widening is reported as info, and the two responses are compared (here they are the same). |
+| [`response-status-range-widened-body-removed`](../../test/cases/response-status-range-widened-body-removed/) | `response-status-range-widened` · info · GET /pets | 200 replaced by a 2XX that has no body. The widening is info, and losing the body is still an error. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

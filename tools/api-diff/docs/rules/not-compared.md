@@ -34,6 +34,15 @@ Findings:
 
 - `not-compared` · info · document
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`callbacks-not-compared`](../../test/cases/callbacks-not-compared/) | `not-compared` · info · document | Callbacks are out of scope; one notice says so. |
+| [`webhooks-not-compared`](../../test/cases/webhooks-not-compared/) | `not-compared` · info · document | Webhooks are out of scope; one notice says so. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

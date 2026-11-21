@@ -9,7 +9,7 @@ oneOf/anyOf branch removed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `union-branch-removed` (both directions), `union-branch-removed-in-request`, `union-branch-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,27 @@ In requests: clients sending that variant are rejected. In responses: clients st
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`union-branch-removed`](../../test/cases/union-branch-removed/): A oneOf branch removed from a request.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        oneOf:
+        - $ref: '#/components/schemas/Cat'
+-       - $ref: '#/components/schemas/Dog'
+      Cat:
+        type: object
+```
+
+Findings:
+
+- `union-branch-removed-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

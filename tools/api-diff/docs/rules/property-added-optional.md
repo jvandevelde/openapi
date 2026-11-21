@@ -9,7 +9,7 @@ New optional property
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `info` in responses |
 | **Rule IDs** | `property-added-optional` (both directions), `property-added-optional-in-request`, `property-added-optional-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: old clients don't send it, which is fine. In responses: clients tha
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`property-added-optional`](../../test/cases/property-added-optional/): A new optional property in a response: tolerant clients ignore it.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++         age:
++           type: integer
+```
+
+Findings:
+
+- `property-added-optional-in-response` · info · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

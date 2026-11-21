@@ -1,0 +1,9 @@
+description: The same change in only 2 operations stays as 2 findings.
+milestone: M5
+findings:
+- rule: response-header-added
+  severity: info
+  subject: GET /r0
+- rule: response-header-added
+  severity: info
+  subject: GET /r1

@@ -1,0 +1,6 @@
+description: '''not'' removed: the schema accepts more values.'
+milestone: M5
+findings:
+- rule: schema-widened-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

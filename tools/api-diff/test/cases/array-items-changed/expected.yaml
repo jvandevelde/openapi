@@ -1,0 +1,6 @@
+description: A change inside array items is found through items.
+milestone: M5
+findings:
+- rule: max-length-decreased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

@@ -9,7 +9,7 @@ externalDocs changed
 | **Kind** | `docs` |
 | **Default severity** | `info` |
 | **Rule IDs** | `external-docs-changed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Docs (annotations only) ([RULES.md section 10](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,28 @@ Documentation only.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`external-docs-changed`](../../test/cases/external-docs-changed/): The top-level externalDocs changed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+    version: 1.0.0
+  externalDocs:
+-   url: https://a.example.com
++   url: https://b.example.com
+  paths:
+    '/pets':
+```
+
+Findings:
+
+- `external-docs-changed` · info · document
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

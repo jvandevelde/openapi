@@ -1,6 +1,0 @@
-description: A change to a schema written inline in an operation is reported for that operation.
-milestone: M4
-findings:
-- rule: unclassified-change
-  severity: warn
-  subject: GET /pets

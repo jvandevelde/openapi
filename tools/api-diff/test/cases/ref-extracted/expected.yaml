@@ -1,0 +1,6 @@
+description: An inline schema replaced by a $ref to an identical component.
+milestone: M5
+findings:
+- rule: ref-extracted
+  severity: info
+  subject: GET /pets

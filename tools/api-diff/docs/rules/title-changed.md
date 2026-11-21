@@ -9,7 +9,7 @@ Title changed
 | **Kind** | `docs` |
 | **Default severity** | `info` |
 | **Rule IDs** | `title-changed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Docs (annotations only) ([RULES.md section 10](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,27 @@ Documentation only.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`title-changed`](../../test/cases/title-changed/): The document's info.title changed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  openapi: 3.1.0
+  info:
+-   title: Pets
++   title: Pet Store
+    version: 1.0.0
+  paths:
+```
+
+Findings:
+
+- `title-changed` · info · document
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

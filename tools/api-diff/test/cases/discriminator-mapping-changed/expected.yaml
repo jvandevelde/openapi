@@ -1,0 +1,6 @@
+description: A discriminator value now maps to a different schema.
+milestone: M5
+findings:
+- rule: discriminator-mapping-changed-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

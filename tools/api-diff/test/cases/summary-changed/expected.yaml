@@ -1,0 +1,6 @@
+description: An operation's summary changed.
+milestone: M5
+findings:
+- rule: summary-changed
+  severity: info
+  subject: GET /pets

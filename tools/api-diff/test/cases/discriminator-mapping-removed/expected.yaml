@@ -1,0 +1,6 @@
+description: A discriminator value removed from a request.
+milestone: M5
+findings:
+- rule: discriminator-mapping-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

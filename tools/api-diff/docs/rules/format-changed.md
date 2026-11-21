@@ -9,7 +9,7 @@ Format changed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `error` in responses |
 | **Rule IDs** | `format-changed` (both directions), `format-changed-in-request`, `format-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,30 @@ Clients send or parse values in the old format.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`format-changed`](../../test/cases/format-changed/): date-time → date in a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           format: date-time
++           format: date
+```
+
+Findings:
+
+- `format-changed-in-response` · error · #/components/schemas/Pet
+
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`format-changed`](../../test/cases/format-changed/) | `format-changed-in-response` · error · #/components/schemas/Pet | date-time → date in a response. |
+| [`format-changed-widening`](../../test/cases/format-changed-widening/) | `format-changed-in-request` · info · #/components/schemas/Pet | int32 → int64 in a request is widening, so info. |
 
 ## Policy options
 

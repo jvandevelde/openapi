@@ -1,0 +1,6 @@
+description: null no longer allowed in a request.
+milestone: M5
+findings:
+- rule: nullable-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

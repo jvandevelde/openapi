@@ -9,7 +9,7 @@ Changed component has no usages
 | **Kind** | `wire` |
 | **Default severity** | `info` |
 | **Rule IDs** | `component-unused` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,25 @@ The change affects no operation (it may be used by other specs or code generator
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`component-unused`](../../test/cases/component-unused/): A component nothing uses changed: one info finding instead of rules with no direction.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++           maxLength: 5
+```
+
+Findings:
+
+- `component-unused` · info · #/components/schemas/Owner
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

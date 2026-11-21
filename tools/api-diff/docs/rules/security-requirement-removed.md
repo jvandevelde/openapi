@@ -41,6 +41,15 @@ Findings:
 
 - `security-requirement-removed` · info · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`security-made-optional`](../../test/cases/security-made-optional/) | `security-requirement-removed` · info · GET /pets | Adding an empty requirement ({}) makes auth optional. |
+| [`security-requirement-removed`](../../test/cases/security-requirement-removed/) | `security-requirement-removed` · info · GET /pets | Auth no longer required. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

@@ -1,0 +1,6 @@
+description: "string \u2192 integer in a response."
+milestone: M5
+findings:
+- rule: type-changed-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

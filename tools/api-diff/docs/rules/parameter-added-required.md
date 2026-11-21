@@ -45,6 +45,15 @@ Findings:
 
 - `query-parameter-added-required` · error · GET /pets
 
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`header-parameter-added-required`](../../test/cases/header-parameter-added-required/) | `header-parameter-added-required` · error · GET /pets | A new required header. |
+| [`parameter-added-required`](../../test/cases/parameter-added-required/) | `query-parameter-added-required` · error · GET /pets | A new required query parameter. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

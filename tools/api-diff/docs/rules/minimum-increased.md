@@ -9,7 +9,7 @@ minimum increased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `minimum-increased` (both directions), `minimum-increased-in-request`, `minimum-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,22 +22,31 @@ In requests: smaller numbers are rejected. In responses: clients receive larger 
 
 ## Example
 
-From test case [`recursive-union-collection`](../../test/cases/recursive-union-collection/): A union whose member holds a collection of the base type. The change is reported once, with both directions.
+From test case [`minimum-increased`](../../test/cases/minimum-increased/): minimum raised on a request number.
 
 `openapi.yaml`, base → revision:
 
 ```diff
   …
-          radius:
-            type: number
-+           minimum: 0
-      Group:
-        type: object
+          name:
+            type: integer
+-           minimum: 0
++           minimum: 1
 ```
 
 Findings:
 
-- `minimum-increased-in-request` · error · #/components/schemas/Circle
+- `minimum-increased-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`exclusive-minimum-3-0`](../../test/cases/exclusive-minimum-3-0/) | `minimum-increased-in-request` · error · #/components/schemas/Pet | 3.0 boolean exclusiveMinimum and 3.1 numeric exclusiveMinimum: minimum 0 inclusive → exclusive is tighter. |
+| [`minimum-increased`](../../test/cases/minimum-increased/) | `minimum-increased-in-request` · error · #/components/schemas/Pet | minimum raised on a request number. |
+| [`recursive-union-collection`](../../test/cases/recursive-union-collection/) | `minimum-increased-in-request` · error · #/components/schemas/Circle<br>`minimum-increased-in-response` · info · #/components/schemas/Circle | A union whose member holds a collection of the base type. The change is found once per direction, without looping. |
 
 ## Policy options
 

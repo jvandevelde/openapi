@@ -1,0 +1,6 @@
+description: 'A default changed: behaviour changes when clients omit the field.'
+milestone: M5
+findings:
+- rule: default-changed-in-request
+  severity: warn
+  subject: '#/components/schemas/Pet'

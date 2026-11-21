@@ -1,0 +1,6 @@
+description: maxLength raised on a response string.
+milestone: M5
+findings:
+- rule: max-length-increased-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

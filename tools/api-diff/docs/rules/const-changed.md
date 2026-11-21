@@ -9,7 +9,7 @@ const changed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `error` in responses |
 | **Rule IDs** | `const-changed` (both directions), `const-changed-in-request`, `const-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ Clients send or expect the old value.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`const-changed`](../../test/cases/const-changed/): A const value changed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           const: a
++           const: b
+```
+
+Findings:
+
+- `const-changed-in-response` · error · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

@@ -1,0 +1,6 @@
+description: 'A $ref replaced by an identical inline schema: the named type disappears from generated SDKs.'
+milestone: M5
+findings:
+- rule: ref-inlined
+  severity: info
+  subject: GET /pets

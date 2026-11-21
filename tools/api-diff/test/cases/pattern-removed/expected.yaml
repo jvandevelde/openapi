@@ -1,0 +1,6 @@
+description: A pattern removed from a response string.
+milestone: M5
+findings:
+- rule: pattern-removed-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

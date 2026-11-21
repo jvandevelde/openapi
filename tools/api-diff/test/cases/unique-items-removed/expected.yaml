@@ -1,0 +1,6 @@
+description: uniqueItems removed from a response array.
+milestone: M5
+findings:
+- rule: unique-items-removed-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

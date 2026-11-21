@@ -9,7 +9,7 @@ Tag removed
 | **Kind** | `docs` |
 | **Default severity** | `info` |
 | **Rule IDs** | `tag-removed` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Docs (annotations only) ([RULES.md section 10](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,27 @@ Documentation only (operation tags are `operation-tags-changed`).
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`tag-removed`](../../test/cases/tag-removed/): A tag was removed from the top-level tags list.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+  tags:
+  - name: pets
+- - name: owners
+  paths:
+    '/pets':
+```
+
+Findings:
+
+- `tag-removed` · info · document
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

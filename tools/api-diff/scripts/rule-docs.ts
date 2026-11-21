@@ -111,6 +111,26 @@ function exampleFor(rule: RuleMeta, cases: CaseInfo[]): string {
   return parts.join('\n') + '\n';
 }
 
+/** Every test case that expects this rule: each one is a runnable example of a variant or edge case. */
+function testCases(rule: RuleMeta, cases: CaseInfo[]): string {
+  const rows = cases
+    .map((c) => ({ c, found: c.findings.filter((f) => baseRuleId(f.rule) === rule.id) }))
+    .filter((x) => x.found.length > 0);
+  if (!rows.length) return '_None yet._\n';
+  const lines = [
+    rows.length === 1 ? 'The example above is the only test case for this rule.' : `${rows.length} test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with \`npm test\`.`,
+    '',
+  ];
+  if (rows.length > 1) {
+    lines.push('| Test case | Expects | What it shows |', '|---|---|---|');
+    for (const { c, found } of rows) {
+      const expects = found.map((f) => `\`${f.rule}\` · ${f.severity} · ${f.subject.replace(/\|/g, '\\|')}`).join('<br>');
+      lines.push(`| [\`${c.name}\`](../../test/cases/${c.name}/) | ${expects} | ${c.description.replace(/\|/g, '\\|').replace(/\n/g, ' ')} |`);
+    }
+  }
+  return lines.join('\n') + '\n';
+}
+
 function severityText(r: RuleMeta): string {
   const s = typeof r.severity === 'string' ? `\`${r.severity}\`` : `\`${r.severity.in}\` in requests, \`${r.severity.out}\` in responses`;
   return r.sdkProfile ? `${s} · \`--profile sdk\`: \`${r.sdkProfile}\`` : s;
@@ -151,6 +171,9 @@ function page(r: RuleMeta, cases: CaseInfo[]): string {
     '## Example',
     '',
     exampleFor(r, cases),
+    '## Test cases',
+    '',
+    testCases(r, cases),
     '## Policy options',
     '',
     `Every rule takes \`severity\` (\`error\`, \`warn\`, \`info\` or \`off\`), \`fix\` and \`explanation\` in the policy file${r.variants ? ', for the generic ID or any variant ID above (the more specific ID wins)' : ''}. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).`,

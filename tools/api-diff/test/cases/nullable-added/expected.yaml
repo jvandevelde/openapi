@@ -1,0 +1,6 @@
+description: null now allowed in a response.
+milestone: M5
+findings:
+- rule: nullable-added-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

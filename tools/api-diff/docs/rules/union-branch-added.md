@@ -9,7 +9,7 @@ oneOf/anyOf branch added
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `union-branch-added` (both directions), `union-branch-added-in-request`, `union-branch-added-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,27 @@ In requests: more values are valid. In responses: clients receive a variant they
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`union-branch-added`](../../test/cases/union-branch-added/): A oneOf branch added to a response: clients may get a variant they do not handle.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
++       - $ref: '#/components/schemas/Bird'
+      Cat:
+        type: object
+```
+
+Findings:
+
+- `union-branch-added-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

@@ -9,7 +9,7 @@ Type changed incompatibly
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `error` in responses |
 | **Rule IDs** | `type-changed` (both directions), `type-changed-in-request`, `type-changed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,30 @@ Clients send or parse the old type and fail in both directions.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`type-changed`](../../test/cases/type-changed/): string → integer in a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        properties:
+          name:
+-           type: string
++           type: integer
+```
+
+Findings:
+
+- `type-changed-in-response` · error · #/components/schemas/Pet
+
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`schema-change-inline`](../../test/cases/schema-change-inline/) | `type-changed-in-request` · error · GET /pets | A schema written inline in an operation changed type: reported for that operation. |
+| [`type-changed`](../../test/cases/type-changed/) | `type-changed-in-response` · error · #/components/schemas/Pet | string → integer in a response. |
 
 ## Policy options
 

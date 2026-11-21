@@ -1,0 +1,9 @@
+description: Pet references Address. A change inside Address is reported for Address only, not again for Pet.
+milestone: M5
+findings:
+  - rule: min-length-increased-in-request
+    severity: error
+    subject: '#/components/schemas/Address'
+  - rule: min-length-increased-in-response
+    severity: info
+    subject: '#/components/schemas/Address'

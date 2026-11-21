@@ -116,7 +116,7 @@ test('each side can come from a different repository', async () => {
   git(other, 'commit', '-q', '-m', 'o');
   const r = await compareInputs(parseInput('main:../other/openapi.yaml', repo), parseInput('api/openapi.yaml', repo), repo);
   assert.equal(r.compared.base.file, 'main:../other/openapi.yaml');
-  assert.deepEqual(rules(r), ['operation-added']);
+  assert.deepEqual(rules(r), ['operation-added', 'title-changed']);
 });
 
 test('parseInput prefers an existing file and never reads a drive letter as a revision', () => {

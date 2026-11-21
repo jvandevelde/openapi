@@ -1,0 +1,6 @@
+description: A response enum was removed.
+milestone: M5
+findings:
+- rule: enum-removed-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

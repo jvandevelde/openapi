@@ -9,7 +9,7 @@ Discriminator mapping removed
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `discriminator-mapping-removed` (both directions), `discriminator-mapping-removed-in-request`, `discriminator-mapping-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,27 @@ In requests: clients sending that variant are rejected. In responses: clients st
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`discriminator-mapping-removed`](../../test/cases/discriminator-mapping-removed/): A discriminator value removed from a request.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          mapping:
+            cat: '#/components/schemas/Cat'
+-           dog: '#/components/schemas/Dog'
+      Cat:
+        type: object
+```
+
+Findings:
+
+- `discriminator-mapping-removed-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

@@ -9,7 +9,7 @@ minLength increased
 | **Kind** | `wire` |
 | **Default severity** | `error` in requests, `info` in responses |
 | **Rule IDs** | `min-length-increased` (both directions), `min-length-increased-in-request`, `min-length-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,29 @@ In requests: shorter strings are rejected. In responses: clients receive longer 
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`min-length-increased`](../../test/cases/min-length-increased/): minLength raised on a request string.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
++           minLength: 1
+```
+
+Findings:
+
+- `min-length-increased-in-request` · error · #/components/schemas/Pet
+
+## Test cases
+
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`min-length-increased`](../../test/cases/min-length-increased/) | `min-length-increased-in-request` · error · #/components/schemas/Pet | minLength raised on a request string. |
+| [`schema-change-root-cause`](../../test/cases/schema-change-root-cause/) | `min-length-increased-in-request` · error · #/components/schemas/Address<br>`min-length-increased-in-response` · info · #/components/schemas/Address | Pet references Address. A change inside Address is reported for Address only, not again for Pet. |
 
 ## Policy options
 

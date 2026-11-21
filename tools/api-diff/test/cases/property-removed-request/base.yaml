@@ -1,0 +1,26 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/pets':
+    post:
+      operationId: createPet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+      responses:
+        '201':
+          description: created
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer

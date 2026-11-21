@@ -9,7 +9,7 @@ Enum removed
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `enum-removed` (both directions), `enum-removed-in-request`, `enum-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,27 @@ In requests: more values are valid. In responses: clients written for the closed
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`enum-removed`](../../test/cases/enum-removed/): A response enum was removed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-           enum:
+-           - a
+-           - b
+```
+
+Findings:
+
+- `enum-removed-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

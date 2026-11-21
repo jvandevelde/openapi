@@ -1,0 +1,7 @@
+description: 'A readOnly property changes only matter in responses: a shared schema reports the change for the response direction
+  only.'
+milestone: M5
+findings:
+- rule: format-added-in-response
+  severity: info
+  subject: '#/components/schemas/Pet'

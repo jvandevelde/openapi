@@ -1,6 +1,6 @@
 description: A → B → C → A. A change deep inside the cycle is found.
 milestone: M5
 findings:
-- rule: format-added-in-response
-  severity: info
-  subject: '#/components/schemas/C'
+  - rule: format-added-in-response
+    severity: info
+    subject: '#/components/schemas/C'

@@ -1,0 +1,6 @@
+description: The discriminator property changed.
+milestone: M5
+findings:
+- rule: discriminator-property-changed-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

@@ -39,6 +39,17 @@ Findings:
 
 - `query-parameter-became-required` · error · GET /pets
 
+## Test cases
+
+4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`multi-file-ref`](../../test/cases/multi-file-ref/) | `query-parameter-became-required` · error · GET /pets | A parameter in another file, referenced by a relative $ref, became required. |
+| [`parameter-became-required`](../../test/cases/parameter-became-required/) | `query-parameter-became-required` · error · GET /pets | Optional → required. |
+| [`parameter-ref-changed`](../../test/cases/parameter-ref-changed/) | `query-parameter-became-required` · error · GET /pets | A shared parameter changed through its $ref target. |
+| [`path-level-parameters`](../../test/cases/path-level-parameters/) | `query-parameter-became-required` · error · GET /pets | Path-level parameters apply to every operation, and an operation can override them. |
+
 ## Policy options
 
 Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).

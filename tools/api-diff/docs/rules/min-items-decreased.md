@@ -9,7 +9,7 @@ minItems decreased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `min-items-decreased` (both directions), `min-items-decreased-in-request`, `min-items-decreased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: more arrays are valid. In responses: clients may receive shorter (e
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`min-items-decreased`](../../test/cases/min-items-decreased/): minItems lowered on a response array.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+            items:
+              type: string
+-           minItems: 2
++           minItems: 1
+```
+
+Findings:
+
+- `min-items-decreased-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

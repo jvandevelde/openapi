@@ -9,7 +9,7 @@ maxItems increased
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `warn` in responses |
 | **Rule IDs** | `max-items-increased` (both directions), `max-items-increased-in-request`, `max-items-increased-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,26 @@ In requests: more arrays are valid. In responses: clients may receive longer arr
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`max-items-increased`](../../test/cases/max-items-increased/): maxItems raised on a response array.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+            items:
+              type: string
+-           maxItems: 5
++           maxItems: 10
+```
+
+Findings:
+
+- `max-items-increased-in-response` · warn · #/components/schemas/Pet
+
+## Test cases
+
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

@@ -1,0 +1,6 @@
+description: "date-time \u2192 date in a response."
+milestone: M5
+findings:
+- rule: format-changed-in-response
+  severity: error
+  subject: '#/components/schemas/Pet'

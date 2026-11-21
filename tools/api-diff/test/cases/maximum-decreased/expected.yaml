@@ -1,0 +1,6 @@
+description: maximum lowered on a request number.
+milestone: M5
+findings:
+- rule: maximum-decreased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

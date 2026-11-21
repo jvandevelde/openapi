@@ -1,0 +1,6 @@
+description: 'An ''xml'' change has no rule yet: the safety net reports it once for the schema.'
+milestone: M5
+findings:
+- rule: unclassified-change
+  severity: warn
+  subject: '#/components/schemas/Pet'

@@ -1,0 +1,6 @@
+description: anyOf became oneOf.
+milestone: M5
+findings:
+- rule: union-kind-changed-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

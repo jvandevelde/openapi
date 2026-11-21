@@ -9,7 +9,7 @@ Property removed
 | **Kind** | `wire` |
 | **Default severity** | `warn` in requests, `error` in responses |
 | **Rule IDs** | `property-removed` (both directions), `property-removed-in-request`, `property-removed-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,31 @@ In requests: clients keep sending it; it is ignored, or rejected if the object d
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`property-removed`](../../test/cases/property-removed/): A property removed from a response.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          name:
+            type: string
+-         age:
+-           type: integer
+```
+
+Findings:
+
+- `property-removed-in-response` · error · #/components/schemas/Pet
+
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`property-removed`](../../test/cases/property-removed/) | `property-removed-in-response` · error · #/components/schemas/Pet | A property removed from a response. |
+| [`property-removed-closed-object`](../../test/cases/property-removed-closed-object/) | `property-removed-in-request` · error · #/components/schemas/Pet | A property removed from a request object that allows no other properties: clients still sending it are rejected. |
+| [`property-removed-request`](../../test/cases/property-removed-request/) | `property-removed-in-request` · warn · #/components/schemas/Pet | A property removed from a request: clients still send it, which the server ignores. |
 
 ## Policy options
 

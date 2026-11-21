@@ -1,0 +1,6 @@
+description: An optional request property became required.
+milestone: M5
+findings:
+- rule: property-became-required-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

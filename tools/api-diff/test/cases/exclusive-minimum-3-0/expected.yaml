@@ -1,0 +1,6 @@
+description: "3.0 boolean exclusiveMinimum and 3.1 numeric exclusiveMinimum: minimum 0 inclusive \u2192 exclusive is tighter."
+milestone: M5
+findings:
+- rule: minimum-increased-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

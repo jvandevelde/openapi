@@ -9,7 +9,7 @@ Type widened
 | **Kind** | `wire` |
 | **Default severity** | `info` in requests, `error` in responses |
 | **Rule IDs** | `type-widened` (both directions), `type-widened-in-request`, `type-widened-in-response` |
-| **Status** | Planned (M5) |
+| **Status** | Implemented (M5) |
 | **Group** | Schemas ([RULES.md section 7](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,31 @@ In requests: old values are still valid. In responses: clients parsing the old t
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`type-widened`](../../test/cases/type-widened/): integer → number in a response: clients parsing an int may fail.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+        properties:
+          name:
+-           type: integer
++           type: number
+```
+
+Findings:
+
+- `type-widened-in-response` · error · #/components/schemas/Pet
+
+## Test cases
+
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`cycle-not-productive`](../../test/cases/cycle-not-productive/) | `type-widened-in-response` · error · #/components/schemas/A | A: allOf [$ref A] describes nothing valid and is reported instead of looping. Its only consistent reading is "any value", so the type also widened. |
+| [`schema-ref-unresolved`](../../test/cases/schema-ref-unresolved/) | `type-widened-in-response` · error · #/components/schemas/Pet<br>`type-widened-in-request` · info · #/components/schemas/Pet | A $ref inside a schema that points nowhere: ref-unresolved, and the property is compared as an empty schema (type widened). |
+| [`type-widened`](../../test/cases/type-widened/) | `type-widened-in-response` · error · #/components/schemas/Pet | integer → number in a response: clients parsing an int may fail. |
 
 ## Policy options
 

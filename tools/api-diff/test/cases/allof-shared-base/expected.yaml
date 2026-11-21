@@ -1,0 +1,6 @@
+description: Dog and Cat both extend Base with allOf. A change in Base is reported once, for Base, with both operations.
+milestone: M5
+findings:
+- rule: max-length-decreased-in-response
+  severity: info
+  subject: '#/components/schemas/Base'

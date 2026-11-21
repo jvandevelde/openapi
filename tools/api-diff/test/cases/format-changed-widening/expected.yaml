@@ -1,0 +1,6 @@
+description: "int32 \u2192 int64 in a request is widening, so info."
+milestone: M5
+findings:
+- rule: format-changed-in-request
+  severity: info
+  subject: '#/components/schemas/Pet'

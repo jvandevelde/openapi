@@ -679,7 +679,7 @@ Out of scope at first: **webhooks and callbacks** (if a spec has them, a single 
 
 These need answers before M0 (1, 2, 5) or before M10 (6). 4 can wait until M7.
 
-1. **Language.** Proposal: **TypeScript on Node ≥ 22.18**, run directly with Node's built-in type stripping (no build step for development and tests; `tsc --noEmit` for type checks; `erasableSyntaxOnly`, so no `enum`s or namespaces), bundled with esbuild for publishing. Node 20 reached end of life in April 2026. Same ecosystem as `operation-ids`, matching `operation-ids` and using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go (like oasdiff and openapi-changes) would produce a single binary, but we'd need our own position-aware YAML handling.
+1. **Language.** Proposal: **TypeScript on Node ≥ 22.18**, run directly with Node's built-in type stripping (no build step for development and tests; `tsc --noEmit` for type checks; `erasableSyntaxOnly`, so no `enum`s or namespaces), bundled with esbuild for publishing. Node 20 reached end of life in April 2026. Same ecosystem as `operation-ids`, using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go (like oasdiff and openapi-changes) would produce a single binary, but we'd need our own position-aware YAML handling.
 2. **OpenAPI versions.** Proposal: 3.0, 3.1 and 3.2 from the start, using the normalise step.
 3. ~~**Default stance on ambiguous changes.**~~ **Decided:** see the **Decided** defaults in RULES.md.
 4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 5 that matters more to you, or one that's missing?

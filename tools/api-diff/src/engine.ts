@@ -3,8 +3,10 @@
 
 import { classify, severityAtLeast } from './classify/classify.ts';
 import { diffOperations } from './diff/operations.ts';
+import { diffSchemas } from './diff/schemas.ts';
+import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
-import { buildModel, InvalidSpecError, type Model } from './model/model.ts';
+import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
@@ -44,6 +46,10 @@ async function loadSide(input: OpenedInput, side: Side): Promise<LoadedSide> {
     model = buildModel(docs);
     compared.openapi = model.openapi;
     compared.version = model.infoVersion;
+    model.schemaIndex = SchemaIndex.build(docs, model.version, model.usages);
+    for (const n of model.schemaIndex.notices) {
+      changes.push({ rule: n.rule, subject: n.logical ?? SIDE_NAME[side], [side]: docs.location(n.at), details: { ...n.details, side } });
+    }
   } catch (e) {
     if (!(e instanceof InvalidSpecError)) throw e;
     changes.push({ rule: 'spec-invalid', subject: SIDE_NAME[side], [side]: docs.location({ file: docs.root, segs: [] }), details: { reason: `${compared.file}: ${e.message}`, side } });
@@ -56,7 +62,11 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   const profile = opts.profile ?? 'wire';
   const [b, r] = await Promise.all([loadSide(base, 'base'), loadSide(revision, 'revision')]);
   const changes: Change[] = [...b.changes, ...r.changes];
-  if (b.model && r.model) changes.push(...diffOperations(b.model, r.model));
+  if (b.model && r.model) {
+    const pairs: [Operation, Operation][] = [];
+    changes.push(...diffOperations(b.model, r.model, pairs));
+    changes.push(...diffSchemas(b.model, r.model, pairs));
+  }
   const findings = classify(changes, { profile });
   return {
     schemaVersion: 0,

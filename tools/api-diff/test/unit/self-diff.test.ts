@@ -30,7 +30,8 @@ const pathItem = fc.dictionary(fc.constantFrom('get', 'put', 'post', 'delete'), 
 const spec = fc.record({
   openapi: fc.constantFrom('3.0.3', '3.1.0', '3.2.0'),
   info: fc.constant({ title: 't', version: '1' }),
-  paths: fc.dictionary(fc.stringMatching(/^\/[a-z]{1,6}(\/\{[a-z]{1,4}\})?$/), pathItem, { maxKeys: 4 }),
+  // Valid specs only: no two templates that differ only in parameter names (/a/{x} and /a/{y}).
+  paths: fc.dictionary(fc.stringMatching(/^\/[a-z]{1,6}(\/\{[a-z]{1,4}\})?$/), pathItem, { maxKeys: 4 }).filter((p) => new Set(Object.keys(p).map((k) => k.replace(/\{[^}]*\}/g, '{}'))).size === Object.keys(p).length),
   components: fc.constant({ securitySchemes: { apiKey: { type: 'apiKey', in: 'header', name: 'X-Key' }, oauth: { type: 'oauth2', flows: { implicit: { authorizationUrl: 'https://a', scopes: {} } } } } }),
 });
 
@@ -42,7 +43,9 @@ function reverseKeys(v: unknown): unknown {
 }
 
 /** Path parameters every template needs, so specs are valid. */
-function withPathParams(s: { paths: Record<string, Record<string, { parameters?: unknown[] }>> }): typeof s {
+function withPathParams(input: { paths: Record<string, Record<string, { parameters?: unknown[] }>> }): typeof input {
+  // Clone: fast-check reuses generated values while shrinking, so mutating them in place corrupts later runs.
+  const s = structuredClone(input);
   for (const [path, item] of Object.entries(s.paths)) {
     const names = [...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
     for (const op of Object.values(item)) op.parameters = [...(op.parameters ?? []), ...names.map((n) => ({ name: n, in: 'path', required: true, schema: { type: 'string' } }))];
@@ -60,7 +63,7 @@ test('a spec compared with itself has no findings', async () => {
       const r = await compare(text, 'a.yaml', text, 'b.yaml');
       assert.deepEqual(r.findings, [], text);
     }),
-    { numRuns: 150 },
+    { numRuns: 300 },
   );
 });
 
@@ -71,6 +74,6 @@ test('key order and JSON vs YAML make no difference', async () => {
       const r = await compare(dump(v), 'a.yaml', JSON.stringify(reverseKeys(v)), 'b.json');
       assert.deepEqual(r.findings, []);
     }),
-    { numRuns: 150 },
+    { numRuns: 300 },
   );
 });

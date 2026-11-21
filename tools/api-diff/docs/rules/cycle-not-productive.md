@@ -9,7 +9,7 @@ Cycle with no property or items step
 | **Kind** | `wire` |
 | **Default severity** | `error` |
 | **Rule IDs** | `cycle-not-productive` |
-| **Status** | Planned (M4) |
+| **Status** | Implemented (M4) |
 | **Group** | Spec and engine notices ([RULES.md section 11](../../RULES.md)) |
 
 ## What it detects
@@ -22,7 +22,7 @@ Tools that expand it loop forever; the schema is meaningless.
 
 ## Example
 
-From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/): A: allOf [$ref A] describes nothing valid and is reported instead of looping.
+From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/): A: allOf [$ref A] describes nothing valid and is reported instead of looping. The change to A itself is unclassified until M5.
 
 `openapi.yaml`, base → revision:
 
@@ -37,6 +37,7 @@ From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/):
 
 Findings:
 
+- `unclassified-change` · warn · #/components/schemas/A
 - `cycle-not-productive` · error · #/components/schemas/A
 
 ## Policy options

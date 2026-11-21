@@ -27,7 +27,11 @@ export interface Notice {
   at?: Location;
 }
 
-export const encodePointer = (segs: readonly string[]): string => segs.map((s) => '/' + s.replace(/~/g, '~0').replace(/\//g, '~1')).join('');
+export function encodePointer(segs: readonly string[]): string {
+  let out = '';
+  for (const s of segs) out += '/' + (s.includes('~') || s.includes('/') ? s.replace(/~/g, '~0').replace(/\//g, '~1') : s);
+  return out;
+}
 
 export function decodePointer(fragment: string): string[] | undefined {
   if (fragment === '') return [];
@@ -205,19 +209,33 @@ export class DocumentSet {
   }
 }
 
-/** Calls `fn` for every `$ref` string in `root`, iteratively (no recursion limit). */
+interface Link {
+  parent: Link | null;
+  key: string;
+}
+
+/** Calls `fn` for every `$ref` string in `root`, iteratively (no recursion limit). Paths are only built for `$ref`s. */
 export function walkRefs(root: unknown, fn: (ref: string, segs: readonly string[]) => void): void {
-  const stack: { node: unknown; segs: string[] }[] = [{ node: root, segs: [] }];
-  while (stack.length) {
-    const { node, segs } = stack.pop()!;
+  const nodes: unknown[] = [root];
+  const links: (Link | null)[] = [null];
+  while (nodes.length) {
+    const node = nodes.pop();
+    const link = links.pop()!;
     if (Array.isArray(node)) {
-      for (let i = 0; i < node.length; i++) if (node[i] !== null && typeof node[i] === 'object') stack.push({ node: node[i], segs: [...segs, String(i)] });
+      for (let i = 0; i < node.length; i++) {
+        const v = node[i];
+        if (v !== null && typeof v === 'object') nodes.push(v), links.push({ parent: link, key: String(i) });
+      }
     } else if (node !== null && typeof node === 'object') {
       const obj = node as Record<string, unknown>;
-      if (typeof obj.$ref === 'string') fn(obj.$ref, segs);
-      for (const k of Object.keys(obj)) {
+      if (typeof obj.$ref === 'string') {
+        const segs: string[] = [];
+        for (let x: Link | null = link; x; x = x.parent) segs.push(x.key);
+        fn(obj.$ref, segs.reverse());
+      }
+      for (const k in obj) {
         const v = obj[k];
-        if (v !== null && typeof v === 'object') stack.push({ node: v, segs: [...segs, k] });
+        if (v !== null && typeof v === 'object') nodes.push(v), links.push({ parent: link, key: k });
       }
     }
   }

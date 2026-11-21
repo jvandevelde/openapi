@@ -2,6 +2,7 @@
 // `METHOD path-key`, with their effective parameters, request body,
 // responses, security and servers. `$ref`s are followed on demand.
 
+import type { SchemaIndex } from '../index/schema-index.ts';
 import { DocumentSet, isObject, type Ref } from '../load/documents.ts';
 import { detectVersion, mediaTypeKey, pathKey, pathParamNames, statusKey, type OasVersion } from '../normalize/normalize.ts';
 import type { ParamLocation } from '../types.ts';
@@ -43,6 +44,15 @@ export interface Response {
   at: Ref;
 }
 
+/** A schema used directly by an operation. Keys are the same on both sides. */
+export interface SchemaUsage {
+  key: string;
+  /** e.g. `query parameter 'limit'` or `response 200 (application/json)`. */
+  label: string;
+  direction: 'in' | 'out';
+  at: Ref;
+}
+
 /** One security requirement: scheme name → required scopes. */
 export type Requirement = Map<string, string[]>;
 
@@ -64,6 +74,7 @@ export interface Operation {
   serversLevel: 'operation' | 'path' | 'document';
   serversAt: Ref;
   hasCallbacks: boolean;
+  schemas: Map<string, SchemaUsage>;
   at: Ref;
 }
 
@@ -83,6 +94,10 @@ export interface Model {
   documentServersAt: Ref;
   hasWebhooks: boolean;
   docs: DocumentSet;
+  /** Every schema usage of every operation, for the schema index. */
+  usages: Ref[];
+  /** Built by the engine after the model. */
+  schemaIndex?: SchemaIndex;
 }
 
 export class InvalidSpecError extends Error {}
@@ -121,6 +136,7 @@ export function buildModel(docs: DocumentSet): Model {
     documentServersAt: rootRef('servers'),
     hasWebhooks: isObject(d.webhooks) && Object.keys(d.webhooks).length > 0,
     docs,
+    usages: [],
   };
 
   const components = isObject(d.components) ? d.components : {};
@@ -132,7 +148,8 @@ export function buildModel(docs: DocumentSet): Model {
   }
 
   const paths = isObject(d.paths) ? d.paths : {};
-  for (const path of Object.keys(paths)) {
+  // Sorted, so when two templates clash (/a/{x} and /a/{y}) the same one is kept whatever the key order.
+  for (const path of Object.keys(paths).sort()) {
     const pr = docs.deref(rootRef('paths', path));
     if (!pr || !isObject(pr.value)) continue;
     const item = pr.value;
@@ -171,6 +188,10 @@ export function buildModel(docs: DocumentSet): Model {
       const serversAt = opServers ? { file: opRef.file, segs: [...opRef.segs, 'servers'] } : pathServers ? { file: itemRef.file, segs: [...itemRef.segs, 'servers'] } : rootRef('servers');
 
       const hasOwnSecurity = Array.isArray(op.security);
+      const requestBody = buildBody(docs, op.requestBody, { file: opRef.file, segs: [...opRef.segs, 'requestBody'] });
+      const responses = buildResponses(docs, op.responses, { file: opRef.file, segs: [...opRef.segs, 'responses'] });
+      const schemas = schemaUsages(docs, params, requestBody, responses);
+      for (const u of schemas.values()) model.usages.push(u.at);
       model.operations.set(key, {
         key,
         method,
@@ -180,14 +201,15 @@ export function buildModel(docs: DocumentSet): Model {
         tags: Array.isArray(op.tags) ? op.tags.map(String) : [],
         pathParams,
         params,
-        requestBody: buildBody(docs, op.requestBody, { file: opRef.file, segs: [...opRef.segs, 'requestBody'] }),
-        responses: buildResponses(docs, op.responses, { file: opRef.file, segs: [...opRef.segs, 'responses'] }),
+        requestBody,
+        responses,
         security: hasOwnSecurity ? requirements(op.security) : docSecurity,
         securityAt: hasOwnSecurity ? { file: opRef.file, segs: [...opRef.segs, 'security'] } : rootRef('security'),
         servers,
         serversLevel,
         serversAt,
         hasCallbacks: isObject(op.callbacks) && Object.keys(op.callbacks).length > 0,
+        schemas,
         at: opRef,
       });
     }
@@ -263,6 +285,28 @@ function buildResponses(docs: DocumentSet, v: unknown, at: Ref): Map<string, Res
       headers,
       at: r.ref,
     });
+  }
+  return out;
+}
+
+/** Schema locations used by an operation: parameters, request body media types, response media types and headers. */
+function schemaUsages(docs: DocumentSet, params: Map<string, Param>, body: Body | undefined, responses: Map<string, Response>): Map<string, SchemaUsage> {
+  const out = new Map<string, SchemaUsage>();
+  const add = (key: string, label: string, direction: 'in' | 'out', holder: Ref): void => {
+    const at: Ref = { file: holder.file, segs: [...holder.segs, 'schema'] };
+    const v = docs.value(at);
+    if (v !== undefined && (typeof v === 'boolean' || isObject(v))) out.set(key, { key, label, direction, at });
+  };
+  for (const p of params.values()) {
+    const label = `${p.in} parameter '${p.name}'`;
+    const content = (docs.value(p.at) as Record<string, unknown>).content;
+    if (isObject(content)) for (const mt of Object.keys(content)) add(`param:${p.key}:${mediaTypeKey(mt)}`, `${label} (${mt})`, 'in', { file: p.at.file, segs: [...p.at.segs, 'content', mt] });
+    else add(`param:${p.key}`, label, 'in', p.at);
+  }
+  if (body) for (const [mt, at] of body.content) add(`request:${mt}`, `request body (${mt})`, 'in', at);
+  for (const [status, r] of responses) {
+    for (const [mt, at] of r.content) add(`response:${status}:${mt}`, `response ${r.status} (${mt})`, 'out', at);
+    for (const [name, h] of r.headers) add(`response-header:${status}:${name}`, `response ${r.status} header '${h.name}'`, 'out', h.at);
   }
   return out;
 }

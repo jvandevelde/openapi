@@ -2,7 +2,7 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M3.** Operation-level changes are compared: paths, operations, security, parameters, request bodies and responses (42 rules). Schema-level changes (properties, types, enums…) arrive in M5. See [PLAN.md](PLAN.md) for the roadmap, [RULES.md](RULES.md) for every rule, and [decision-records/](decision-records/README.md) for the decisions behind them.
+> **Status: milestone M4.** Operation-level changes are compared: paths, operations, security, parameters, request bodies and responses. Schemas are indexed (recursive schemas are safe), and every schema change is reported as `unclassified-change` until the schema rules that classify property, type and enum changes arrive in M5. See [PLAN.md](PLAN.md) for the roadmap, [RULES.md](RULES.md) for every rule, and [decision-records/](decision-records/README.md) for the decisions behind them.
 
 ## Requirements
 

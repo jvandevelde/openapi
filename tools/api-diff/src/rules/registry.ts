@@ -8,7 +8,7 @@ import type { Change, Kind, Severity } from '../types.ts';
 export type Milestone = 3 | 4 | 5 | 6 | 8;
 
 /** The milestone the code currently implements. */
-export const CURRENT_MILESTONE = 3;
+export const CURRENT_MILESTONE = 4;
 
 export interface RuleMeta {
   id: string;
@@ -45,7 +45,12 @@ const rule = (m: RuleMeta): void => {
 rule({ id: 'schema-narrowed', section: 1, kind: 'wire', title: 'The schema accepts fewer values', severity: { in: 'error', out: 'info' }, variants: 'direction', milestone: 5, message: () => 'schema accepts fewer values' });
 rule({ id: 'schema-widened', section: 1, kind: 'wire', title: 'The schema accepts more values', severity: { in: 'info', out: 'warn' }, variants: 'direction', milestone: 5, message: () => 'schema accepts more values' });
 rule({ id: 'schema-incompatible', section: 1, kind: 'wire', title: 'The schema is neither a subset nor a superset', severity: { in: 'error', out: 'error' }, variants: 'direction', milestone: 5, message: () => 'schema changed incompatibly' });
-rule({ id: 'unclassified-change', section: 1, kind: 'wire', title: 'The shape changed but no rule matched', severity: 'warn', milestone: 4, message: () => 'change not classified by any rule' });
+rule({ id: 'unclassified-change', section: 1, kind: 'wire', title: 'The shape changed but no rule matched', severity: 'warn', milestone: 4, message: (c) => {
+  const changed = Array.isArray(c.details.changed) ? (c.details.changed as string[]) : [];
+  const shown = changed.slice(0, 4).join(', ') + (changed.length > 4 ? `, … (${changed.length} in all)` : '');
+  const where = d(c, 'where') === c.subject ? 'schema' : `${d(c, 'where')} schema`;
+  return `${where} changed at ${shown || '/'} (no rule classifies this change yet)`;
+} });
 
 // 2. Paths and operations
 rule({ id: 'operation-added', section: 2, kind: 'wire', title: 'New operation', severity: 'info', milestone: 3, message: () => 'operation added' });
@@ -193,7 +198,7 @@ for (const [id, title] of [
 // 11. Spec and engine notices
 rule({ id: 'spec-invalid', section: 11, kind: 'wire', title: 'Document failed to load or validate', severity: 'error', milestone: 3, message: (c) => d(c, 'reason') });
 rule({ id: 'ref-unresolved', section: 11, kind: 'wire', title: '$ref points nowhere', severity: 'error', milestone: 3, message: (c) => `$ref '${d(c, 'ref')}' can't be resolved${c.details.reason ? `: ${d(c, 'reason')}` : ''}` });
-rule({ id: 'cycle-not-productive', section: 11, kind: 'wire', title: 'Cycle with no property or items step', severity: 'error', milestone: 4, message: () => 'cycle has no property or items step' });
+rule({ id: 'cycle-not-productive', section: 11, kind: 'wire', title: 'Cycle with no property or items step', severity: 'error', milestone: 4, message: (c) => `schema cycle ${(c.details.cycle as string[]).join(' → ')} has no property or items step, so it describes no valid value` });
 rule({ id: 'not-compared', section: 11, kind: 'wire', title: "Parts of the spec that weren't compared", severity: 'info', milestone: 3, message: (c) => `${d(c, 'what')} not compared` });
 
 export const RULES: readonly RuleMeta[] = R;

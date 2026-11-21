@@ -22,7 +22,8 @@ function push(ctx: Ctx, c: Omit<Change, 'details'> & { details?: Record<string, 
   ctx.out.push({ details: {}, ...c });
 }
 
-export function diffOperations(base: Model, rev: Model): Change[] {
+/** @param pairs receives every matched pair of operations, for later stages. */
+export function diffOperations(base: Model, rev: Model, pairs: [Operation, Operation][] = []): Change[] {
   const ctx: Ctx = { base, rev, out: [] };
   diffDocumentServers(ctx);
   diffSecuritySchemes(ctx);
@@ -33,6 +34,7 @@ export function diffOperations(base: Model, rev: Model): Change[] {
     const r = rev.operations.get(key);
     if (r) {
       added.delete(key);
+      pairs.push([b, r]);
       diffOperation(ctx, b, r, false);
     } else removed.push(b);
   }
@@ -45,6 +47,7 @@ export function diffOperations(base: Model, rev: Model): Change[] {
     if (r && added.has(r.key)) {
       added.delete(r.key);
       push(ctx, { rule: 'operation-path-changed', subject: opSubject(r), base: bLoc(ctx, b.at), revision: rLoc(ctx, r.at), details: { from: b.path, to: r.path, operationId: b.operationId } });
+      pairs.push([b, r]);
       diffOperation(ctx, b, r, true);
     } else {
       push(ctx, { rule: 'operation-removed', subject: opSubject(b), base: bLoc(ctx, b.at) });

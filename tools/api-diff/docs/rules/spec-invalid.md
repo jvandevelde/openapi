@@ -22,29 +22,38 @@ Parts of the spec can't be compared, so the result can't be trusted.
 
 ## Example
 
-From test case [`spec-invalid-swagger`](../../test/cases/spec-invalid-swagger/): Swagger 2.0 is not supported.
+From test case [`path-template-clash`](../../test/cases/path-template-clash/): Two templates that differ only in parameter names are the same path, which is invalid. The same template is kept whatever the key order.
 
 `openapi.yaml`, base → revision:
 
 ```diff
-- openapi: 3.1.0
-+ swagger: '2.0'
-  info:
-    title: Pets
--   version: 1.0.0
-- paths:
--   '/pets':
--     get:
--       operationId: listPets
--       responses:
--         '200':
--           description: ok
-+   version: '1'
-+ paths: {}
+  …
+    version: 1.0.0
+  paths:
+-   '/pets/{a}':
++   '/pets/{b}':
+      get:
+        parameters:
+-       - name: a
++       - name: b
+          in: path
+          required: true
+  …
+          '200':
+            description: ok
+-   '/pets/{b}':
++   '/pets/{a}':
+      get:
+        parameters:
+-       - name: b
++       - name: a
+          in: path
+          required: true
 ```
 
 Findings:
 
+- `spec-invalid` · error · base document
 - `spec-invalid` · error · revision document
 
 ## Policy options

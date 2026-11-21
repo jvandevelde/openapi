@@ -41,7 +41,7 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
     fix: 'Add a new field or operation with the new schema instead of changing the existing one.',
   },
   'unclassified-change': {
-    description: "Safety net: a node's shape hash changed, but no rule produced a finding for it.",
+    description: "Safety net: a schema's shape changed, but no rule produced a finding for it. Reported once per schema root (a component schema, another `$ref` target, or a schema written inline in an operation) with the JSON Pointers that changed inside it. A shared schema is reported once, with the operations that use it, and only where the change is: a change inside `Address` is reported for `Address`, not for every schema that references it. Annotations (`description`, examples, `x-` extensions) are not shape. Until the schema rules arrive in M5, every schema change is reported this way.",
     why: "The change might matter, and no rule has decided it doesn't. Every occurrence points at a missing rule.",
     fix: 'Check the change by hand. If it is safe, acknowledge the finding; either way, report it so a rule can be added.',
   },

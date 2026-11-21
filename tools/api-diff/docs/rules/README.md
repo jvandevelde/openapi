@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 127 rules, with their default severities. 44 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 127 rules, with their default severities. 46 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -13,7 +13,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`schema-narrowed`](schema-narrowed.md) | wire | error / info | M5 | The schema accepts fewer values |
 | [`schema-widened`](schema-widened.md) | wire | info / warn | M5 | The schema accepts more values |
 | [`schema-incompatible`](schema-incompatible.md) | wire | error / error | M5 | The schema is neither a subset nor a superset |
-| [`unclassified-change`](unclassified-change.md) | wire | warn | M4 | The shape changed but no rule matched |
+| [`unclassified-change`](unclassified-change.md) | wire | warn | M4 ✅ | The shape changed but no rule matched |
 
 ## 2. Paths and operations
 
@@ -185,7 +185,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 |---|---|---|---|---|
 | [`spec-invalid`](spec-invalid.md) | wire | error | M3 ✅ | Document failed to load or validate |
 | [`ref-unresolved`](ref-unresolved.md) | wire | error | M3 ✅ | $ref points nowhere |
-| [`cycle-not-productive`](cycle-not-productive.md) | wire | error | M4 | Cycle with no property or items step |
+| [`cycle-not-productive`](cycle-not-productive.md) | wire | error | M4 ✅ | Cycle with no property or items step |
 | [`not-compared`](not-compared.md) | wire | info | M3 ✅ | Parts of the spec that weren't compared |
 
 Default `in / out`: severity for data clients send (requests) / receive (responses). `(sdk: …)`: severity under `--profile sdk`.

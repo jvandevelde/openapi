@@ -1,0 +1,6 @@
+description: Pet references Address. A change inside Address is reported for Address only, not again for Pet or the operations.
+milestone: M4
+findings:
+- rule: unclassified-change
+  severity: warn
+  subject: '#/components/schemas/Address'

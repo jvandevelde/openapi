@@ -36,7 +36,17 @@ export function detectFormat(name: string, text: string): Format {
 
 export function parse(text: string, name: string, format: Format = detectFormat(name, text)): Parsed {
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-  return format === 'json' ? parseJson(text) : parseYaml(text, name);
+  try {
+    return format === 'json' ? parseJson(text) : parseYaml(text, name);
+  } catch (e) {
+    // The YAML and JSON parsers recurse, so very deep literal nesting overflows the stack
+    // (about 1,600 levels for YAML, 3,600 for JSON). Recursive $ref schemas are not affected.
+    // See decision record 2026-11-21T0619-deeply-nested-files.
+    if (e instanceof RangeError && /call stack/i.test(e.message)) {
+      throw new ParseError(`the ${format === 'json' ? 'JSON' : 'YAML'} is nested too deeply to parse (more than about ${format === 'json' ? '3,600' : '1,600'} levels)`);
+    }
+    throw e;
+  }
 }
 
 function lineColAt(text: string, offset: number): { line: number; column: number } {

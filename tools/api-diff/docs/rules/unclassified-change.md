@@ -9,12 +9,12 @@ The shape changed but no rule matched
 | **Kind** | `wire` |
 | **Default severity** | `warn` |
 | **Rule IDs** | `unclassified-change` |
-| **Status** | Planned (M4) |
+| **Status** | Implemented (M4) |
 | **Group** | Core variance rules (fallbacks) ([RULES.md section 1](../../RULES.md)) |
 
 ## What it detects
 
-Safety net: a node's shape hash changed, but no rule produced a finding for it.
+Safety net: a schema's shape changed, but no rule produced a finding for it. Reported once per schema root (a component schema, another `$ref` target, or a schema written inline in an operation) with the JSON Pointers that changed inside it. A shared schema is reported once, with the operations that use it, and only where the change is: a change inside `Address` is reported for `Address`, not for every schema that references it. Annotations (`description`, examples, `x-` extensions) are not shape. Until the schema rules arrive in M5, every schema change is reported this way.
 
 ## Why this default
 
@@ -22,7 +22,23 @@ The change might matter, and no rule has decided it doesn't. Every occurrence po
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`cycle-not-productive`](../../test/cases/cycle-not-productive/): A: allOf [$ref A] describes nothing valid and is reported instead of looping. The change to A itself is unclassified until M5.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+    schemas:
+      A:
+-       type: object
++       allOf:
++       - $ref: '#/components/schemas/A'
+```
+
+Findings:
+
+- `unclassified-change` · warn · #/components/schemas/A
+- `cycle-not-productive` · error · #/components/schemas/A
 
 ## Policy options
 

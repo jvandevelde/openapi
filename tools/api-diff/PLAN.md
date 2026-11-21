@@ -210,7 +210,7 @@ jobs:
 
 **What stays outside the core.** Workflows that need more than reading files go in a separate `git` module of the CLI, not the engine:
 
-- **History mode:** `api-diff history v1.0..HEAD openapi.yaml` lists the commits that touched the spec and its `$ref` files (`git log --follow`), then compares each consecutive pair (backlog).
+- **History mode:** `api-diff history v1.0..HEAD openapi.yaml` builds a timeline of changes between two commits (see *Timeline (history mode)* in section 5).
 - **Changed specs in a monorepo:** `api-diff changed main...` finds the spec files a branch touched and compares each one.
 
 The library API takes a document source, so other callers (an editor plugin, a test) can supply their own, e.g. in-memory documents, without git.
@@ -502,6 +502,74 @@ revision  orders.yaml  v1.5.0 (x-api-version)  build 845  commit c7f3e1a
 advice    major bump needed (2 breaking changes); revision is a minor bump
 ```
 
+### Timeline (history mode)
+
+`api-diff history <start>..<end> <spec>` shows how a spec changed **step by step** between two commits, not just the net difference.
+
+```sh
+api-diff history v1.4.0..HEAD openapi.yaml
+api-diff history v1.4.0..v2.0.0 openapi.yaml --report timeline:html:timeline.html
+```
+
+#### How it's generated
+
+1. **Resolve the range.** `<start>` and `<end>` are any git revisions. `<start>` is the starting point (step 0), and every later version up to `<end>` becomes a step.
+2. **List candidate commits** with `git log --first-parent --reverse <start>..<end> -- <paths>`, where `<paths>` is every file in the spec's `$ref` closure at `<start>` and at `<end>`, so changes to a referenced schema file count too. `--follow` tracks a renamed root file.
+   - **`--first-parent` by default:** only the mainline, so each merged PR is one step and work-in-progress commits on branches don't clutter the timeline. `--all-commits` includes every commit.
+   - `--tags-only` keeps only commits that have a tag, for a release-to-release timeline.
+3. **Drop commits that didn't change the spec.** For each candidate, compute a fingerprint: the git blob SHAs of every file in the spec's `$ref` closure at that commit. If it matches the previous step, the commit only touched unrelated files (or files that were later dropped from the closure), so it's skipped. This also catches referenced files added or removed over time, which a fixed path list can miss.
+4. **Compare each consecutive pair** (step *n−1* → step *n*) with the normal engine and policy. Each version is parsed **once** and its index is cached by blob SHA, so *N* steps cost *N+1* parses, not *2N*. Unchanged subtrees are skipped by hash, so most steps are cheap after parsing. Parsing runs in parallel worker threads.
+5. **Also compare start → end** for the **net** result. This is not the sum of the steps: a change made and then reverted shows up in two steps but not in the net result.
+6. **Link findings across steps.** Findings have stable identities (kind + location, following renames), so the timeline can tell when a change was **introduced**, **changed again** or **reverted**, e.g. "removed in #420, restored in #431".
+7. **Attach commit details** to each step: SHA, date, author, subject, PR number (from the merge message or a trailing `(#123)`), tags pointing at the commit (`git tag --points-at`), and the recorded versions (see *Versions compared*), so version bumps and `version-bump-too-small` show on the step where they happen.
+
+Large ranges: a spec that changed in 200 commits means about 200 parses, roughly 50 s for an 8 MB YAML spec on one core, and less with workers and the persistent index cache. `--max-steps` and `--tags-only` keep it bounded.
+
+#### Text output
+
+```
+api-diff history  openapi.yaml  v1.4.0 (9d4a736) → HEAD (c7f3e1a)
+12 steps · 3 releases · net: 1 error, 4 warn, 27 info
+
+2026-09-02  a1b2c3d  #412 Add refunded status              v1.4.0 → v1.4.1
+            WARN   enum value 'refunded' added to Order.status   out · 14 ops
+            INFO   description changed ×3
+2026-09-10  d4e5f6a  #420 Remove legacy export             v1.4.1 → v1.5.0
+            ERROR  operation removed: GET /exports/{id}          ↺ restored in #431
+            WARN   version-bump-too-small (minor, but 1 breaking change)
+── tag v1.5.0 ─────────────────────────────────────────────────────────
+2026-09-15  0f9e8d7  #431 Revert "Remove legacy export"    v1.5.0 → v1.5.1
+            INFO   operation added: GET /exports/{id}            ↺ reverts #420
+...
+Net (v1.4.0 → HEAD): 1 error, 4 warn, 27 info   (2 changes reverted within the range)
+```
+
+#### HTML output
+
+One self-contained file, like the `explore` report:
+
+- **Timeline strip** across the top: one marker per step along a date axis, coloured by the step's worst severity, sized by its number of changes, and split into `wire` / `sdk` / `docs`. Release tags are vertical lines with their names. Hovering shows the commit subject and counts.
+- **Step panel:** clicking a marker shows that step's findings, grouped and filtered the same way as `explore`, with links to the commit and PR.
+- **Net / steps toggle:** switch between the net start → end result and the step-by-step view. Reverted pairs are joined by a line in the strip.
+- **Element history:** pick any operation, component or property (search or click from a finding) to see its own row of every change to it across the range: "when did `Order.status` lose `archived`, and in which PR?" Renames keep the same row.
+- **Filters** apply to the strip and the panels together: severity, kind, path, tag, owner, and the report's exclusions.
+
+#### JSON output
+
+```jsonc
+{
+  "range": { "start": { "rev": "v1.4.0", "commit": "9d4a736…" }, "end": { "rev": "HEAD", "commit": "c7f3e1a…" } },
+  "steps": [
+    { "commit": "a1b2c3d…", "date": "2026-09-02", "author": "…", "subject": "Add refunded status",
+      "pr": 412, "tags": [], "versions": { "base": "1.4.0", "revision": "1.4.1" },
+      "counts": { "error": 0, "warn": 1, "info": 3 }, "findings": ["f-91c2…", "…"] }
+  ],
+  "findings": { "f-91c2…": { /* change record, as in a normal report */ } },
+  "links": [ { "finding": "f-77aa…", "revertedBy": "f-3b10…" } ],
+  "net": { /* the normal start → end result object */ }
+}
+```
+
 ### Output formats
 
 Only three: **`json`**, **`txt`** and **`html`**. Every report supports `json`, and the table lists the others each one supports.
@@ -552,7 +620,7 @@ api-diff base.yaml rev.yaml \
 | **1. Skeleton** | Filesystem and git document sources (`rev:path`, merge-base, shallow-clone detection). load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`, `--state`. | Phase 1 cases pass. |
 | **2. Schema engine** | Effective-schema merge (allOf), variance classifier, oneOf/anyOf branch matching, `$ref` root-cause aggregation. | All schema cases pass, and each shared-component change appears once. |
 | **3. Policy & CI** | Policy file, acknowledgements, source maps. The `ci` and `review` reports, `summary`. | Usable as a required PR check. |
-| **4. Presentation** | The `explore` HTML report, `changelog` (with redaction), `sdk`, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to the output of the tools in section 1. |
+| **4. Presentation** | The `explore` HTML report, the history timeline, `changelog` (with redaction), `sdk`, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to the output of the tools in section 1. |
 | **5. Governance & consumers** | `audit`, custom reports and templates, consumer impact reports (`--uses`). | Release notes and governance reviews use it without manual editing. |
 
 Out of scope at first: **webhooks and callbacks** (if a spec has them, a single `info` notice says they weren't compared, so nothing is skipped silently; the direction model allows them to be added later by flipping direction), Swagger 2.0, external (`http://`) refs, specs split across many files (`--composed`), translations.
@@ -605,7 +673,6 @@ Ideas aimed at large enterprise specs. None of the tools in section 1 document t
 | **Editor integration (LSP)** | Run the engine as a language server against `main`, so breaking changes show up as editor warnings while the spec is edited, before a PR exists. The engine is pure functions, so this is mostly a wrapper. | high / medium |
 | **`api-diff explain <finding-id>`** | Prints the full reasoning for one finding: the rule, the usages, where the severity came from, the counter-example and the fix. | medium / low |
 | **Rule plugins** | Custom rules written in TypeScript against the change-record API, tested with the same `base/revision/expected` corpus format as the built-in rules. Covers house rules such as "every list operation must keep its pagination parameters". | high / medium |
-| **History mode** | `api-diff history v1.0..HEAD openapi.yaml` compares each consecutive pair of commits that touched the spec, and the `explore` report shows a timeline of when each change landed (idea from openapi-changes). Cheap with the cached index. | medium / medium |
 | **Lint only what changed** | Rule plugins can declare `scope: changed`, so house rules apply only to new and changed parts and legacy parts don't block a PR. | high / low |
 | **Watch mode** | `api-diff --watch` re-runs on save. Cheap with the cached base index. | low / low |
 

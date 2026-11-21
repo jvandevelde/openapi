@@ -399,3 +399,53 @@ Out of scope at first: **webhooks and callbacks** (if a spec has them, a single 
 3. **Default stance on ambiguous changes.** Examples: a new enum value in a response, a new optional request property where the server sets `additionalProperties: false`, a new required response header. Proposal: `warn` by default, and the policy can change it.
 4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 4 that matters more to you, or one that's missing?
 5. **Name.** `api-diff` is a placeholder.
+
+## 7. Further ideas (backlog)
+
+Ideas aimed at large enterprise specs. As far as I know, oasdiff doesn't have them and other common diff tools don't either, but none of this has been checked against every tool. Each idea has a rough value/effort rating so we can pick from it later. **★** marks the ones I'd do first.
+
+### Evidence and accuracy
+
+| Idea | What it does | Value / effort |
+|---|---|---|
+| **★ Counter-example payloads** | For each `wire` finding, generate a small JSON value that the old schema accepts and the new one rejects (for requests) or the other way round (for responses), e.g. `{"status": "archived"}`. Shown in reports and exportable as test fixtures. Proof that the change really breaks something, instead of only a rule saying so. | high / medium |
+| **Re-validate examples** | Check every `example`/`examples` in the base against the revision schema. An old example that no longer validates is a concrete breaking change, even if no rule caught it. | high / low |
+| **Constraint maths** | Treat `minimum`/`maximum`/`multipleOf`, `minLength`/`maxLength` and `minItems`/`maxItems` as intervals, so "narrowed" vs "widened" is exact. Compare simple `pattern` regexes by converting them to automata, and fall back to "can't tell" (`warn`) for complex ones. | medium / medium |
+| **Versioning-scheme aware matching** | Match `/v1/orders` in the base with `/v2/orders` in the revision, or match media-type versions (`application/vnd.acme.v2+json`), when a new version is published alongside the old one. Configured with a path or media-type template. | medium / low |
+
+### Large specs and noise
+
+| Idea | What it does | Value / effort |
+|---|---|---|
+| **★ Bulk-change collapsing** | The same change made in many places without a shared `$ref` (e.g. a new `X-Request-Id` header added inline to 300 operations) is grouped into **one** finding: "header added to 300 operations (list)". Detected by grouping change records by kind and normalised value. This extends root-cause grouping to copy-pasted specs. | high / low |
+| **★ Cached base index** | Store the parsed base's index and hashes in a content-addressed cache, keyed by the file's SHA-256. In CI the base (main) is usually unchanged between runs, so only the revision is parsed. | high / low |
+| **Spec quality side-report** | The hashes already find identical inline schemas, so list them ("this object appears inline 42 times; consider a component"). They're the root cause of the bulk changes above. | medium / low |
+| **Portfolio mode** | Compare many specs in one run, including shared schema files (`common/errors.yaml`) that several APIs reference. A change to a shared file reports **which APIs** it affects. This needs external file `$ref`s, which are out of scope for now. | high / high |
+
+### Ownership and governance
+
+| Idea | What it does | Value / effort |
+|---|---|---|
+| **★ Ownership routing** | Read owners from `x-owner` on operations or tags, or from a CODEOWNERS-style file mapping paths to teams. Each finding lists the owning teams, and reports can be split per team ("findings for @payments"). An acknowledgement can require an owner of the affected operations. | high / medium |
+| **Git blame for findings** | Using the source maps, find the commit and author that introduced each change in the revision file. Useful when one PR or release covers many commits. | medium / low |
+| **Deprecation ledger** | A standing report of everything deprecated: since which version, the sunset date, and overdue removals. It also checks that deprecated operations document the `Deprecation` and `Sunset` response headers (RFC 9745 / RFC 8594). | medium / low |
+| **Breaking-change budget** | A policy limit per release or per audience, e.g. "at most 0 breaking changes for `partner`, 3 for `internal`". | low / low |
+| **Usage-weighted severity** | Import call counts per operation (from gateway logs or analytics, as a simple CSV/JSON) and use them to rank findings or lower their severity: "removed operation had 0 calls in 30 days". | high / medium |
+
+### Developer experience
+
+| Idea | What it does | Value / effort |
+|---|---|---|
+| **Editor integration (LSP)** | Run the engine as a language server against `main`, so breaking changes show up as editor warnings while the spec is edited, before a PR exists. The engine is pure functions, so this is mostly a wrapper. | high / medium |
+| **`api-diff explain <finding-id>`** | Prints the full reasoning for one finding: the rule, the usages, where the severity came from, the counter-example and the fix. | medium / low |
+| **Rule plugins** | Custom rules written in TypeScript against the change-record API, tested with the same `base/revision/expected` corpus format as the built-in rules. Covers house rules such as "every list operation must keep its pagination parameters". | high / medium |
+| **Watch mode** | `api-diff --watch` re-runs on save. Cheap with the cached base index. | low / low |
+
+### Enterprise operation
+
+| Idea | What it does | Value / effort |
+|---|---|---|
+| **Offline and deterministic** | No network calls, no telemetry, byte-identical output for the same inputs. Works in air-gapped CI. | required / low |
+| **Example value redaction** | `example` values can contain real customer data. A config option masks example values in reports (keeps their type and shape). | medium / low |
+| **Signed reports** | The recorded hashes (files, policy, tool) plus a hash of the report, optionally signed, so audit records can be shown to be unchanged. | low / medium |
+| **Memory-lean index** | Intern strings and store graph edges in typed arrays, so very large specs (50 MB+) fit in CI runners with little memory. | medium / medium |

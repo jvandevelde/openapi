@@ -1,0 +1,12 @@
+description: 'Deprecated without a date, with undated-deprecation: block: the period cannot be checked, so the removal is an error.'
+milestone: M6
+options:
+  policy:
+    rules:
+      operation-removed:
+        unless:
+          undated-deprecation: block
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: DELETE /pets/{id}

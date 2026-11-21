@@ -9,7 +9,7 @@ Stability level decreased
 | **Kind** | `wire` |
 | **Default severity** | `error` |
 | **Rule IDs** | `stability-decreased` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Lifecycle and versions ([RULES.md section 9](../../RULES.md)) |
 
 ## What it detects
@@ -22,11 +22,28 @@ Clients relying on stability guarantees lose them.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`stability-decreased`](../../test/cases/stability-decreased/): stable to beta: clients relying on stability guarantees lose them, so error.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+      get:
+        operationId: getPet
+-       x-stability-level: stable
++       x-stability-level: beta
+        responses:
+          '200':
+```
+
+Findings:
+
+- `stability-decreased` · error · GET /pets/{id}
 
 ## Test cases
 
-_None yet._
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

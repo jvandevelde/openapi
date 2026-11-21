@@ -43,7 +43,7 @@ Findings:
 
 ## Test cases
 
-5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+7 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
@@ -52,6 +52,8 @@ Findings:
 | [`documents-unrelated-version-prefixes`](../../test/cases/documents-unrelated-version-prefixes/) | `operation-removed` · error · GET /billing/v1/invoices<br>`operation-removed` · error · GET /billing/v1/invoices/{invoiceId}<br>`operation-removed` · error · GET /orders/2024-01-01/orders<br>`operation-removed` · error · GET /users/v1/me<br>`operation-removed` · error · POST /orders/2024-01-01/orders | Several different prefixes, each with its own version segment (v1 → v2, 2024-01-01 → 2025-06-01), no operationIds or schemas and a new title. Version segments are dropped anywhere in the path, so the operations still match and the documents count as related; the diff reports the moved operations as usual. |
 | [`operation-path-changed-without-id`](../../test/cases/operation-path-changed-without-id/) | `operation-removed` · error · GET /pets/{id} | Without a matching operationId, a moved operation is removed + added. |
 | [`operation-removed`](../../test/cases/operation-removed/) | `operation-removed` · error · DELETE /pets/{id} | Removing an operation is an error. |
+| [`operation-removed-deprecated-too-short`](../../test/cases/operation-removed-deprecated-too-short/) | `operation-removed` · error · DELETE /pets/{id} | Deprecated on 2026-10-01, removed 51 days later: short of the 90-day period, so it is still operation-removed (error), and the message says by how much. |
+| [`operation-removed-undated-deprecation-blocked`](../../test/cases/operation-removed-undated-deprecation-blocked/) | `operation-removed` · error · DELETE /pets/{id} | Deprecated without a date, with undated-deprecation: block: the period cannot be checked, so the removal is an error. |
 
 ## Policy options
 
@@ -63,6 +65,7 @@ Options for this rule:
 |---|---|---|
 | `unless.deprecated-for-days` | `90` | Allow removal (as `operation-removed-after-deprecation`) once the operation has been deprecated this long. Can be set per stability level. |
 | `unless.past-sunset` | `true` | Allow removal once the operation's sunset date has passed. |
+| `unless.undated-deprecation` | `allow` | For an operation marked `deprecated` without a deprecation date: `allow` counts it as long enough, `block` keeps the removal an error. |
 
 ```yaml
 rules:

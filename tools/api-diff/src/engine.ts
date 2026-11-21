@@ -8,6 +8,8 @@ import { collapseBulk } from './diff/bulk.ts';
 import { diffDocs } from './diff/docs.ts';
 import { diffSchemaEngine } from './diff/schema-engine.ts';
 import { checkUnrelated, unrelatedOptions } from './diff/unrelated.ts';
+import { applyDeprecationPeriod, diffLifecycle, removalOptions, stabilityLevels, today, type LifecycleOptions } from './diff/lifecycle.ts';
+import { DEFAULT_LIFECYCLE } from './policy/context.ts';
 import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
@@ -23,6 +25,8 @@ export interface CompareOptions {
   /** Overrides the policy's profile. */
   profile?: Profile;
   policy?: Policy;
+  /** Reference date for deprecation periods and sunsets, `YYYY-MM-DD`; today (UTC) by default. */
+  asOf?: string;
   /** Both inputs are one file at two git revisions (`documents-unrelated` skips those unless `when: always`). */
   sameFile?: boolean;
 }
@@ -82,9 +86,11 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   if (unrelated) changes = [unrelated];
   else if (b.model && r.model) {
     const pairs: [Operation, Operation][] = [];
-    const diffs = [...diffOperations(b.model, r.model, pairs)];
+    const lc = lifecycleOptions(opts);
+    const diffs = applyDeprecationPeriod([...diffOperations(b.model, r.model, pairs)], b.model, lc);
+    diffs.push(...diffLifecycle(b.model, r.model, pairs, lc));
     diffs.push(...diffSchemaEngine(b.model, r.model, pairs));
-    diffs.push(...diffDocs(b.model, r.model, pairs));
+    diffs.push(...diffDocs(b.model, r.model, pairs, new Set([lc.lifecycle.stability, lc.lifecycle.deprecatedSince, lc.lifecycle.sunset])));
     changes.push(...collapseBulk(applyIgnore(diffs, b, r)), ...ignoredNotices(b, r));
   }
   const policy = opts.policy;
@@ -104,6 +110,16 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     state: stateOf(findings),
     counts: countFindings(findings),
     findings,
+  };
+}
+
+function lifecycleOptions(opts: CompareOptions): LifecycleOptions {
+  const p = opts.policy;
+  return {
+    lifecycle: p?.lifecycle ?? DEFAULT_LIFECYCLE,
+    levels: stabilityLevels(p?.rules.get('stability-decreased')?.options.levels),
+    removal: removalOptions(p?.rules.get('operation-removed')?.options.unless),
+    asOf: opts.asOf ?? today(),
   };
 }
 

@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { load } from 'js-yaml';
+import { removalOptions, stabilityLevels } from '../diff/lifecycle.ts';
 import { unrelatedOptions } from '../diff/unrelated.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { DEFAULT_LIFECYCLE, type LifecycleSettings } from './context.ts';
@@ -50,6 +51,7 @@ export const DEFAULT_POLICY_FILE = 'api-diff.yaml';
 
 const TOP_KEYS = ['version', 'profile', 'defaults', 'rules', 'overrides', 'extensions', 'lifecycle', 'exclusions', 'ignore', 'versions', 'reports'] as const;
 const DEFAULT_KEYS = ['fail-on', 'min-severity'] as const;
+const LIFECYCLE_KEYS = ['stability', 'default-stability', 'deprecated-since', 'sunset'] as const;
 const SETTING_KEYS = ['severity', 'fix', 'explanation'] as const;
 const SEVERITIES = ['error', 'warn', 'info', 'off'] as const;
 
@@ -109,20 +111,24 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
         if (!Array.isArray(v)) throw new PolicyError(`${at('overrides')}: must be a list`);
         policy.overrides = parseOverrides(v, file, (r, where) => parseRules(r, where, true), suggest);
         break;
-      case 'lifecycle': {
-        const lc = asObject(v, at('lifecycle'));
-        policy.raw[k] = lc;
-        if (lc.stability !== undefined) policy.lifecycle.stability = extensionName(lc.stability, at('lifecycle.stability'));
-        if (lc['default-stability'] !== undefined) {
-          if (typeof lc['default-stability'] !== 'string') throw new PolicyError(`${at('lifecycle.default-stability')}: must be text`);
-          policy.lifecycle.defaultStability = lc['default-stability'];
+      case 'lifecycle':
+        for (const [lk, lv] of Object.entries(asObject(v, at('lifecycle')))) {
+          const where = at(`lifecycle.${lk}`);
+          if (lk === 'stability') policy.lifecycle.stability = extensionName(lv, where);
+          else if (lk === 'deprecated-since') policy.lifecycle.deprecatedSince = extensionName(lv, where);
+          else if (lk === 'sunset') policy.lifecycle.sunset = extensionName(lv, where);
+          else if (lk === 'default-stability') {
+            if (typeof lv !== 'string' || lv === '') throw new PolicyError(`${where}: must be a stability level`);
+            policy.lifecycle.defaultStability = lv;
+          } else throw new PolicyError(`${where}: unknown key${suggest(lk, LIFECYCLE_KEYS)}`);
         }
         break;
-      }
       default:
         policy.raw[k] = asObject(v, at(k));
     }
   }
+  const levels = stabilityLevels(policy.rules.get('stability-decreased')?.options.levels);
+  if (!levels.includes(policy.lifecycle.defaultStability)) throw new PolicyError(`${at('lifecycle.default-stability')}: '${policy.lifecycle.defaultStability}' is not one of the stability-decreased levels (${levels.join(', ')})`);
   return policy;
 }
 
@@ -178,6 +184,8 @@ export function parseRuleSetting(id: string, value: unknown, where: string): Rul
 /** Value checks for rule options, per base rule ID. Rules without one accept any value until their step adds it. */
 const OPTION_CHECKS: Record<string, (options: Record<string, unknown>, where: string) => void> = {
   'documents-unrelated': (o, where) => void unrelatedOptions(o, where),
+  'operation-removed': (o, where) => void removalOptions(o.unless, `${where}.unless`),
+  'stability-decreased': (o, where) => void stabilityLevels(o.levels, `${where}.levels`),
   'enum-value-added': (o, where) => {
     if (o['honour-open-hint'] !== undefined && typeof o['honour-open-hint'] !== 'boolean') throw new PolicyError(`${where}.honour-open-hint: must be true or false`);
     const x = o['open-extensions'];

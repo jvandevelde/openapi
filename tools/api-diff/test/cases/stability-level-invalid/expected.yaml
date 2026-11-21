@@ -1,0 +1,6 @@
+description: A stability level that is not in the stability-decreased levels (a typo here) is spec-invalid, at the extension.
+milestone: M6
+findings:
+  - rule: spec-invalid
+    severity: error
+    subject: GET /pets

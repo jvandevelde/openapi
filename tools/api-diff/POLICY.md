@@ -63,6 +63,7 @@ Only these rules take options beyond those in section 3. Every other rule takes 
 |---|---|---|---|
 | `operation-removed` | `unless.deprecated-for-days` | `90` | Removal is allowed (reported as `operation-removed-after-deprecation`) once the operation was deprecated at least this long. Can be per stability level: `{ stable: 90, beta: 30, alpha: 0 }` |
 | `operation-removed` | `unless.past-sunset` | `true` | Removal is also allowed once the operation's sunset date has passed |
+| `operation-removed` | `unless.undated-deprecation` | `allow` | For an operation marked `deprecated` with no deprecation date: `allow` counts it as deprecated long enough, `block` keeps the removal an error (the period can't be checked) |
 | `enum-value-added` | `honour-open-hint` | `true` | Treat enums marked open in the spec (`x-api-diff: { enum: open }`) as `info` |
 | `enum-value-added` | `open-extensions` | `[]` | Other extensions that mean "open enum", e.g. `[x-extensible-enum]` |
 | `property-added-optional` | `strict-clients` | `false` | `true` raises `…-in-response` to `warn`, for clients that reject unknown fields |
@@ -146,6 +147,11 @@ lifecycle:
   deprecated-since: x-deprecated-since   # date (YYYY-MM-DD) the operation was deprecated
   sunset: x-sunset                    # date it will be removed
 ```
+
+- The extensions are read from the operation, or else its path item. Dates are `YYYY-MM-DD`; anything else is `spec-invalid` at the extension.
+- A stability level must be one of `stability-decreased`'s `levels` (`draft`, `alpha`, `beta`, `stable` by default); anything else, such as a typo, is `spec-invalid`. `default-stability` must be one of them too.
+- Deprecation periods and sunset dates are checked against today's date (UTC), or `--as-of <YYYY-MM-DD>` for reproducible runs.
+- These extensions are interpreted by the lifecycle rules, so changing them isn't also reported as `extension-changed`.
 
 ## 8. Exclusions
 

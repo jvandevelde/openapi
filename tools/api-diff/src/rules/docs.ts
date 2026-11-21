@@ -59,6 +59,7 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
     options: [
       { name: 'unless.deprecated-for-days', default: '90', description: 'Allow removal (as `operation-removed-after-deprecation`) once the operation has been deprecated this long. Can be set per stability level.' },
       { name: 'unless.past-sunset', default: 'true', description: "Allow removal once the operation's sunset date has passed." },
+      { name: 'unless.undated-deprecation', default: 'allow', description: 'For an operation marked `deprecated` without a deprecation date: `allow` counts it as long enough, `block` keeps the removal an error.' },
     ],
   },
   'operation-removed-after-deprecation': {
@@ -463,7 +464,7 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
   'component-unused': { description: 'A component changed, but no operation uses it.', why: 'The change affects no operation (it may be used by other specs or code generators).', fix: 'Nothing to fix; consider removing unused components.' },
 
   // 9. Lifecycle and versions
-  'deprecated-added': { description: 'An operation, parameter, property or schema was marked `deprecated`.', why: 'Nothing breaks yet; it starts the deprecation period.', fix: 'Nothing to fix; announce it.' },
+  'deprecated-added': { description: 'An operation, parameter, property or schema was marked `deprecated: true`.', why: 'Nothing breaks yet; it starts the deprecation period.', fix: 'Nothing to fix; announce it.' },
   'deprecated-removed': { description: 'A deprecation was withdrawn.', why: 'Nothing breaks.', fix: 'Nothing to fix.' },
   'sunset-moved-earlier': { description: 'A sunset date (from the configured extension, `x-sunset` by default) moved earlier.', why: 'Clients planning around the old date have less time.', fix: 'Keep the original sunset date.' },
   'stability-decreased': { description: 'A stability level went down, e.g. `stable` → `beta` (from the configured extension, `x-stability-level` by default).', why: 'Clients relying on stability guarantees lose them.', fix: 'Keep the stability level.', options: [{ name: 'levels', default: '[draft, alpha, beta, stable]', description: 'Order of stability levels, lowest first.' }] },

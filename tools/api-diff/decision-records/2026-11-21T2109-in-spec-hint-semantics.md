@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-21 21:09 UTC |
 | **Summary** | `x-api-diff` hints apply from the nearest containing node outwards, then through the affected operation, then the document root; `ignore` hides a node on either side; invalid hints are `spec-invalid`; changes to `x-api-diff` itself are never reported. |
 | **Milestone** | M6 |

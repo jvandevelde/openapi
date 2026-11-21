@@ -25,7 +25,8 @@ function sortKeys(v: unknown): unknown {
 
 const opSubject = (op: Operation): string => `${op.method.toUpperCase()} ${op.path}`;
 
-export function diffDocs(base: Model, rev: Model, pairs: [Operation, Operation][]): Change[] {
+/** `interpreted`: extensions other rules read (e.g. the lifecycle ones), so they aren't reported as extension-changed. */
+export function diffDocs(base: Model, rev: Model, pairs: [Operation, Operation][], interpreted: ReadonlySet<string> = new Set()): Change[] {
   const out: Change[] = [];
   const seen = new Set<string>();
 
@@ -36,7 +37,7 @@ export function diffDocs(base: Model, rev: Model, pairs: [Operation, Operation][
     if (!isObject(bv) || !isObject(rv)) return;
     const all = new Set([...Object.keys(bv), ...Object.keys(rv)]);
     for (const k of all) {
-      const rule = keys.includes(k) ? RULE[k] : k.startsWith('x-') && k !== 'x-api-diff' ? 'extension-changed' : undefined; // x-api-diff configures this tool, not the API
+      const rule = keys.includes(k) ? RULE[k] : k.startsWith('x-') && k !== 'x-api-diff' && !interpreted.has(k) ? 'extension-changed' : undefined; // x-api-diff configures this tool, not the API
       if (!rule || sortedCanon(bv[k]) === sortedCanon(rv[k])) continue;
       const bl = base.docs.location({ file: b.file, segs: [...b.segs, k] });
       const rl = rev.docs.location({ file: r.file, segs: [...r.segs, k] });

@@ -17,10 +17,10 @@ Status: some of these are still being built in milestone M6. Each section says w
 | `x-api-diff: { ignore: true }` | An operation, path item or schema | Changes inside it aren't reported; a `not-compared` notice says so | — | Available |
 | `x-api-diff: { rules: { … } }` | Any operation, path item, schema, or the document | Rule severities for that node and everything under it | — | Available |
 | `x-extensible-enum` (or any listed extension) | A schema with an `enum` | Same as `enum: open` | `enum-value-added.open-extensions` (empty by default) | Available |
-| `x-stability-level` | An operation or path item | Its stability level (`draft`, `alpha`, `beta`, `stable`); overrides can match it | `lifecycle.stability`, `lifecycle.default-stability` | Available for overrides; lifecycle rules in M6 step 5 |
+| `x-stability-level` | An operation or path item | Its stability level (`draft`, `alpha`, `beta`, `stable`); lowering it is `stability-decreased`; overrides can match it | `lifecycle.stability`, `lifecycle.default-stability`, `stability-decreased.levels` | Available |
 | Any `x-…`, e.g. `x-audience: partner` | An operation, path item, component schema or the document | Policy overrides can match on it | `overrides[].match.extension` | Available |
-| `x-deprecated-since` | An operation | Date it was deprecated; removal is allowed after `deprecated-for-days` | `lifecycle.deprecated-since` | M6 step 5 |
-| `x-sunset` | An operation | Date it will be removed; moving it earlier is a finding | `lifecycle.sunset` | M6 step 5 |
+| `x-deprecated-since` | An operation | Date it was deprecated; removal is allowed after `deprecated-for-days` | `lifecycle.deprecated-since`, `operation-removed.unless` | Available |
+| `x-sunset` | An operation | Date it will be removed; removal is allowed once it passes, and moving it earlier is a finding | `lifecycle.sunset`, `operation-removed.unless.past-sunset` | Available |
 | `x-enum-varnames`, `x-go-type`, … | Anywhere | Changes to them count as `sdk` (or `wire`) changes instead of `docs` | `extensions` | M6 step 6 |
 | `x-internal` | An operation, path item or schema | Puts it in an exclusion set, left out of chosen reports (or not compared) | `exclusions.<set>.extensions` | M6 step 6 |
 | `x-api-version`, `x-build-id`, `x-git.sha` | The document root | The version and labels recorded in reports | `versions` | M6 step 7 |
@@ -104,9 +104,12 @@ paths:
       x-sunset: 2027-03-01
 ```
 
-- **`x-stability-level`** (`draft`, `alpha`, `beta`, `stable`) on an operation or its path item. Without it, the operation counts as `default-stability` (`stable` by default). Policy overrides can match it, for example "anything goes before beta": `match: { stability: [draft, alpha] }`, `severity: info`. *Available.* Lowering the level (`stable` → `beta`) will be `stability-decreased` (`error`). *M6 step 5.*
-- **`x-deprecated-since`** (a `YYYY-MM-DD` date): removing a deprecated operation is allowed once it was deprecated at least `deprecated-for-days` (90 by default), and reported as `operation-removed-after-deprecation` (`info`) instead of `operation-removed` (`error`). *M6 step 5.*
-- **`x-sunset`** (a `YYYY-MM-DD` date): removal is also allowed once the sunset date has passed, and moving the date earlier is `sunset-moved-earlier` (`warn`). *M6 step 5.*
+- **`x-stability-level`** (`draft`, `alpha`, `beta`, `stable`) on an operation or its path item. Without it, the operation counts as `default-stability` (`stable` by default). Lowering the level (`stable` → `beta`) is `stability-decreased` (`error`). A level that isn't in the policy's list (`stability-decreased.levels`), such as a typo, is `spec-invalid`. Policy overrides can match it, for example "anything goes before beta": `match: { stability: [draft, alpha] }`, `severity: info`.
+- **`deprecated: true`** (standard OpenAPI) on an operation, parameter, schema or property is `deprecated-added` (`info`); removing it is `deprecated-removed` (`info`).
+- **`x-deprecated-since`** (a `YYYY-MM-DD` date) on a deprecated operation: removing it is allowed once it was deprecated at least `deprecated-for-days` (90 by default; the policy can set it per stability level), and is reported as `operation-removed-after-deprecation` (`info`) instead of `operation-removed` (`error`). If the date is missing, the deprecation counts as long enough unless the policy sets `undated-deprecation: block`; adding the date is still good practice.
+- **`x-sunset`** (a `YYYY-MM-DD` date): removal is also allowed once the sunset date has passed, even without `deprecated`. Moving the date earlier is `sunset-moved-earlier` (`warn`).
+- Dates are checked against the day `api-diff` runs (UTC), or the date given with `--as-of`. A value that isn't a real `YYYY-MM-DD` date is `spec-invalid`.
+- Changing these extensions isn't also reported as `extension-changed`.
 
 The extension names are set in the policy's `lifecycle` section.
 

@@ -610,6 +610,11 @@ export class SchemaEngine {
     if (!isObject(bv) || !isObject(rv)) return;
     const keys = new Set([...Object.keys(bv), ...Object.keys(rv)]);
     for (const k of keys) {
+      if (k === 'deprecated') {
+        const [bd, rd] = [bv.deprecated === true, rv.deprecated === true];
+        if (bd !== rd) this.#emit(rd ? 'deprecated-added' : 'deprecated-removed', undefined, eb.at, er.at, { what: 'schema' }, [k]);
+        continue;
+      }
       const rule = DOCS[k] ?? (k.startsWith('x-') && k !== 'x-api-diff' ? 'extension-changed' : undefined); // x-api-diff configures this tool
       if (!rule || canon(bv[k]) === canon(rv[k])) continue;
       this.#emit(rule, undefined, eb.at, er.at, { keyword: k }, [k]);

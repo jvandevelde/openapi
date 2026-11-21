@@ -9,7 +9,7 @@ Operation removed after the deprecation period
 | **Kind** | `wire` |
 | **Default severity** | `info` |
 | **Rule IDs** | `operation-removed-after-deprecation` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Paths and operations ([RULES.md section 2](../../RULES.md)) |
 
 ## What it detects
@@ -22,11 +22,41 @@ Clients were warned for the agreed period, so the removal follows the API lifecy
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`operation-removed-after-deprecation`](../../test/cases/operation-removed-after-deprecation/): Deprecated on 2026-06-01, removed 173 days later (as of 2026-11-21): past the 90-day period, so the removal is info.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          '200':
+            description: ok
+-   /pets/{id}:
+-     delete:
+-       operationId: deletePet
+-       deprecated: true
+-       x-deprecated-since: 2026-06-01
+-       responses:
+-         '200':
+-           description: ok
+  components:
+    schemas:
+```
+
+Findings:
+
+- `operation-removed-after-deprecation` · info · DELETE /pets/{id}
 
 ## Test cases
 
-_None yet._
+5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`lifecycle-custom-extensions`](../../test/cases/lifecycle-custom-extensions/) | `operation-removed-after-deprecation` · info · DELETE /pets/{id} | The policy reads the deprecation date from x-deprecation-date instead of x-deprecated-since. |
+| [`operation-removed-after-deprecation`](../../test/cases/operation-removed-after-deprecation/) | `operation-removed-after-deprecation` · info · DELETE /pets/{id} | Deprecated on 2026-06-01, removed 173 days later (as of 2026-11-21): past the 90-day period, so the removal is info. |
+| [`operation-removed-deprecated-per-stability`](../../test/cases/operation-removed-deprecated-per-stability/) | `operation-removed-after-deprecation` · info · DELETE /pets/{id} | A beta operation deprecated 37 days ago; the policy requires 30 days for beta (90 for stable), so the removal is info. |
+| [`operation-removed-past-sunset`](../../test/cases/operation-removed-past-sunset/) | `operation-removed-after-deprecation` · info · DELETE /pets/{id} | The operation had a sunset date of 2026-11-01, which has passed (as of 2026-11-21): removal is info even without deprecated. |
+| [`operation-removed-undated-deprecation`](../../test/cases/operation-removed-undated-deprecation/) | `operation-removed-after-deprecation` · info · DELETE /pets/{id} | Deprecated without x-deprecated-since. By default (undated-deprecation: allow) the deprecation counts as long enough. |
 
 ## Policy options
 

@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 128 rules, with their default severities. 119 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 128 rules, with their default severities. 124 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -21,7 +21,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 |---|---|---|---|---|
 | [`operation-added`](operation-added.md) | wire | info | M3 ✅ | New operation |
 | [`operation-removed`](operation-removed.md) | wire | error | M3 ✅ | Operation removed without enough deprecation |
-| [`operation-removed-after-deprecation`](operation-removed-after-deprecation.md) | wire | info | M6 | Operation removed after the deprecation period |
+| [`operation-removed-after-deprecation`](operation-removed-after-deprecation.md) | wire | info | M6 ✅ | Operation removed after the deprecation period |
 | [`operation-id-changed`](operation-id-changed.md) | sdk | info (sdk: error) | M3 ✅ | operationId changed |
 | [`path-param-renamed`](path-param-renamed.md) | sdk | info (sdk: warn) | M3 ✅ | Path parameter renamed (same endpoint) |
 | [`operation-path-changed`](operation-path-changed.md) | wire | error | M3 ✅ | Path changed for the same operationId |
@@ -157,10 +157,10 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 
 | Rule | Kind | Default | Status | Summary |
 |---|---|---|---|---|
-| [`deprecated-added`](deprecated-added.md) | wire | info | M6 | Marked deprecated |
-| [`deprecated-removed`](deprecated-removed.md) | wire | info | M6 | Deprecation withdrawn |
-| [`sunset-moved-earlier`](sunset-moved-earlier.md) | wire | warn | M6 | Sunset date moved earlier |
-| [`stability-decreased`](stability-decreased.md) | wire | error | M6 | Stability level decreased |
+| [`deprecated-added`](deprecated-added.md) | wire | info | M6 ✅ | Marked deprecated |
+| [`deprecated-removed`](deprecated-removed.md) | wire | info | M6 ✅ | Deprecation withdrawn |
+| [`sunset-moved-earlier`](sunset-moved-earlier.md) | wire | warn | M6 ✅ | Sunset date moved earlier |
+| [`stability-decreased`](stability-decreased.md) | wire | error | M6 ✅ | Stability level decreased |
 | [`version-bump-too-small`](version-bump-too-small.md) | wire | warn | M6 | Version bump smaller than the changes need |
 | [`version-unchanged`](version-unchanged.md) | wire | warn | M6 | Spec changed but the version didn't |
 

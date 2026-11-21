@@ -32,9 +32,11 @@ export interface SpecContext {
 export interface LifecycleSettings {
   stability: string;
   defaultStability: string;
+  deprecatedSince: string;
+  sunset: string;
 }
 
-export const DEFAULT_LIFECYCLE: LifecycleSettings = { stability: 'x-stability-level', defaultStability: 'stable' };
+export const DEFAULT_LIFECYCLE: LifecycleSettings = { stability: 'x-stability-level', defaultStability: 'stable', deprecatedSince: 'x-deprecated-since', sunset: 'x-sunset' };
 
 function extensionsOf(v: unknown): Record<string, unknown> {
   if (!isObject(v)) return {};

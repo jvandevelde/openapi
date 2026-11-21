@@ -1,0 +1,6 @@
+description: 'Deprecated on 2026-06-01, removed 173 days later (as of 2026-11-21): past the 90-day period, so the removal is info.'
+milestone: M6
+findings:
+  - rule: operation-removed-after-deprecation
+    severity: info
+    subject: DELETE /pets/{id}

@@ -9,12 +9,12 @@ Marked deprecated
 | **Kind** | `wire` |
 | **Default severity** | `info` |
 | **Rule IDs** | `deprecated-added` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Lifecycle and versions ([RULES.md section 9](../../RULES.md)) |
 
 ## What it detects
 
-An operation, parameter, property or schema was marked `deprecated`.
+An operation, parameter, property or schema was marked `deprecated: true`.
 
 ## Why this default
 
@@ -22,11 +22,39 @@ Nothing breaks yet; it starts the deprecation period.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`deprecated-added`](../../test/cases/deprecated-added/): An operation, a query parameter and a schema property are marked deprecated: one info finding each.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          - name: limit
+            in: query
++           deprecated: true
+            schema:
+              type: integer
+  …
+      get:
+        operationId: getPet
++       deprecated: true
+        responses:
+          '200':
+  …
+          tag:
+            type: string
++           deprecated: true
+```
+
+Findings:
+
+- `deprecated-added` · info · #/components/schemas/Pet
+- `deprecated-added` · info · GET /pets
+- `deprecated-added` · info · GET /pets/{id}
 
 ## Test cases
 
-_None yet._
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

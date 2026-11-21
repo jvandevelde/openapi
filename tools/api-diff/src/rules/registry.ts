@@ -12,11 +12,6 @@ export const CURRENT_MILESTONE = 6;
 
 /** Rules of the current milestone that aren't built yet. */
 const PENDING = new Set([
-  'operation-removed-after-deprecation',
-  'deprecated-added',
-  'deprecated-removed',
-  'sunset-moved-earlier',
-  'stability-decreased',
   'version-bump-too-small',
   'version-unchanged',
 ]);
@@ -67,8 +62,20 @@ rule({ id: 'unclassified-change', section: 1, kind: 'wire', title: 'The shape ch
 
 // 2. Paths and operations
 rule({ id: 'operation-added', section: 2, kind: 'wire', title: 'New operation', severity: 'info', milestone: 3, message: () => 'operation added' });
-rule({ id: 'operation-removed', section: 2, kind: 'wire', title: "Operation removed without enough deprecation", severity: 'error', milestone: 3, message: () => 'operation removed' });
-rule({ id: 'operation-removed-after-deprecation', section: 2, kind: 'wire', title: 'Operation removed after the deprecation period', severity: 'info', milestone: 6, message: () => 'operation removed after its deprecation period' });
+rule({ id: 'operation-removed', section: 2, kind: 'wire', title: "Operation removed without enough deprecation", severity: 'error', milestone: 3, message: (c) => {
+  switch (c.details.reason) {
+    case 'deprecated-too-short': return `operation removed after ${d(c, 'deprecatedDays')} days of deprecation (since ${d(c, 'deprecatedSince')}; ${d(c, 'needDays')} needed)`;
+    case 'undated-deprecation-blocked': return `operation removed; it was deprecated but has no deprecation date, so the ${d(c, 'needDays')}-day period can't be checked`;
+    default: return 'operation removed';
+  }
+} });
+rule({ id: 'operation-removed-after-deprecation', section: 2, kind: 'wire', title: 'Operation removed after the deprecation period', severity: 'info', milestone: 6, message: (c) => {
+  switch (c.details.reason) {
+    case 'past-sunset': return `operation removed after its sunset date (${d(c, 'sunset')})`;
+    case 'undated-deprecation': return 'operation removed after being deprecated (no deprecation date)';
+    default: return c.details.deprecatedSince ? `operation removed after ${d(c, 'deprecatedDays')} days of deprecation (since ${d(c, 'deprecatedSince')})` : 'operation removed after being deprecated';
+  }
+} });
 rule({ id: 'operation-id-changed', section: 2, kind: 'sdk', title: 'operationId changed', severity: 'info', sdkProfile: 'error', milestone: 3, message: (c) => `operationId changed from '${d(c, 'from') || '(none)'}' to '${d(c, 'to') || '(none)'}'` });
 rule({ id: 'path-param-renamed', section: 2, kind: 'sdk', title: 'Path parameter renamed (same endpoint)', severity: 'info', sdkProfile: 'warn', milestone: 3, message: (c) => `path parameter '${d(c, 'from')}' renamed to '${d(c, 'to')}'` });
 rule({ id: 'operation-path-changed', section: 2, kind: 'wire', title: 'Path changed for the same operationId', severity: 'error', milestone: 3, message: (c) => `path changed from ${d(c, 'from')} to ${d(c, 'to')}` });
@@ -199,10 +206,10 @@ rule({ id: 'component-removed', section: 8, kind: 'wire', title: 'Unused compone
 rule({ id: 'component-unused', section: 8, kind: 'wire', title: 'Changed component has no usages', severity: 'info', milestone: 5, message: (c) => `component changed (${(c.details.changed as string[] | undefined)?.slice(0, 4).join(', ') ?? ''}), but no operation uses it` });
 
 // 9. Lifecycle and versions
-rule({ id: 'deprecated-added', section: 9, kind: 'wire', title: 'Marked deprecated', severity: 'info', milestone: 6, message: () => 'marked deprecated' });
-rule({ id: 'deprecated-removed', section: 9, kind: 'wire', title: 'Deprecation withdrawn', severity: 'info', milestone: 6, message: () => 'no longer deprecated' });
-rule({ id: 'sunset-moved-earlier', section: 9, kind: 'wire', title: 'Sunset date moved earlier', severity: 'warn', milestone: 6, message: () => 'sunset date moved earlier' });
-rule({ id: 'stability-decreased', section: 9, kind: 'wire', title: 'Stability level decreased', severity: 'error', milestone: 6, message: () => 'stability level decreased' });
+rule({ id: 'deprecated-added', section: 9, kind: 'wire', title: 'Marked deprecated', severity: 'info', milestone: 6, message: (c) => `${d(c, 'what') || 'schema'}${c.details.name !== undefined ? ` '${d(c, 'name')}'` : ''} marked deprecated${c.details.path ? ` at ${d(c, 'path').replace(/\/deprecated$/, '') || '/'}` : ''}` });
+rule({ id: 'deprecated-removed', section: 9, kind: 'wire', title: 'Deprecation withdrawn', severity: 'info', milestone: 6, message: (c) => `${d(c, 'what') || 'schema'}${c.details.name !== undefined ? ` '${d(c, 'name')}'` : ''} no longer deprecated${c.details.path ? ` at ${d(c, 'path').replace(/\/deprecated$/, '') || '/'}` : ''}` });
+rule({ id: 'sunset-moved-earlier', section: 9, kind: 'wire', title: 'Sunset date moved earlier', severity: 'warn', milestone: 6, message: (c) => `sunset moved earlier from ${d(c, 'from')} to ${d(c, 'to')}` });
+rule({ id: 'stability-decreased', section: 9, kind: 'wire', title: 'Stability level decreased', severity: 'error', milestone: 6, message: (c) => `stability decreased from ${d(c, 'from')} to ${d(c, 'to')}` });
 rule({ id: 'version-bump-too-small', section: 9, kind: 'wire', title: 'Version bump smaller than the changes need', severity: 'warn', milestone: 6, message: () => 'version bump too small' });
 rule({ id: 'version-unchanged', section: 9, kind: 'wire', title: "Spec changed but the version didn't", severity: 'warn', milestone: 6, message: () => 'version unchanged' });
 

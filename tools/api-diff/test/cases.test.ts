@@ -22,7 +22,7 @@ interface Expected {
   description: string;
   milestone: string;
   /** `policy` is read from M6; until then only cases for M6 or later use it. */
-  options?: { profile?: Profile; policy?: Record<string, unknown> };
+  options?: { profile?: Profile; policy?: Record<string, unknown>; 'as-of'?: string };
   findings: { rule: string; severity: Severity; subject: string }[];
 }
 
@@ -53,7 +53,7 @@ for (const name of names) {
   const todo = milestone > CURRENT_MILESTONE ? `needs ${expected.milestone}` : pending.length ? `needs ${[...new Set(pending)].join(', ')}` : undefined;
 
   test(name, { todo }, async () => {
-    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: parsePolicy(expected.options?.policy ?? {}, `${name}/expected.yaml`) });
+    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: parsePolicy(expected.options?.policy ?? {}, `${name}/expected.yaml`), asOf: expected.options?.['as-of'] ?? '2026-11-21' });
     const actual = result.findings.map((f) => ({ rule: f.rule, severity: f.severity, subject: f.subject }));
     if (process.env.UPDATE_CASES && !todo) {
       const next = { ...expected, findings: actual };

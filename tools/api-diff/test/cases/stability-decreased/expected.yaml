@@ -1,0 +1,6 @@
+description: 'stable to beta: clients relying on stability guarantees lose them, so error.'
+milestone: M6
+findings:
+  - rule: stability-decreased
+    severity: error
+    subject: GET /pets/{id}

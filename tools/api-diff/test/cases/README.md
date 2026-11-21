@@ -14,6 +14,7 @@ description: Why this case exists, and what the expected result means.
 milestone: M3            # cases for later milestones run as "todo" until then
 options:
   profile: sdk           # optional
+  as-of: 2026-11-21      # optional reference date for deprecation and sunsets (this is the default for cases)
   policy:                # optional, from M6: a policy file's contents
     rules:
       documents-unrelated: off

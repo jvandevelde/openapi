@@ -1,6 +1,6 @@
 # api-diff: initial rules
 
-Status: **draft for review**. This is the first set of rules, with their default severities. Every severity can be changed in the policy file. [POLICY.md](POLICY.md) documents the options each rule supports. **⚑** marks a judgement call where reasonable teams disagree; these are the ones to agree on in phase 0.
+Status: **draft for review**. This is the first set of rules, with their default severities. Every severity can be changed in the policy file. [POLICY.md](POLICY.md) documents the options each rule supports. Judgement calls where reasonable teams disagree are marked **Decided** with the agreed default.
 
 ## How to read this
 
@@ -79,7 +79,7 @@ Parameter **schemas** are always *request* direction, so they use the schema rul
 | `request-body-added-optional` | New optional body | wire | info | 1 |
 | `request-body-became-required` | Optional → required | wire | error | 1 |
 | `request-body-became-optional` | Required → optional | wire | info | 1 |
-| `request-body-removed` | Body removed; clients still send one ⚑ | wire | warn | 1 |
+| `request-body-removed` | Body removed; clients still send one. **Decided** | wire | warn | 1 |
 | `request-media-type-added` | e.g. `application/xml` added | wire | info | 1 |
 | `request-media-type-removed` | A media type clients may send was removed | wire | error | 1 |
 
@@ -87,7 +87,7 @@ Parameter **schemas** are always *request* direction, so they use the schema rul
 
 | Rule | Meaning | Kind | Default | Phase |
 |---|---|---|---|---|
-| `response-success-status-added` | New 2xx, e.g. 202 alongside 200 (clients may only handle 200) ⚑ | wire | warn | 1 |
+| `response-success-status-added` | New 2xx, e.g. 202 alongside 200 (clients may only handle 200). **Decided** | wire | warn | 1 |
 | `response-success-status-removed` | A 2xx clients rely on was removed | wire | error | 1 |
 | `response-error-status-added` | New 4xx/5xx documented | wire | info | 1 |
 | `response-error-status-removed` | A documented 4xx/5xx was removed | wire | info | 1 |
@@ -106,7 +106,7 @@ Parameter **schemas** are always *request* direction, so they use the schema rul
 | Rule | Meaning | in / out | Phase |
 |---|---|---|---|
 | `property-added-required` | New required property | error / info | 2 |
-| `property-added-optional` | New optional property. In responses this assumes clients ignore unknown fields ⚑ | info / info | 2 |
+| `property-added-optional` | New optional property. In responses this assumes clients ignore unknown fields. **Decided** | info / info | 2 |
 | `property-removed` | Property removed. In requests clients keep sending it; `error` if the object disallows additional properties | warn / error | 2 |
 | `property-became-required` | Optional → required | error / info | 2 |
 | `property-became-optional` | Required → optional (clients may assume it's always there) | info / error | 2 |
@@ -136,7 +136,7 @@ Parameter **schemas** are always *request* direction, so they use the schema rul
 
 | Rule | Meaning | in / out | Phase |
 |---|---|---|---|
-| `enum-value-added` | A new allowed value. In responses, clients with exhaustive switches break ⚑ | info / warn | 2 |
+| `enum-value-added` | A new allowed value. In responses, clients with exhaustive switches break. **Decided** | info / warn | 2 |
 | `enum-value-removed` | A value is no longer allowed | error / info | 2 |
 | `enum-added` | A free value became a closed set | error / info | 2 |
 | `enum-removed` | A closed set became a free value | info / warn | 2 |

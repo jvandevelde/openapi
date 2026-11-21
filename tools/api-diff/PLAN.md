@@ -265,22 +265,73 @@ Every finding in the output also shows **where its severity came from** (e.g. `w
   expires: 2027-01-31
 ```
 
-## 4. Phases
+## 4. Reports by audience
+
+The engine produces one **result object** (JSON with a versioned schema): findings, usages, counts, the semver advice, and where each severity came from. Every report is a **view** over that object, so all reports agree with each other and the specs are parsed only once, however many reports are produced.
+
+### Who reads what
+
+| Report | Reader | The question it answers | Includes | Grouped by | Formats | Where it goes |
+|---|---|---|---|---|---|---|
+| **`ci`** | The pipeline | Pass or fail? | Findings at or above `--fail-on`, excluding acknowledged ones | Severity | exit code, SARIF, JUnit, GitHub annotations | CI step, code scanning, inline annotations |
+| **`review`** | PR author and reviewers | What does this PR break, and how do I fix or accept it? | wire + sdk findings with fixes, a collapsed list of docs changes, acknowledged findings marked as such | Root cause (component or operation), worst first | Markdown, terminal | One PR comment, updated in place on each push |
+| **`changelog`** | API consumers | What changed for me in this release, and what do I need to do? | Plain-language entries: new, changed, deprecated (with sunset dates), removed, and migration notes. No internal paths, no acknowledgement details, no docs-only changes unless asked | Tag, then operation | Markdown, HTML | Release notes, developer portal |
+| **`sdk`** | SDK maintainers | Which generated types or methods change? | sdk findings, a table of old → new type and method names, the SDK semver bump | Generated type / operationId | Markdown, JSON | SDK release PR |
+| **`summary`** | Release or product manager | How big and how risky is this release? | Counts by kind and severity, the semver advice, the 5 most serious findings | — | terminal, Markdown, Slack-sized text | Release checklist, chat |
+| **`audit`** | API governance | Are we following our own rules? | Everything, including acknowledged findings (who, why, expiry), expired acknowledgements, `unclassified-change`, and which policy entry set each severity | Rule | JSON, HTML, CSV | Governance reviews, dashboards (trends across releases) |
+| **`explore`** | Anyone investigating | Show me everything | All findings plus a side-by-side spec view, filters (kind, severity, tag, path), search, recursive schemas shown as `↻` | Interactive | Self-contained HTML (one file, works offline) | CI artifact linked from the `review` comment |
+
+### What makes these better than oasdiff's outputs
+
+- **Redaction for each audience.** `changelog` drops anything matching `x-internal`, `/internal/**` or a configured filter, and never shows acknowledgement reasons or owners. Internal details don't leak into public release notes.
+- **Each report stays the right size.** GitHub comments are limited to 65,536 characters, so `review` shows the most serious findings in full, collapses the rest and links to the `explore` HTML artifact for the remainder. It never just cuts off.
+- **Comments are updated, not added.** `review` writes a hidden marker so CI edits its own earlier comment, and shows "fixed since last push" and "new since last push".
+- **Consumer impact reports.** `changelog --uses ops.txt` (a list of operations, from an SDK or from access logs) keeps only the changes that reach those operations, through the usage graph. Each consumer sees "3 changes affect you" instead of the whole release.
+- **Plain language comes from data, not code.** Each `kind` has message templates per audience (`review` is technical: "enum value removed in request at `Order.status`", `changelog` is consumer-facing: "`status` no longer accepts `archived`"). Teams can edit the templates without touching the engine.
+
+### Configuring reports
+
+The built-in reports are presets, and the config file can change them or add new ones:
+
+```yaml
+reports:
+  changelog:
+    redact: { paths: ["/internal/**"], extensions: [x-internal] }
+    include: { kinds: [wire, sdk], min-severity: info }
+  partner-changelog:                   # a custom report
+    extends: changelog
+    include: { extensions: { x-audience: partner } }
+    format: html
+    template: ./templates/partner.html
+```
+
+Several reports can be produced in one run, from one parse:
+
+```sh
+api-diff base.yaml rev.yaml \
+  --report ci \
+  --report review:md:out/review.md \
+  --report explore:html:out/report.html \
+  --report changelog:md:out/CHANGELOG-entry.md
+```
+
+## 5. Phases
 
 | Phase | Deliverable | Done when |
 |---|---|---|
 | **0. Corpus** | `test/cases/<name>/{base,revision}.yaml` plus `expected.yaml` (the findings we want). Start with about 40 cases covering every row in section 2, plus recursive schemas: one that refers to itself, a union whose member refers back to the base type in a collection, a cycle that passes through three schemas, an invalid `allOf` cycle, and a change deep inside a cycle. Optionally record what oasdiff says for each case to compare. | We agree on the expected results. This is where we settle what "breaking" means. |
 | **1. Skeleton** | load → model → diff for paths, operations, parameters, request bodies, responses and security. Text and JSON output. `--fail-on`. | Phase 1 cases pass. |
 | **2. Schema engine** | Effective-schema merge (allOf), variance classifier, oneOf/anyOf branch matching, `$ref` root-cause aggregation. | All schema cases pass, and each shared-component change appears once. |
-| **3. Policy & CI** | Policy file, acknowledgements, source maps, Markdown, SARIF and GitHub annotations. | Usable as a required PR check. |
-| **4. Presentation** | HTML report, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to oasdiff output. |
+| **3. Policy & CI** | Policy file, acknowledgements, source maps. The `ci` and `review` reports, `summary`. | Usable as a required PR check. |
+| **4. Presentation** | The `explore` HTML report, `changelog` (with redaction), `sdk`, rename detection, semver advice, explanations and fixes. | Reviewers prefer it to oasdiff output. |
+| **5. Governance & consumers** | `audit`, custom reports and templates, consumer impact reports (`--uses`). | Release notes and governance reviews use it without manual editing. |
 
 Out of scope at first: **webhooks and callbacks** (if a spec has them, a single `info` notice says they weren't compared, so nothing is skipped silently; the direction model allows them to be added later by flipping direction), Swagger 2.0, external (`http://`) refs, specs split across many files (`--composed`), translations.
 
-## 5. Decisions to make
+## 6. Decisions to make
 
 1. **Language.** Proposal: **TypeScript on Node ≥ 20**, matching `operation-ids` and using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go would match oasdiff and produce a single binary, but we'd need our own position-aware YAML handling.
 2. **OpenAPI versions.** Proposal: 3.0, 3.1 and 3.2 from the start, using the normalise step.
 3. **Default stance on ambiguous changes.** Examples: a new enum value in a response, a new optional request property where the server sets `additionalProperties: false`, a new required response header. Proposal: `warn` by default, and the policy can change it.
-4. **Main audience for the output.** PR reviewers (Markdown/annotations), API consumers (changelog/HTML) or CI (exit code/SARIF)? This sets which renderers come first.
+4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 4 that matters more to you, or one that's missing?
 5. **Name.** `api-diff` is a placeholder.

@@ -50,6 +50,22 @@ Status: **planning**. No code yet. This directory has no `Makefile`, so the root
 
 Each stage is a pure function with its own tests, so the stages can be swapped or reused (for example, a different renderer, or the diff engine without the classifier).
 
+### Performance (measured)
+
+Measured on a generated 8 MB OpenAPI 3.1 spec (3,650 paths and schemas, about 240k nodes), Node 22, a single run each:
+
+| Step | Time |
+|---|---|
+| `JSON.parse` (no positions) | 42 ms |
+| `jsonc-parser` `parseTree` (JSON with offsets) | 251 ms |
+| `js-yaml` load (YAML) | ~250 ms |
+| `js-yaml` load with position listener | ~200 ms |
+| `yaml` (eemeli) `parse` / `parseDocument` | 2.3–3.1 s |
+| Building a pointer → line map from the AST | 235 ms |
+| Full recursive deep diff of two parsed docs | 58 ms |
+
+So TypeScript is fast enough, as long as we **don't use the `yaml` package for loading** (it's about 10× slower, because it builds a full CST that keeps comments). Use `JSON.parse` + `jsonc-parser` for JSON and `js-yaml` for YAML, and get positions from offsets. Load base and revision in parallel. The costs that grow with the work are allOf merging and `$ref` impact fan-out, so memoise results per component instead of re-walking for each operation. Target: under 1 s end to end for two 8 MB specs.
+
 ### Change record (draft)
 
 ```jsonc
@@ -114,7 +130,7 @@ Out of scope at first: Swagger 2.0, external (`http://`) refs, specs split acros
 
 ## 5. Decisions to make
 
-1. **Language.** Proposal: **TypeScript on Node ≥ 20**, matching `operation-ids` and reusing `yaml`, which gives node positions for source maps. Go would match oasdiff and produce a single binary, but we'd need our own position-aware YAML handling.
+1. **Language.** Proposal: **TypeScript on Node ≥ 20**, matching `operation-ids` and using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go would match oasdiff and produce a single binary, but we'd need our own position-aware YAML handling.
 2. **OpenAPI versions.** Proposal: 3.0, 3.1 and 3.2 from the start, using the normalise step.
 3. **Default stance on ambiguous changes.** Examples: a new enum value in a response, a new optional request property where the server sets `additionalProperties: false`, a new required response header. Proposal: `warn` by default, and the policy can change it.
 4. **Main audience for the output.** PR reviewers (Markdown/annotations), API consumers (changelog/HTML) or CI (exit code/SARIF)? This sets which renderers come first.

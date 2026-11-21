@@ -58,6 +58,12 @@ A good measure scores the first two columns high and the third low. Only the ove
 - **✅ Chosen, as well: identity check as a tie-break.** Even when every signal is low, the documents are treated as related if `info.title` is the same and they share a server host (when both declare hosts). A rewrite that kept its name and host is still the same API.
 - **Rejected: all signals must pass.** A prefix rename fails the operations signal, so real changes get flagged.
 
+### How two items match
+
+- **✅ Chosen: exact, case-sensitive equality of normalised keys.** Each item becomes a string key (below), and two items match only if their keys are identical. All the tolerance comes from normalisation and from having three signals, so the comparison itself stays a plain set intersection that anyone can reproduce by hand.
+- **Rejected: case-insensitive matching of names.** `listPets` and `ListPets` are different identifiers to every code generator, and paths are case-sensitive in HTTP. Folding case would hide nothing useful here.
+- **Rejected: fuzzy matching (edit distance or token overlap per item).** Renamed items would count as shared, but so would unrelated items with similar names (`getUser` / `getUsers`, `/orders/{}` / `/order/{}`). The check only needs *some* shared items, not all, so exact matching loses little; rename detection is M8.
+
 ### How to normalise paths
 
 - **✅ Chosen: drop version-like segments wherever they appear, plus configured prefixes.** `/billing/v1/invoices` and `/users/v2/me` become `/billing/invoices` and `/users/me`, however many different prefixes the document has. Path-level and operation-level `servers` base paths are added in front first, so moving `/v1` between `servers` and `paths` doesn't matter. Path parameter names are replaced with `{}`. Prefix renames that this misses (`/api/billing` → `/billing`) are caught by the `operationId` and schema signals, or by `strip-prefixes`.
@@ -73,6 +79,7 @@ A good measure scores the first two columns high and the third low. Only the ove
 | Where the check lives | A rule, `documents-unrelated`, whose finding replaces the diff | Input error with exit code 2; warning next to the full diff |
 | **Similarity measure** | **Overlap coefficient**: \|A ∩ B\| / min(\|A\|, \|B\|), per signal | Jaccard, Sørensen–Dice, containment, cosine/TF-IDF, MinHash, edit distance, tree edit distance |
 | What is compared | Three sets: operations, `operationId`s, schema names | Schema shape hashes; one weighted score |
+| How two items match | Exact, case-sensitive equality of normalised keys | Case-insensitive names; fuzzy matching |
 | Combining signals | Related if **any** signal reaches `min-overlap` (0.1); matching title and server host also count as related | All signals must pass |
 | Path normalisation | Drop version-like segments anywhere, plus `strip-prefixes` and server base paths | Longest common prefix; matching path tails |
 
@@ -95,6 +102,23 @@ A rule **`documents-unrelated`** in RULES.md section 11: kind `wire`, default `e
 - `schemas`: every name under `components.schemas`.
 
 **Path normalisation:** take the operation's effective server base path (operation, then path, then document `servers`; the first entry's path part only) and the path template. Join them, remove each `strip-prefixes` entry from the start, drop every segment matching an `ignore-path-segments` expression, replace `{name}` with `{}`, and drop a trailing `/`.
+
+**Matching:** two items match only if their keys are identical strings. Keys are case-sensitive, except that HTTP methods are upper-cased. Each side's keys form a set, so duplicates count once. The count of shared keys is found by putting the smaller side's keys in a hash set and looking up each key from the larger side: linear in the number of items.
+
+**Worked example** (the `operations` signal):
+
+```
+base:      GET /billing/v1/invoices          → GET /billing/invoices
+           GET /billing/v1/invoices/{id}     → GET /billing/invoices/{}
+           GET /users/v1/me                  → GET /users/me
+
+revision:  GET /billing/v2/invoices          → GET /billing/invoices      ✓ same key
+           GET /billing/v2/invoices/{invId}  → GET /billing/invoices/{}   ✓ same key
+           GET /users/v2/profile             → GET /users/profile         ✗ no match
+           POST /billing/v2/invoices         → POST /billing/invoices     ✗ not in base
+
+shared = 2, min(3, 4) = 3, score = 2 / 3 ≈ 0.67 ≥ 0.1 → related
+```
 
 **Score:** the overlap coefficient \|A ∩ B\| / min(\|A\|, \|B\|) for each signal in `signals` that is non-empty on both sides.
 

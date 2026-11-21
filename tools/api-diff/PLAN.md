@@ -228,9 +228,26 @@ The library API takes a document source, so other callers (an editor plugin, a t
 When two paths are passed by hand, nothing guarantees they are two versions of one API. A wrong path produces "every operation removed, every operation added": hundreds of errors and nothing pointing at the mistake. So before the diff, the `documents-unrelated` rule (M6, default `error`) checks the two documents share something. If they don't, the diff stops and that is the only finding. The full reasoning, including the algorithms considered, is in decision record *Detect unrelated documents before diffing, with the overlap coefficient*.
 
 - **Signals**, each a set: operations (`METHOD /normalised/path`), `operationId`s and `components.schemas` names. They come from the index the diff builds anyway, so the check costs a few set intersections.
+- **Matching**: two items match only if their normalised keys are identical strings. Keys are case-sensitive (`listPets` ≠ `ListPets`), except that HTTP methods are upper-cased, and there is no fuzzy matching: `GET /users/me` and `GET /users/profile` are different items. The tolerance comes from path normalisation and from having three signals. Counting shared keys is one hash-set lookup per item.
 - **Score**: the overlap coefficient, shared items ÷ the smaller set's size. Unlike Jaccard (shared ÷ union), an API that grew from 20 to 200 operations still scores 1.0 instead of 0.1.
 - **Combining**: the documents are related if **any** scored signal reaches `min-overlap` (default 0.1). A signal empty on either side is skipped. Even if every signal is low, the documents count as related when their `info.title` and a server host match.
 - **Path normalisation**, so many different prefixes work: the effective `servers` base path is joined in front, `strip-prefixes` are removed, version-like segments (`v1`, `v2beta1`, `2024-01-01`) are dropped wherever they appear, and parameter names become `{}`. `/billing/v1/invoices/{id}` and `/billing/v2/invoices/{invoiceId}` both become `GET /billing/invoices/{}`. A renamed prefix (`/api/billing` → `/billing`) is usually caught by `operationId`s or schema names instead.
+
+  Worked example for the `operations` signal:
+
+  ```
+  base:      GET /billing/v1/invoices          → GET /billing/invoices
+             GET /billing/v1/invoices/{id}     → GET /billing/invoices/{}
+             GET /users/v1/me                  → GET /users/me
+
+  revision:  GET /billing/v2/invoices          → GET /billing/invoices      ✓ same key
+             GET /billing/v2/invoices/{invId}  → GET /billing/invoices/{}   ✓ same key
+             GET /users/v2/profile             → GET /users/profile         ✗ no match
+             POST /billing/v2/invoices         → POST /billing/invoices     ✗ not in base
+
+  shared = 2, min(3, 4) = 3, score = 2 / 3 ≈ 0.67 ≥ 0.1 → related
+  ```
+
 - **Skipped** when the rule is `off`, either document is `spec-invalid`, the base is empty (a new API), the smaller document has fewer than `min-size` (5) operations and schemas, or (with `when: manual`, the default) both inputs are one path at two git revisions.
 - **Override**: `documents-unrelated: off` in the policy runs the full diff, e.g. for an intentional rewrite. The options are in POLICY.md section 4.
 

@@ -108,6 +108,28 @@ overrides:
     rules: { enum-value-added-in-response: error }
 ```
 
+#### How a finding's severity is chosen
+
+Every finding gets its severity from this list. The first match wins:
+
+1. **Acknowledgement**: this specific finding ID was accepted, so it's reported but doesn't fail CI (until it expires).
+2. **In-spec hint**: an extension on the schema or operation itself, e.g. `x-api-diff: { enum: open }` on a schema means "clients must accept unknown values", so adding a value is `info` there. The rule travels with the schema instead of living in a separate file.
+3. **Policy override**: the last matching `overrides` entry (by path glob, tag, operationId, stability, extension, component name).
+4. **Policy rule**: the `rules` entry for the rule ID.
+5. **Built-in default** for that rule.
+
+Enum changes as an example. Each case is its own rule ID, so each can be set separately:
+
+| Rule | Default | Why |
+|---|---|---|
+| `enum-value-added-in-request` | info | Old clients never send it |
+| `enum-value-added-in-response` | warn | Breaks clients that use exhaustive switches; harmless for those that don't |
+| `enum-value-removed-in-request` | error | Clients that send it are rejected |
+| `enum-value-removed-in-response` | info | Clients just stop seeing it |
+| `enum-added-to-unconstrained-in-request` | error | A free string became a closed set |
+
+Every finding in the output also shows **where its severity came from** (e.g. `warn ← policy override #2 (path /partner/**)`), so nobody has to guess why something passed or failed.
+
 ```yaml
 # acknowledgements.yaml
 - finding: c7f3e1a2

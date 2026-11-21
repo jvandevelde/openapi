@@ -165,21 +165,25 @@ The tool never assumes it's inside this tools repo. Git commands run **in the re
 - Paths inside the reports are shown relative to that repository's root (`orders-api:main:openapi.yaml`), not to where the tool lives.
 - **Remote repositories aren't read directly** (no `https://github.com/…` URLs). Clone or fetch first; that keeps authentication with git, where it already works.
 
-**Getting the tool into another repo's CI.** The API repos need the tool without cloning this one by hand. Options, in order of preference:
+**Getting the tool into another repo's CI.** **Decided: a single release file, no package registry.** Each release builds `api-diff.mjs` (all dependencies bundled with esbuild, so no `npm install`) and attaches it to a GitHub release of this repo, tagged `api-diff-v<version>` (tags are per tool, since the repo holds several). This repo is public, so downloads need no token.
 
-1. **Publish the package** to an npm registry (npmjs.com, or GitHub Packages if it should stay private). Then any repo runs `npx api-diff …`, with the version pinned in its own `package.json` or in the CI step.
-2. **A single bundled file.** Build `api-diff.mjs` (all dependencies bundled with esbuild) and attach it to a GitHub release of this repo. CI downloads one file and runs `node api-diff.mjs`. No npm registry needed.
-3. **Check out this repo as a second checkout** in the CI job and run `npx ./tools/api-diff`. This works today with no publishing, but every API repo depends on this repo's layout.
+```sh
+curl -fsSLo api-diff.mjs https://github.com/jvandevelde/openapi/releases/download/api-diff-v1.2.3/api-diff.mjs
+node api-diff.mjs main:openapi.yaml openapi.yaml
+```
 
-**Nothing is copied into the API repo.** With options 1 and 2 the tool is downloaded when CI runs (npx keeps it in its cache), and with option 3 the second checkout exists only in the CI workspace. The API repo only commits:
+- Each release also attaches `api-diff.mjs.sha256`, so CI can check the download (`sha256sum -c`).
+- Before the first release, CI can use a second checkout of this repo instead (`npx ./openapi-tools/tools/api-diff …`). This works with no publishing, but ties the API repo to this repo's layout.
+- If a registry is wanted later, the same bundle can be published to npm without changing anything else.
 
-- the workflow file,
-- optionally the policy file (`api-diff.yaml`) and acknowledgements file (`api-diff.ack.yaml`),
-- the tool's version, pinned in the workflow (`npx api-diff@1.2.3`) or, in a Node repo, as a `devDependency`.
+**Nothing is copied into the API repo.** The release file is downloaded when CI runs and is never committed. The API repo only commits:
 
-The API repo needs a Node runtime in CI, but its own code can be in any language.
+- the workflow file, with the tool's version pinned in the download URL,
+- optionally the policy file (`api-diff.yaml`) and acknowledgements file (`api-diff.ack.yaml`).
 
-**On a developer machine, before the package is published,** point `npx` at a local clone of this repo, and run it from inside the API repo. npx keeps the current directory, so git reads the API repo, not this one:
+The API repo needs a Node runtime (≥ 22.18) in CI, but its own code can be in any language.
+
+**On a developer machine**, either download the release file once (and re-download to update), or point `npx` at a local clone of this repo. Run it from inside the API repo; the current directory is kept, so git reads the API repo, not this one:
 
 ```sh
 git clone https://github.com/jvandevelde/openapi ~/src/openapi    # once
@@ -187,12 +191,11 @@ cd ~/src/orders-api
 npx ~/src/openapi/tools/api-diff main:openapi.yaml openapi.yaml
 ```
 
-- The first run installs the tool's dependencies into npx's cache. `git pull` in the clone picks up new versions.
-- To type just `api-diff`, run `npm link` once in `~/src/openapi/tools/api-diff`. It puts a global `api-diff` command on the `PATH` that points at the clone. A shell alias does the same without touching npm's global folder.
+- The first `npx` run installs the tool's dependencies into npx's cache. `git pull` in the clone picks up new versions.
+- To type just `api-diff`, run `npm link` once in `~/src/openapi/tools/api-diff`, or add a shell alias for `node ~/bin/api-diff.mjs`.
 - `npx github:jvandevelde/openapi` doesn't work, because npx can't run a package from a subdirectory of a repo (the same limit `operation-ids` documents).
-- CI before publishing uses option 3 (a second checkout) the same way: `npx ./openapi-tools/tools/api-diff …`.
 
-A minimal workflow in another repo, using option 1:
+A minimal workflow in another repo:
 
 ```yaml
 # .github/workflows/api-diff.yml in the API repo
@@ -200,12 +203,17 @@ on: pull_request
 jobs:
   api-diff:
     runs-on: ubuntu-latest
+    env:
+      API_DIFF: https://github.com/jvandevelde/openapi/releases/download/api-diff-v1.2.3
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }            # the base commit must be present
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: npx api-diff@1 --base origin/${{ github.base_ref }}... openapi.yaml --report ci --report review:html:api-diff.html
+      - run: |
+          curl -fsSLO "$API_DIFF/api-diff.mjs" -O "$API_DIFF/api-diff.mjs.sha256"
+          sha256sum -c api-diff.mjs.sha256
+      - run: node api-diff.mjs --base origin/${{ github.base_ref }}... openapi.yaml --report ci --report review:html:api-diff.html
 ```
 
 **What stays outside the core.** Workflows that need more than reading files go in a separate `git` module of the CLI, not the engine:
@@ -667,9 +675,9 @@ Each milestone is one or a few pull requests and ends with something that runs.
 | **M7** | PR check | Report presets, `ci`, `review` and `summary` reports (txt/json/html), multiple `--report`, versions header, cached base index | **Used as a required PR check on a real API repo** |
 | **M8** | Presentation | `explore` HTML, `changelog`, `sdk`, rename detection, semver advice, explanations and fixes, history timeline | Reviewers prefer it to the tools in section 1 |
 | **M9** | Governance | `audit`, custom reports and templates, `--uses` consumer reports, ownership routing | Release notes and governance reviews use it without manual editing |
-| **M10** | Distribution | esbuild bundle, npm publish (or GitHub Packages), release file, generated rule docs, README | Another repo runs it with `npx` and a pinned version |
+| **M10** | Distribution | esbuild bundle, release workflow (tag `api-diff-v*` → `api-diff.mjs` + `.sha256` on a GitHub release), generated rule docs, README | Another repo's CI downloads a pinned release and runs it |
 
-M10 can move earlier, e.g. straight after M3 or M7, if other repos want to try it sooner. Until then, they use the local `npx` path (section 4, *Inputs*).
+M10 can move earlier, e.g. straight after M3 or M7, if other repos want to try it sooner. Until then, they use a local clone or a second checkout (section 4, *Using it in other repositories*).
 
 The backlog (section 8) is picked from after M7, except the low-effort ★ items already folded in above (bulk-change collapsing and example re-validation in M5, the cached base index in M7).
 
@@ -677,14 +685,17 @@ Out of scope at first: **webhooks and callbacks** (if a spec has them, a single 
 
 ## 7. Decisions to make
 
-These need answers before M0 (1, 2, 5) or before M10 (6). 4 can wait until M7.
+Decided on 2026-11-21:
 
-1. **Language.** Proposal: **TypeScript on Node ≥ 22.18**, run directly with Node's built-in type stripping (no build step for development and tests; `tsc --noEmit` for type checks; `erasableSyntaxOnly`, so no `enum`s or namespaces), bundled with esbuild for publishing. Node 20 reached end of life in April 2026. Same ecosystem as `operation-ids`, using `js-yaml` / `jsonc-parser` for position-aware loading (see Performance). Go (like oasdiff and openapi-changes) would produce a single binary, but we'd need our own position-aware YAML handling.
-2. **OpenAPI versions.** Proposal: 3.0, 3.1 and 3.2 from the start, using the normalise step.
-3. ~~**Default stance on ambiguous changes.**~~ **Decided:** see the **Decided** defaults in RULES.md.
-4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 5 that matters more to you, or one that's missing?
-5. **Name.** `api-diff` is a placeholder. The published package name must be free on the registry we pick.
-6. **Distribution.** Proposal: publish to an npm registry (GitHub Packages if it should stay private), plus a single bundled file on each GitHub release for CI without registry access.
+1. **Language: TypeScript on Node ≥ 22.18**, run directly with Node's built-in type stripping (no build step for development and tests; `tsc --noEmit` for type checks; `erasableSyntaxOnly`, so no `enum`s or namespaces), bundled with esbuild for releases. Uses `js-yaml` / `jsonc-parser` for position-aware loading (see Performance).
+2. **OpenAPI versions: 3.0, 3.1 and 3.2** from the start, using the normalise step.
+3. **Ambiguous changes:** see the **Decided** defaults in RULES.md.
+4. **Name: `api-diff`.** Command `api-diff`, policy file `api-diff.yaml`, acknowledgements `api-diff.ack.yaml`, in-spec extension `x-api-diff`, release tags `api-diff-v<version>`.
+5. **Distribution: a single bundled release file** (`api-diff.mjs` plus a SHA-256 file) on GitHub releases of this repo. No package registry for now (see section 4, *Using it in other repositories*).
+
+Still open (not needed before M7):
+
+6. **Which reports first.** Proposal: `ci` and `review` (M7), since they make the tool usable as a PR check.
 
 ## 8. Further ideas (backlog)
 

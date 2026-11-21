@@ -1,0 +1,6 @@
+description: A new required header.
+milestone: M3
+findings:
+- rule: header-parameter-added-required
+  severity: error
+  subject: GET /pets

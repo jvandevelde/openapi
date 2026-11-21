@@ -1,0 +1,6 @@
+description: A schema that refers to itself through items. A change inside it is found once, without looping.
+milestone: M5
+findings:
+- rule: max-length-decreased-in-response
+  severity: info
+  subject: '#/components/schemas/TreeNode'

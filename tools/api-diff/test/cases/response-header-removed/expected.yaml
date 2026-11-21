@@ -1,0 +1,6 @@
+description: An optional response header removed is a warning.
+milestone: M3
+findings:
+- rule: response-header-removed
+  severity: warn
+  subject: GET /pets

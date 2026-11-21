@@ -1,0 +1,7 @@
+description: 'An operation now references a different component: reported at the operation (ref-target-changed classifies
+  it in M5).'
+milestone: M4
+findings:
+- rule: unclassified-change
+  severity: warn
+  subject: GET /pets

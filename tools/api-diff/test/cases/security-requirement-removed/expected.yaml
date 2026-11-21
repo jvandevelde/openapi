@@ -1,0 +1,6 @@
+description: Auth no longer required.
+milestone: M3
+findings:
+- rule: security-requirement-removed
+  severity: info
+  subject: GET /pets

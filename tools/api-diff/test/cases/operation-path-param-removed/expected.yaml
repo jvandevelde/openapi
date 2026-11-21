@@ -1,0 +1,6 @@
+description: Removing a path parameter changes the path, so it is reported as operation-path-changed, not as a parameter change.
+milestone: M3
+findings:
+- rule: operation-path-changed
+  severity: error
+  subject: GET /pets

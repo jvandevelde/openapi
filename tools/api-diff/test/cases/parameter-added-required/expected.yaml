@@ -1,0 +1,6 @@
+description: A new required query parameter.
+milestone: M3
+findings:
+- rule: query-parameter-added-required
+  severity: error
+  subject: GET /pets

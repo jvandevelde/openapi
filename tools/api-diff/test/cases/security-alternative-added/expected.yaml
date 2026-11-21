@@ -1,0 +1,6 @@
+description: A new alternative in the OR list.
+milestone: M3
+findings:
+- rule: security-alternative-added
+  severity: info
+  subject: GET /pets

@@ -1,0 +1,8 @@
+description: Under --profile sdk, a removed parameter is an error (it leaves the method signature).
+milestone: M3
+options:
+  profile: sdk
+findings:
+- rule: query-parameter-removed
+  severity: error
+  subject: GET /pets

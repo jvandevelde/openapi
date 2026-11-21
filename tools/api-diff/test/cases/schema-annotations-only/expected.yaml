@@ -1,0 +1,3 @@
+description: Changed descriptions, examples and x- extensions are not shape changes (docs rules report them in M5).
+milestone: M4
+findings: []

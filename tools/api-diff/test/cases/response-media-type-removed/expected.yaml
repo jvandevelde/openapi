@@ -1,0 +1,6 @@
+description: A response media type clients may request was removed.
+milestone: M3
+findings:
+- rule: response-media-type-removed
+  severity: error
+  subject: GET /pets

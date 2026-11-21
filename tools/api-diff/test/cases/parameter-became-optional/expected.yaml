@@ -1,0 +1,6 @@
+description: Required → optional.
+milestone: M3
+findings:
+- rule: query-parameter-became-optional
+  severity: info
+  subject: GET /pets

@@ -1,0 +1,9 @@
+description: A $ref to a component that does not exist.
+milestone: M3
+findings:
+- rule: ref-unresolved
+  severity: error
+  subject: revision document
+- rule: query-parameter-removed
+  severity: warn
+  subject: GET /pets

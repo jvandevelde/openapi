@@ -1,0 +1,6 @@
+description: 'Body removed: clients still send one, so it is a warning.'
+milestone: M3
+findings:
+- rule: request-body-removed
+  severity: warn
+  subject: POST /pets

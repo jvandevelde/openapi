@@ -1,0 +1,6 @@
+description: An optional body where there was none.
+milestone: M3
+findings:
+- rule: request-body-added-optional
+  severity: info
+  subject: POST /pets

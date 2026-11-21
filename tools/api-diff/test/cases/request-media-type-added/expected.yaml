@@ -1,0 +1,6 @@
+description: A new request media type.
+milestone: M3
+findings:
+- rule: request-media-type-added
+  severity: info
+  subject: POST /pets

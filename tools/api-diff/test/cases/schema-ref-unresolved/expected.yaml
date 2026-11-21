@@ -1,0 +1,9 @@
+description: 'A $ref inside a schema that points nowhere: ref-unresolved, and the schema change itself.'
+milestone: M4
+findings:
+- rule: ref-unresolved
+  severity: error
+  subject: revision document
+- rule: unclassified-change
+  severity: warn
+  subject: '#/components/schemas/Pet'

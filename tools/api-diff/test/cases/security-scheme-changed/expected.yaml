@@ -1,0 +1,6 @@
+description: A security scheme's header name changed; reported once with the operations it affects.
+milestone: M3
+findings:
+- rule: security-scheme-changed
+  severity: error
+  subject: securitySchemes/apiKey

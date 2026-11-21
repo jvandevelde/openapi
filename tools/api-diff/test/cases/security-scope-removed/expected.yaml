@@ -1,0 +1,6 @@
+description: A required scope was removed.
+milestone: M3
+findings:
+- rule: security-scope-removed
+  severity: info
+  subject: GET /pets

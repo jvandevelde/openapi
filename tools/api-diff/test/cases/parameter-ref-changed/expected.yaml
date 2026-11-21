@@ -1,0 +1,6 @@
+description: A shared parameter changed through its $ref target.
+milestone: M3
+findings:
+- rule: query-parameter-became-required
+  severity: error
+  subject: GET /pets

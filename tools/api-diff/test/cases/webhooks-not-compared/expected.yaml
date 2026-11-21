@@ -1,0 +1,6 @@
+description: Webhooks are out of scope; one notice says so.
+milestone: M3
+findings:
+- rule: not-compared
+  severity: info
+  subject: document

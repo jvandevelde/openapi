@@ -1,0 +1,6 @@
+description: An additional scheme is now required together with the existing one.
+milestone: M3
+findings:
+- rule: security-requirement-added
+  severity: error
+  subject: GET /pets

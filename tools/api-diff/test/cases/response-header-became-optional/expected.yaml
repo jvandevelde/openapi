@@ -1,0 +1,6 @@
+description: Required → optional.
+milestone: M3
+findings:
+- rule: response-header-became-optional
+  severity: error
+  subject: GET /pets

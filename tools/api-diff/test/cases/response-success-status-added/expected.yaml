@@ -1,0 +1,6 @@
+description: A new 2xx alongside 200 is a warning.
+milestone: M3
+findings:
+- rule: response-success-status-added
+  severity: warn
+  subject: GET /pets

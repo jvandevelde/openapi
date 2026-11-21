@@ -1,0 +1,6 @@
+description: A new response header.
+milestone: M3
+findings:
+- rule: response-header-added
+  severity: info
+  subject: GET /pets

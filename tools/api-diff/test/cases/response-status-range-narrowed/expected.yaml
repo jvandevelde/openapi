@@ -1,0 +1,6 @@
+description: 2XX replaced by 200 is not a removal. The narrowing is reported as info, and 2XX is compared with 200.
+milestone: M3
+findings:
+- rule: response-status-range-narrowed
+  severity: info
+  subject: GET /pets

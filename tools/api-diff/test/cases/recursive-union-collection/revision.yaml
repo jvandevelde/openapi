@@ -1,0 +1,52 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/shapes':
+    post:
+      operationId: createShape
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Shape'
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Shape'
+components:
+  schemas:
+    Shape:
+      oneOf:
+      - $ref: '#/components/schemas/Circle'
+      - $ref: '#/components/schemas/Group'
+      discriminator:
+        propertyName: kind
+    Circle:
+      type: object
+      required:
+      - kind
+      - radius
+      properties:
+        kind:
+          type: string
+        radius:
+          type: number
+          minimum: 0
+    Group:
+      type: object
+      required:
+      - kind
+      - children
+      properties:
+        kind:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shape'

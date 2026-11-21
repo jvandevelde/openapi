@@ -7,6 +7,7 @@ Each tool lives in its own directory under [`tools/`](tools/) and is fully self-
 | Tool | Language | What it does | Run |
 |---|---|---|---|
 | [`operation-ids`](tools/operation-ids/) | Node.js ≥ 20 | Fills in missing `operationId`s with short, deterministic, unique names (OpenAPI 3.0–3.2). | `npx ./tools/operation-ids spec.yaml` |
+| [`api-diff`](tools/api-diff/) | Node.js ≥ 22.18 | Compares two OpenAPI documents (files or git revisions) and reports breaking changes (OpenAPI 3.0–3.2). Work in progress. | `npx ./tools/api-diff main:spec.yaml spec.yaml` |
 
 ## Using the tools with `make`
 

@@ -1,0 +1,10 @@
+description: Two templates that differ only in parameter names are the same path, which is invalid. The same template is kept
+  whatever the key order.
+milestone: M4
+findings:
+- rule: spec-invalid
+  severity: error
+  subject: base document
+- rule: spec-invalid
+  severity: error
+  subject: revision document

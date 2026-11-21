@@ -1,0 +1,6 @@
+description: OpenAPI 3.2 QUERY operations are compared.
+milestone: M3
+findings:
+- rule: operation-added
+  severity: info
+  subject: QUERY /pets

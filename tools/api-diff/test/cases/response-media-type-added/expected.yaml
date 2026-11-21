@@ -1,0 +1,6 @@
+description: A new response media type.
+milestone: M3
+findings:
+- rule: response-media-type-added
+  severity: info
+  subject: GET /pets

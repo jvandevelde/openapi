@@ -1,0 +1,18 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/pets':
+    post:
+      operationId: createPet
+      callbacks:
+        onDone:
+          '{$request.body#/url}':
+            post:
+              responses:
+                '200':
+                  description: ok
+      responses:
+        '200':
+          description: ok

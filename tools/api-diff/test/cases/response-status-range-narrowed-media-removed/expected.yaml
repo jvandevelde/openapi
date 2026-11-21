@@ -1,0 +1,12 @@
+description: 2XX split into 200 and 201, both without the XML media type. One narrowing finding, and each code is compared with 2XX.
+milestone: M3
+findings:
+- rule: response-status-range-narrowed
+  severity: info
+  subject: GET /pets
+- rule: response-media-type-removed
+  severity: error
+  subject: GET /pets
+- rule: response-media-type-removed
+  severity: error
+  subject: GET /pets

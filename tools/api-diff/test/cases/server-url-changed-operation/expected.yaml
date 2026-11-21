@@ -1,0 +1,6 @@
+description: An operation-level server URL removed.
+milestone: M3
+findings:
+- rule: server-url-changed
+  severity: warn
+  subject: GET /pets

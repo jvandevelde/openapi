@@ -1,0 +1,6 @@
+description: Changed tags are an sdk change.
+milestone: M3
+findings:
+- rule: operation-tags-changed
+  severity: info
+  subject: GET /pets

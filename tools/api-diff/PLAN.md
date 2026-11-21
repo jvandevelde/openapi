@@ -29,7 +29,7 @@ Status: **planning**. No code yet. This directory has no `Makefile`, so the root
 | 7 | **allOf is approximate** unless you pass `--flatten-allof`. oneOf/anyOf changes often come out as WARN. | Always compare **effective** schemas (allOf merged), and keep the original structure for display. Match oneOf/anyOf branches by discriminator value, `$ref` target or structural similarity, not by array index. |
 | 8 | **Renames read as remove + add.** | **Rename detection:** an operation with the same `operationId` at a new path, a component with a new name but the same structure, a renamed path parameter. Reported as one *renamed* change. |
 | 9 | Says *what* broke. | Each finding also says **why** it breaks (an example client that fails) and **how to fix** it (e.g. "make the new property optional", "deprecate first"). |
-| 10 | Version-bump checking is a single flag. | **Semver advice:** the bump the changes need (major/minor/patch), compared with `info.version`. |
+| 10 | Version-bump checking is a single flag. | **Semver advice:** the bump the changes need (major/minor/patch), compared with the recorded versions (`info.version` or configured `x-` extensions, see *Versions compared*). |
 
 ## 3. Architecture
 
@@ -92,7 +92,7 @@ WARN  enum value 'refunded' added to Order.status            components/schemas/
       fix: mark the enum open (x-api-diff: { enum: open }) or split into OrderRequest / OrderResponse
 ```
 
-Policy overrides apply **per usage**. An override on `/internal/**` turns off only those usages, and the rest still count.
+Policy overrides apply **per usage**. An override for one path turns off only those usages, and the rest still count.
 
 **Which document's usages count?** Existing clients were built against the **base**, so usages come from the base graph. Usages that are new in the revision (e.g. `Order` now also used in `PATCH /orders`) are already reported as changes to that operation, so they aren't counted again here. An unused component (no usages) gets `info` with the rule `component-unused`.
 
@@ -125,7 +125,7 @@ A ref change can be harmless on the wire but still break generated SDKs, because
 Some annotations aren't purely docs, so they get their own rules:
 - **`deprecated`** added or removed has lifecycle rules (deprecation period, sunset).
 - **`default`** changes server behaviour when a field is omitted, so it counts as `wire` (`warn`).
-- **`x-` extensions** can matter to code generators (e.g. `x-enum-varnames`, `x-go-type`). The policy file says which kind each extension is, e.g. `extensions: { x-enum-varnames: sdk, x-internal: wire }`, and the rest default to `docs`.
+- **`x-` extensions** can matter to code generators (e.g. `x-enum-varnames`, `x-go-type`). The policy file says which kind each extension is, e.g. `extensions: { x-enum-varnames: sdk }`, and the rest default to `docs`.
 
 Built-in **profiles** set different defaults: `--profile wire` (`sdk` rules are `info`) and `--profile sdk` (`sdk` rules are `warn` or `error`). For `ref-target-changed` with identical schemas, the default is `info` under `wire` and `error` under `sdk`. The policy file can override either.
 
@@ -229,7 +229,7 @@ rules:
 overrides:
   - match: { stability: [draft, alpha] }
     severity: info                         # anything goes before beta
-  - match: { path: "/internal/**" }
+  - match: { path: "/legacy/**" }
     severity: off
   - match: { extension: { x-audience: partner } }
     rules: { enum-value-added-in-response: error }
@@ -275,11 +275,67 @@ The engine produces one **result object** (JSON with a versioned schema): findin
 |---|---|---|---|---|---|---|
 | **`ci`** | The pipeline | Pass or fail? | Findings at or above `--fail-on`, excluding acknowledged ones | Severity | exit code, text, JSON | CI step log, JSON kept as a build artifact |
 | **`review`** | PR author and reviewers | What does this PR break, and how do I fix or accept it? | wire + sdk findings with fixes, a collapsed list of docs changes, acknowledged findings marked as such | Root cause (component or operation), worst first | text, HTML | PR comment (text), linked HTML artifact |
-| **`changelog`** | API consumers | What changed for me in this release, and what do I need to do? | Plain-language entries: new, changed, deprecated (with sunset dates), removed, and migration notes. No internal paths, no acknowledgement details, no docs-only changes unless asked | Tag, then operation | HTML, text | Release notes, developer portal |
+| **`changelog`** | API consumers | What changed for me in this release, and what do I need to do? | Plain-language entries: new, changed, deprecated (with sunset dates), removed, and migration notes. Configured exclusions applied (see *Exclusions*), no acknowledgement details, no docs-only changes unless asked | Tag, then operation | HTML, text | Release notes, developer portal |
 | **`sdk`** | SDK maintainers | Which generated types or methods change? | sdk findings, a table of old → new type and method names, the SDK semver bump | Generated type / operationId | text, JSON | SDK release PR |
 | **`summary`** | Release or product manager | How big and how risky is this release? | Counts by kind and severity, the semver advice, the 5 most serious findings | — | text, JSON | Release checklist, chat |
 | **`audit`** | API governance | Are we following our own rules? | Everything, including acknowledged findings (who, why, expiry), expired acknowledgements, `unclassified-change`, and which policy entry set each severity | Rule | JSON, HTML | Governance reviews, dashboards (trends across releases) |
 | **`explore`** | Anyone investigating | Show me everything | All findings plus a side-by-side spec view, filters (kind, severity, tag, path), search, recursive schemas shown as `↻` | Interactive | Self-contained HTML (one file, works offline) | CI artifact linked from the `review` comment |
+
+### Exclusions
+
+Nothing is excluded by default. Every path, including internal ones, is compared and reported unless you configure otherwise. Exclusions are **named sets** in the config file, so they can be reused and changed without code changes:
+
+```yaml
+exclusions:
+  internal:                      # example set; edit, rename or delete it
+    paths: ["/internal/**"]
+    extensions: [x-internal]     # anything with x-internal: true
+    # also available: tags, operationIds, components
+```
+
+A set can be used at two levels:
+
+- **`hide`** (per report): still compared and counted, just left out of that report. Use it for audiences who shouldn't see something, e.g. internal paths in a public `changelog`.
+- **`ignore`** (globally, in the policy): not compared at all. Use it for parts of the spec you don't own.
+
+```yaml
+reports:
+  changelog: { exclude: [internal] }   # hide from consumers
+  review:    {}                         # reviewers see everything
+# ignore: [internal]                    # uncomment to skip internal paths entirely
+```
+
+Exclusions are never silent. Every report states what was left out, e.g. `4 changes hidden by exclusion 'internal'`, and the JSON lists the hidden finding IDs. `audit` always shows everything.
+
+### Versions compared
+
+Every report starts with the versions it compared, and the JSON records them under `compared`, so a report always shows what it covers.
+
+By default the version comes from `info.version`. The config can read it from vendor extensions instead, plus any extra labels you want to record:
+
+```yaml
+versions:
+  primary:                        # used for the semver advice
+    from: [x-api-version, info.version]   # first one present wins
+  labels:                         # extra values to record and show
+    build:    x-build-id
+    commit:   x-git.sha           # dotted paths reach nested fields
+    released: x-release-date
+```
+
+- `from` takes a list. The first source present in the document wins, so specs without the extension fall back to `info.version`.
+- Any source is either an `x-` extension at the document root, `info.<field>`, or a JSON Pointer (`/info/x-meta/version`).
+- **CLI overrides** take precedence over both, e.g. a git tag from CI: `--base-version v1.4.0 --revision-version v1.5.0` (and `--base-label commit=abc123`).
+- If no source gives a version, the report shows `unknown` and the semver advice is skipped with a notice. It doesn't fail the run.
+
+Each side also records the file name, a SHA-256 of the file, and where its version came from, along with the tool version and a hash of the policy. This makes every report reproducible:
+
+```
+api-diff 0.1.0 · policy 3fa2c1e
+base      orders.yaml  v1.4.0 (x-api-version)  build 812  commit 9d4a736
+revision  orders.yaml  v1.5.0 (x-api-version)  build 845  commit c7f3e1a
+advice    major bump needed (2 breaking changes); revision is a minor bump
+```
 
 ### Output formats
 
@@ -291,7 +347,7 @@ Only three: **`json`**, **`txt`** and **`html`**. Every report supports `json`, 
 
 ### What makes these better than oasdiff's outputs
 
-- **Redaction for each audience.** `changelog` drops anything matching `x-internal`, `/internal/**` or a configured filter, and never shows acknowledgement reasons or owners. Internal details don't leak into public release notes.
+- **Exclusions for each audience.** Each report applies only the exclusion sets you configure (see *Exclusions*), and `changelog` never shows acknowledgement reasons or owners.
 - **Each report stays the right size.** GitHub comments are limited to 65,536 characters, so `review` shows the most serious findings in full, collapses the rest and links to the `explore` HTML artifact for the remainder. It never just cuts off.
 - **Comments are updated, not added.** `review` writes a hidden marker so CI edits its own earlier comment, and shows "fixed since last push" and "new since last push".
 - **Consumer impact reports.** `changelog --uses ops.txt` (a list of operations, from an SDK or from access logs) keeps only the changes that reach those operations, through the usage graph. Each consumer sees "3 changes affect you" instead of the whole release.
@@ -304,7 +360,7 @@ The built-in reports are presets, and the config file can change them or add new
 ```yaml
 reports:
   changelog:
-    redact: { paths: ["/internal/**"], extensions: [x-internal] }
+    exclude: [internal]
     include: { kinds: [wire, sdk], min-severity: info }
   partner-changelog:                   # a custom report
     extends: changelog

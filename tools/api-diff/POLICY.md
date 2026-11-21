@@ -61,6 +61,8 @@ Only these rules take options beyond those in section 3. Every other rule takes 
 | `enum-value-added` | `open-extensions` | `[]` | Other extensions that mean "open enum", e.g. `[x-extensible-enum]` |
 | `property-added-optional` | `strict-clients` | `false` | `true` raises `…-in-response` to `warn`, for clients that reject unknown fields |
 | `property-removed` | `closed-object-severity` | `error` | Severity of `…-in-request` when the object has `additionalProperties: false` (clients still sending it will be rejected) |
+| `parameter-removed` | `strict-servers` | `false` | `true` means the server rejects unknown parameters, so removals are `error`. Can be per location: `{ query: true, header: false, cookie: false }` |
+| `parameter-*` | — | — | Every parameter rule also has location-specific IDs (`query-…`, `header-…`, `cookie-…`). The more specific ID wins |
 | `response-success-status-added` | `ignore-statuses` | `[]` | Statuses that never warn when added, e.g. `[202, 204]` |
 | `response-header-removed` | `required-severity` | `error` | Severity when the removed header was `required` |
 | `server-url-changed` | `compare` | `full` | `full`, `path` (ignore host changes, e.g. per environment) or `off` |

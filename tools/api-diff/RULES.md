@@ -32,6 +32,7 @@ These cover any schema change that no specific rule below matches. A specific ru
 | `operation-removed-after-deprecation` | Removed after the configured deprecation period (default 90 days) | wire | info | 3 |
 | `operation-id-changed` | Same method and path, different `operationId` | sdk | info · **sdk: error** | 1 |
 | `path-param-renamed` | `/users/{id}` → `/users/{userId}` (same endpoint) | sdk | info · **sdk: warn** | 1 |
+| `operation-path-changed` | The path template changed but the operation is the same (matched by `operationId`), e.g. a path parameter was added or removed, or `/orders/{id}` → `/v2/orders/{id}`. Old clients call a URL that no longer exists | wire | error | 1 |
 | `operation-tags-changed` | Tags changed (many generators group methods into classes by tag) | sdk | info · **sdk: warn** | 1 |
 | `server-url-changed` | A `servers` URL changed or was removed (document, path or operation level) | wire | warn | 1 |
 
@@ -49,16 +50,24 @@ These cover any schema change that no specific rule below matches. A specific ru
 
 ## 4. Parameters (path, query, header, cookie)
 
-| Rule | Meaning | Kind | Default | Phase |
-|---|---|---|---|---|
-| `parameter-added-required` | New required parameter | wire | error | 1 |
-| `parameter-added-optional` | New optional parameter | wire | info | 1 |
-| `parameter-removed` | Parameter removed; clients that still send it may be rejected or ignored ⚑ | wire | warn · **sdk: error** | 1 |
-| `parameter-became-required` | Optional → required | wire | error | 1 |
-| `parameter-became-optional` | Required → optional | wire | info | 1 |
-| `parameter-location-changed` | e.g. `query` → `header` | wire | error | 1 |
-| `parameter-serialization-changed` | `style`, `explode`, `allowReserved` or the `content` media type changed | wire | error | 1 |
-| `parameter-renamed` | Same position (path) or detected rename, new name | sdk | **sdk: error** (wire: see `parameter-removed` + `parameter-added-*`) | 4 |
+The parameter's location changes what a removal or addition means, so parameter rules are **split by location**, the same way schema rules are split by direction. `parameter-removed` sets all locations, and `query-parameter-removed`, `header-parameter-removed` and `cookie-parameter-removed` set one. The more specific ID wins.
+
+**Path parameters are different.** They're always required and part of the URL, so they can't be removed, added or made optional without changing the path template, and a changed template is a different endpoint. Those changes are reported as operation changes (`operation-path-changed`, or `operation-removed` + `operation-added`), never as parameter changes. A renamed path parameter in the same position is `path-param-renamed` (section 2). A path parameter declared but missing from the template is `spec-invalid`.
+
+Parameters are matched by location and name. Header names are compared case-insensitively. `Accept`, `Content-Type` and `Authorization` declared as header parameters are skipped, because OpenAPI says to ignore them. They're covered by media type and security rules instead.
+
+| Rule | Meaning | query | header | cookie | Phase |
+|---|---|---|---|---|---|
+| `parameter-added-required` | New required parameter: old clients don't send it | error | error | error | 1 |
+| `parameter-added-optional` | New optional parameter | info | info | info | 1 |
+| `parameter-removed` | Clients still send it. Usually the server ignores it, so behaviour silently changes (e.g. a removed `?status=` filter now returns everything). If the server rejects unknown parameters, the request fails ⚑ | warn | warn | warn | 1 |
+| `parameter-became-required` | Optional → required | error | error | error | 1 |
+| `parameter-became-optional` | Required → optional | info | info | info | 1 |
+| `parameter-location-changed` | e.g. `query` → `header`. Old clients send it in the wrong place. Changes to or from `path` are reported as `operation-path-changed` | error | error | error | 1 |
+| `parameter-serialization-changed` | `style`, `explode`, `allowReserved` or the `content` media type changed | error | error | error | 1 |
+| `parameter-renamed` | A detected rename (same schema and position in the list, new name). Wire: old clients send the old name, so it's also reported as removed + added | sdk: error | sdk: error | sdk: error | 4 |
+
+All of these except `parameter-renamed` are kind `wire`. Under `--profile sdk`, `parameter-removed` is `error` in every location, because the parameter disappears from the generated method signature.
 
 Parameter **schemas** are always *request* direction, so they use the schema rules in section 7.
 
@@ -210,7 +219,7 @@ All `docs` kind, default `info`, phase 2. They appear in the **diff** view and i
 | Section | Rule IDs |
 |---|---|
 | 1. Core fallbacks | 4 |
-| 2–6. Operations, security, parameters, request bodies, responses | 40 |
+| 2–6. Operations, security, parameters, request bodies, responses | 41 (parameter rules count once, not once per location) |
 | 7. Schemas (each one is a request/response pair) | 52 |
 | 8–11. References, lifecycle, docs, notices | 28 |
 | **Total** | **about 125** (about 180 counting both directions of each pair) |

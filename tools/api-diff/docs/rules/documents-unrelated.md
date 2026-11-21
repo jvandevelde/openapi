@@ -9,7 +9,7 @@ The two documents look like different APIs
 | **Kind** | `wire` |
 | **Default severity** | `error` |
 | **Rule IDs** | `documents-unrelated` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Spec and engine notices ([RULES.md section 11](../../RULES.md)) |
 
 ## What it detects
@@ -131,7 +131,7 @@ Options for this rule:
 | `min-overlap` | `0.1` | The documents count as related if any signal reaches this share (shared items divided by the size of the smaller document). |
 | `signals` | `[operations, operation-ids, schemas]` | Which overlaps to measure. One signal at or above `min-overlap` is enough. A signal that is empty on either side is skipped. |
 | `min-size` | `5` | Skip the check when the smaller document has fewer operations and fewer schemas than this, since a tiny overlap means little there. An empty base is always skipped. |
-| `ignore-path-segments` | `['^v\d+([a-z]+\d*)?$', '^\d{4}-\d{2}-\d{2}$']` | Regular expressions for path segments dropped before comparing paths, anywhere in the path (by default `v1`, `v2beta1`, `2024-01-01`). Works with any number of different prefixes. |
+| `ignore-path-segments` | `['^v\d+((alpha\|beta\|rc)\d*)?$', '^\d{4}-\d{2}-\d{2}$']` | Regular expressions for path segments dropped before comparing paths, anywhere in the path (by default `v1`, `v2beta1`, `v3rc2`, `2024-01-01`). Works with any number of different prefixes. |
 | `strip-prefixes` | `[]` | Extra path prefixes removed before comparing, e.g. `[/api, /internal]`. |
 | `when` | `manual` | `manual` skips the check when both inputs are the same path at two git revisions. `always` checks those too. |
 

@@ -511,7 +511,7 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
       { name: 'min-overlap', default: '0.1', description: 'The documents count as related if any signal reaches this share (shared items divided by the size of the smaller document).' },
       { name: 'signals', default: '[operations, operation-ids, schemas]', description: 'Which overlaps to measure. One signal at or above `min-overlap` is enough. A signal that is empty on either side is skipped.' },
       { name: 'min-size', default: '5', description: 'Skip the check when the smaller document has fewer operations and fewer schemas than this, since a tiny overlap means little there. An empty base is always skipped.' },
-      { name: 'ignore-path-segments', default: "['^v\\d+([a-z]+\\d*)?$', '^\\d{4}-\\d{2}-\\d{2}$']", description: 'Regular expressions for path segments dropped before comparing paths, anywhere in the path (by default `v1`, `v2beta1`, `2024-01-01`). Works with any number of different prefixes.' },
+      { name: 'ignore-path-segments', default: "['^v\\d+((alpha|beta|rc)\\d*)?$', '^\\d{4}-\\d{2}-\\d{2}$']", description: 'Regular expressions for path segments dropped before comparing paths, anywhere in the path (by default `v1`, `v2beta1`, `v3rc2`, `2024-01-01`). Works with any number of different prefixes.' },
       { name: 'strip-prefixes', default: '[]', description: 'Extra path prefixes removed before comparing, e.g. `[/api, /internal]`.' },
       { name: 'when', default: 'manual', description: '`manual` skips the check when both inputs are the same path at two git revisions. `always` checks those too.' },
     ],

@@ -1,11 +1,13 @@
 // Runs the pipeline for one comparison: load → model → diff → classify →
 // result. Each stage is a pure function over the previous stage's output.
 
+import { resolve } from 'node:path';
 import { classify, severityAtLeast } from './classify/classify.ts';
 import { diffOperations } from './diff/operations.ts';
 import { collapseBulk } from './diff/bulk.ts';
 import { diffDocs } from './diff/docs.ts';
 import { diffSchemaEngine } from './diff/schema-engine.ts';
+import { checkUnrelated, unrelatedOptions } from './diff/unrelated.ts';
 import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
@@ -18,6 +20,8 @@ export interface CompareOptions {
   /** Overrides the policy's profile. */
   profile?: Profile;
   policy?: Policy;
+  /** Both inputs are one file at two git revisions (`documents-unrelated` skips those unless `when: always`). */
+  sameFile?: boolean;
 }
 
 interface LoadedSide {
@@ -66,8 +70,10 @@ async function loadSide(input: OpenedInput, side: Side): Promise<LoadedSide> {
 export async function compareOpened(base: OpenedInput, revision: OpenedInput, opts: CompareOptions = {}): Promise<Result> {
   const profile = opts.profile ?? opts.policy?.profile ?? 'wire';
   const [b, r] = await Promise.all([loadSide(base, 'base'), loadSide(revision, 'revision')]);
-  const changes: Change[] = [...b.changes, ...r.changes];
-  if (b.model && r.model) {
+  let changes: Change[] = [...b.changes, ...r.changes];
+  const unrelated = b.model && r.model && !changes.some((c) => c.rule === 'spec-invalid') ? precheck(b.model, r.model, opts) : undefined;
+  if (unrelated) changes = [unrelated];
+  else if (b.model && r.model) {
     const pairs: [Operation, Operation][] = [];
     const diffs = [...diffOperations(b.model, r.model, pairs)];
     diffs.push(...diffSchemaEngine(b.model, r.model, pairs));
@@ -86,12 +92,22 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   };
 }
 
+/** The documents-unrelated precheck, unless the policy turns it off or the inputs are one file in git. */
+function precheck(base: Model, revision: Model, opts: CompareOptions): Change | undefined {
+  if (opts.policy?.rules.get('documents-unrelated')?.severity === 'off') return undefined;
+  const raw = opts.policy?.rules.get('documents-unrelated')?.options ?? {};
+  const o = unrelatedOptions(raw);
+  if (opts.sameFile && o.when === 'manual') return undefined;
+  return checkUnrelated(base, revision, o);
+}
+
 export async function compareInputs(base: InputSpec, revision: InputSpec, cwd: string, opts: CompareOptions = {}): Promise<Result> {
   const ob = await open(base, cwd, revision);
   let or: OpenedInput | undefined;
   try {
     or = await open(revision, cwd, base);
-    return await compareOpened(ob, or, opts);
+    const sameFile = (base.kind === 'git' || revision.kind === 'git') && resolve(cwd, base.path) === resolve(cwd, revision.path);
+    return await compareOpened(ob, or, { sameFile, ...opts });
   } finally {
     ob.source.close();
     or?.source.close();

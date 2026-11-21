@@ -186,7 +186,8 @@ function page(r: RuleMeta, cases: CaseInfo[]): string {
   ];
   if (doc.options?.length) {
     lines.push('Options for this rule:', '', '| Option | Default | Description |', '|---|---|---|');
-    for (const o of doc.options) lines.push(`| \`${o.name}\` | \`${o.default}\` | ${o.description} |`);
+    const cell = (t: string): string => t.replace(/\|/g, '\\|');
+    for (const o of doc.options) lines.push(`| \`${o.name}\` | \`${cell(o.default)}\` | ${cell(o.description)} |`);
     lines.push('');
   }
   lines.push('```yaml', 'rules:', `  ${r.id}: ${typeof r.severity === 'string' ? r.severity : r.severity.out}`, '```', '', '## How to fix', '', doc.fix, '');

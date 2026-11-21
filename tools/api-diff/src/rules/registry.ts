@@ -12,7 +12,6 @@ export const CURRENT_MILESTONE = 6;
 
 /** Rules of the current milestone that aren't built yet. */
 const PENDING = new Set([
-  'documents-unrelated',
   'operation-removed-after-deprecation',
   'deprecated-added',
   'deprecated-removed',

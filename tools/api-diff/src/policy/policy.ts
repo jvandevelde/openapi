@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { load } from 'js-yaml';
+import { unrelatedOptions } from '../diff/unrelated.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { allRuleIds, baseRuleId } from '../rules/registry.ts';
 import type { FailOn, Profile, Severity } from '../types.ts';
@@ -36,7 +37,8 @@ export interface Policy {
   raw: Record<string, unknown>;
 }
 
-export class PolicyError extends Error {}
+export { PolicyError } from './errors.ts';
+import { PolicyError } from './errors.ts';
 
 export const DEFAULT_POLICY_FILE = 'api-diff.yaml';
 
@@ -128,8 +130,14 @@ export function parseRuleSetting(id: string, value: unknown, where: string): Rul
       throw new PolicyError(`${where}.${k}: unknown option${hint}`);
     }
   }
+  OPTION_CHECKS[base]?.(setting.options, where);
   return setting;
 }
+
+/** Value checks for rule options, per base rule ID. Rules without one accept any value until their step adds it. */
+const OPTION_CHECKS: Record<string, (options: Record<string, unknown>, where: string) => void> = {
+  'documents-unrelated': (o, where) => void unrelatedOptions(o, where),
+};
 
 /** Top-level option keys a rule accepts: `unless.deprecated-for-days` is under `unless`. */
 function optionKeys(base: string): string[] {

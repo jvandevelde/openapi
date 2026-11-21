@@ -179,6 +179,19 @@ The tool never assumes it's inside this tools repo. Git commands run **in the re
 
 The API repo needs a Node runtime in CI, but its own code can be in any language.
 
+**On a developer machine, before the package is published,** point `npx` at a local clone of this repo, and run it from inside the API repo. npx keeps the current directory, so git reads the API repo, not this one:
+
+```sh
+git clone https://github.com/jvandevelde/openapi ~/src/openapi    # once
+cd ~/src/orders-api
+npx ~/src/openapi/tools/api-diff main:openapi.yaml openapi.yaml
+```
+
+- The first run installs the tool's dependencies into npx's cache. `git pull` in the clone picks up new versions.
+- To type just `api-diff`, run `npm link` once in `~/src/openapi/tools/api-diff`. It puts a global `api-diff` command on the `PATH` that points at the clone. A shell alias does the same without touching npm's global folder.
+- `npx github:jvandevelde/openapi` doesn't work, because npx can't run a package from a subdirectory of a repo (the same limit `operation-ids` documents).
+- CI before publishing uses option 3 (a second checkout) the same way: `npx ./openapi-tools/tools/api-diff …`.
+
 A minimal workflow in another repo, using option 1:
 
 ```yaml

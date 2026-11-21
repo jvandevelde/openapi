@@ -7,8 +7,20 @@ import type { Change, Kind, Severity } from '../types.ts';
 /** Milestone in which a rule is implemented (see PLAN.md section 6). */
 export type Milestone = 3 | 4 | 5 | 6 | 8;
 
-/** The milestone the code currently implements. */
-export const CURRENT_MILESTONE = 5;
+/** The milestone being built. Its rules count as implemented once they leave `PENDING`. */
+export const CURRENT_MILESTONE = 6;
+
+/** Rules of the current milestone that aren't built yet. */
+const PENDING = new Set([
+  'documents-unrelated',
+  'operation-removed-after-deprecation',
+  'deprecated-added',
+  'deprecated-removed',
+  'sunset-moved-earlier',
+  'stability-decreased',
+  'version-bump-too-small',
+  'version-unchanged',
+]);
 
 export interface RuleMeta {
   id: string;
@@ -28,6 +40,8 @@ export interface RuleMeta {
   milestone: Milestone;
   /** A severity that depends on the change's details, e.g. a removed required header. */
   conditional?: (c: Change) => Severity | undefined;
+  /** Policy option that sets the severity when `conditional` applies, e.g. `required-severity`. */
+  conditionalOption?: string;
   /** One-line message for a change. */
   message: (c: Change) => string;
 }
@@ -102,7 +116,7 @@ rule({ id: 'response-media-type-added', section: 6, kind: 'wire', title: 'Respon
 rule({ id: 'response-media-type-removed', section: 6, kind: 'wire', title: 'Response media type removed', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} media type '${d(c, 'mediaType')}' removed` });
 rule({ id: 'response-body-removed', section: 6, kind: 'wire', title: 'Response body removed', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} no longer has a body` });
 rule({ id: 'response-header-added', section: 6, kind: 'wire', title: 'Response header added', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'status')} header '${d(c, 'name')}' added` });
-rule({ id: 'response-header-removed', section: 6, kind: 'wire', title: 'Response header removed (error if it was required)', severity: 'warn', milestone: 3, conditional: (c) => (c.details.required === true ? 'error' : undefined), message: (c) => `${c.details.required === true ? 'required ' : ''}response ${d(c, 'status')} header '${d(c, 'name')}' removed` });
+rule({ id: 'response-header-removed', section: 6, kind: 'wire', title: 'Response header removed (error if it was required)', severity: 'warn', milestone: 3, conditional: (c) => (c.details.required === true ? 'error' : undefined), conditionalOption: 'required-severity', message: (c) => `${c.details.required === true ? 'required ' : ''}response ${d(c, 'status')} header '${d(c, 'name')}' removed` });
 rule({ id: 'response-header-became-optional', section: 6, kind: 'wire', title: 'Response header became optional', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} header '${d(c, 'name')}' became optional` });
 
 // 7. Schemas (all have request/response variants)
@@ -124,7 +138,7 @@ const schemaRule = (id: string, title: string, inS: Severity, outS: Severity, ex
   rule({ id, section: 7, kind: 'wire', title, severity: { in: inS, out: outS }, variants: 'direction', milestone: 5, message: (c) => schemaMessage(title, c), ...extra });
 schemaRule('property-added-required', 'New required property', 'error', 'info');
 schemaRule('property-added-optional', 'New optional property', 'info', 'info');
-schemaRule('property-removed', 'Property removed', 'warn', 'error', { conditional: (c) => (c.direction === 'in' && c.details.closed === true ? 'error' : undefined) });
+schemaRule('property-removed', 'Property removed', 'warn', 'error', { conditional: (c) => (c.direction === 'in' && c.details.closed === true ? 'error' : undefined), conditionalOption: 'closed-object-severity' });
 schemaRule('property-became-required', 'Property became required', 'error', 'info');
 schemaRule('property-became-optional', 'Property became optional', 'info', 'error');
 schemaRule('property-became-read-only', 'Property became readOnly', 'warn', 'info');
@@ -226,7 +240,7 @@ export function getRule(id: string): RuleMeta {
 }
 
 export function isImplemented(r: RuleMeta): boolean {
-  return r.milestone <= CURRENT_MILESTONE;
+  return r.milestone <= CURRENT_MILESTONE && !PENDING.has(r.id);
 }
 
 /** Location-specific rule ID, e.g. `query-parameter-removed`. Path locations use the base ID. */

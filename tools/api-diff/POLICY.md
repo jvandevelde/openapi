@@ -2,7 +2,9 @@
 
 Status: **draft**. This is the full reference for the policy file. The rules themselves are listed in [RULES.md](RULES.md), and the design is in [PLAN.md](PLAN.md).
 
-The policy file is YAML or JSON, `api-diff.yaml` by default (or `--policy <file>`). Every key is optional: an empty file means "built-in defaults".
+The policy file is YAML or JSON, `api-diff.yaml` in the working directory by default (or `--policy <file>`; `--no-policy` ignores it). Every key is optional: an empty file means "built-in defaults".
+
+Command-line options beat the file: `--profile` and `--fail-on` replace `profile` and `defaults.fail-on`, and `--rule <rule-id>=<severity>` (repeatable) sets a rule's severity, e.g. `--rule documents-unrelated=off` for a one-off run.
 
 ## 1. Top-level keys
 
@@ -49,9 +51,13 @@ rules:
   enum-value-added-in-response: error    # only data clients receive
 ```
 
+Every finding records where its severity came from (`severitySource` in JSON), e.g. `policy api-diff.yaml: rules.query-parameter-removed`, `--rule: rules.operation-removed`, `profile sdk` or `default`.
+
 ## 4. Rule-specific options
 
 Only these rules take options beyond those in section 3. Every other rule takes `severity`, `fix` and `explanation` only.
+
+`response-header-removed` and `property-removed` have a severity that depends on the change (a required header; a closed object). Their `severity` applies to the other findings, and `required-severity` / `closed-object-severity` set the dependent case. `format-changed` keeps widening formats at `info` whatever its `severity` is; `off` turns off every finding of a rule.
 
 | Rule | Option | Default | Meaning |
 |---|---|---|---|

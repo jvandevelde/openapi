@@ -10,11 +10,14 @@ import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
+import type { Policy } from './policy/policy.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
 
 export interface CompareOptions {
+  /** Overrides the policy's profile. */
   profile?: Profile;
+  policy?: Policy;
 }
 
 interface LoadedSide {
@@ -61,7 +64,7 @@ async function loadSide(input: OpenedInput, side: Side): Promise<LoadedSide> {
 }
 
 export async function compareOpened(base: OpenedInput, revision: OpenedInput, opts: CompareOptions = {}): Promise<Result> {
-  const profile = opts.profile ?? 'wire';
+  const profile = opts.profile ?? opts.policy?.profile ?? 'wire';
   const [b, r] = await Promise.all([loadSide(base, 'base'), loadSide(revision, 'revision')]);
   const changes: Change[] = [...b.changes, ...r.changes];
   if (b.model && r.model) {
@@ -71,7 +74,7 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     diffs.push(...diffDocs(b.model, r.model, pairs));
     changes.push(...collapseBulk(diffs));
   }
-  const findings = classify(changes, { profile });
+  const findings = classify(changes, opts.policy ? { profile, policy: opts.policy } : { profile });
   return {
     schemaVersion: 0,
     tool: { name: 'api-diff', version: VERSION },

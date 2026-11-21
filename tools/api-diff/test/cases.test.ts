@@ -12,7 +12,8 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dump, load } from 'js-yaml';
 import { compareInputs } from '../src/engine.ts';
-import { baseRuleId, CURRENT_MILESTONE, isImplemented, RULES } from '../src/rules/registry.ts';
+import { parsePolicy } from '../src/policy/policy.ts';
+import { baseRuleId, CURRENT_MILESTONE, getRule, isImplemented, RULES } from '../src/rules/registry.ts';
 import type { Profile, Severity } from '../src/types.ts';
 
 const CASES = fileURLToPath(new URL('./cases/', import.meta.url));
@@ -48,10 +49,11 @@ for (const name of names) {
     assert.ok(base, `${name}: unknown rule '${f.rule}' in expected.yaml`);
     covered.add(base);
   }
-  const todo = milestone > CURRENT_MILESTONE ? `needs ${expected.milestone}` : undefined;
+  const pending = expected.findings.map((f) => baseRuleId(f.rule)!).filter((id) => !isImplemented(getRule(id)));
+  const todo = milestone > CURRENT_MILESTONE ? `needs ${expected.milestone}` : pending.length ? `needs ${[...new Set(pending)].join(', ')}` : undefined;
 
   test(name, { todo }, async () => {
-    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire' });
+    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: parsePolicy(expected.options?.policy ?? {}, `${name}/expected.yaml`) });
     const actual = result.findings.map((f) => ({ rule: f.rule, severity: f.severity, subject: f.subject }));
     if (process.env.UPDATE_CASES && !todo) {
       const next = { ...expected, findings: actual };

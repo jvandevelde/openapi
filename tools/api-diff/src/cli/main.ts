@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { compareInputs, shouldFail } from '../engine.ts';
+import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { renderTxt } from '../render/txt.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
@@ -36,6 +37,9 @@ Options:
       --fail-on <level>  exit 1 if any finding is at or above: error (default), warn, info, never
       --state            print only the state: no-changes, compatible or breaking
       --profile <name>   wire (default) or sdk
+      --policy <file>    policy file (default: api-diff.yaml in the working directory, if present)
+      --no-policy        ignore api-diff.yaml
+      --rule <id>=<sev>  set a rule's severity (error, warn, info, off); repeatable, beats the policy file
       --color / --no-color
   -h, --help
   -v, --version
@@ -64,9 +68,9 @@ export async function main(argv: string[], io: Io = { stdout: process.stdout, st
     }
     return await diffCommand(argv, io);
   } catch (e) {
-    if (e instanceof UsageError || e instanceof SourceError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+    if (e instanceof UsageError || e instanceof SourceError || e instanceof PolicyError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
       io.stderr.write(`api-diff: ${(e as Error).message}\n`);
-      if (e instanceof UsageError || !(e instanceof SourceError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
+      if (e instanceof UsageError || !(e instanceof SourceError || e instanceof PolicyError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
       return 2;
     }
     throw e;
@@ -86,6 +90,9 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'fail-on': { type: 'string' },
       state: { type: 'boolean' },
       profile: { type: 'string' },
+      policy: { type: 'string' },
+      'no-policy': { type: 'boolean' },
+      rule: { type: 'string', multiple: true },
       color: { type: 'boolean' },
       'no-color': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
@@ -101,15 +108,24 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     return 0;
   }
   const format = oneOf('format', values.format, ['txt', 'json'] as const, 'txt');
-  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], 'error');
-  const profile = oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], 'wire');
   const cwd = resolve(values.cwd ?? process.cwd());
+  if (values.policy !== undefined && values['no-policy']) throw new UsageError('--policy and --no-policy cannot be used together');
+  const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
+  for (const r of values.rule ?? []) {
+    const eq = r.indexOf('=');
+    if (eq <= 0) throw new UsageError(`--rule must be <rule-id>=<severity>, got '${r}'`);
+    const id = r.slice(0, eq);
+    const setting = parseRuleSetting(id, r.slice(eq + 1), `--rule ${id}`);
+    policy.rules.set(id, { ...policy.rules.get(id), severity: setting.severity!, options: policy.rules.get(id)?.options ?? {}, from: '--rule' });
+  }
+  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], policy.failOn ?? 'error');
+  const profile = oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], policy.profile ?? 'wire');
   if (positionals.length === 0 && values.base === undefined) {
     io.stdout.write(HELP);
     return 2;
   }
   const [base, revision] = inputsFromArgs(positionals, { base: values.base, revision: values.revision }, cwd);
-  const result = await compareInputs(base, revision, cwd, { profile });
+  const result = await compareInputs(base, revision, cwd, { profile, policy });
 
   let text: string;
   if (values.state) text = `${result.state}\n`;

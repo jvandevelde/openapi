@@ -126,6 +126,11 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
   return policy;
 }
 
+/** Parses an `x-api-diff: { rules }` map from a spec: like an override's rules map. */
+export function parseHintRules(v: unknown, where: string): Map<string, RuleSetting> {
+  return parseRules(v, where, true);
+}
+
 /** Parses a `rules` map. In an override, only the severity and the conditional-case option can be set. */
 function parseRules(v: unknown, where: string, inOverride = false): Map<string, RuleSetting> {
   const out = new Map<string, RuleSetting>();
@@ -173,6 +178,11 @@ export function parseRuleSetting(id: string, value: unknown, where: string): Rul
 /** Value checks for rule options, per base rule ID. Rules without one accept any value until their step adds it. */
 const OPTION_CHECKS: Record<string, (options: Record<string, unknown>, where: string) => void> = {
   'documents-unrelated': (o, where) => void unrelatedOptions(o, where),
+  'enum-value-added': (o, where) => {
+    if (o['honour-open-hint'] !== undefined && typeof o['honour-open-hint'] !== 'boolean') throw new PolicyError(`${where}.honour-open-hint: must be true or false`);
+    const x = o['open-extensions'];
+    if (x !== undefined && !(Array.isArray(x) && x.every((e) => typeof e === 'string' && e.startsWith('x-')))) throw new PolicyError(`${where}.open-extensions: must be a list of x- extension names`);
+  },
 };
 
 /** Top-level option keys a rule accepts: `unless.deprecated-for-days` is under `unless`. */

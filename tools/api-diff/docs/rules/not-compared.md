@@ -36,11 +36,12 @@ Findings:
 
 ## Test cases
 
-2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`callbacks-not-compared`](../../test/cases/callbacks-not-compared/) | `not-compared` · info · document | Callbacks are out of scope; one notice says so. |
+| [`hint-ignore-operation`](../../test/cases/hint-ignore-operation/) | `not-compared` · info · document | The operation is marked x-api-diff ignore: its removed parameter and the enum change it alone uses are not reported; a not-compared notice says so. |
 | [`webhooks-not-compared`](../../test/cases/webhooks-not-compared/) | `not-compared` · info · document | Webhooks are out of scope; one notice says so. |
 
 ## Policy options

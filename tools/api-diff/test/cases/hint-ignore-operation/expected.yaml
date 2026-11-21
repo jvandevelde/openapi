@@ -1,0 +1,6 @@
+description: "The operation is marked x-api-diff ignore: its removed parameter and the enum change it alone uses are not reported; a not-compared notice says so."
+milestone: M6
+findings:
+  - rule: not-compared
+    severity: info
+    subject: 'document'

@@ -44,6 +44,8 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--fail-on <level>` | Exit with code 1 if any finding is at or above `error` (default), `warn` or `info`; `never` always exits 0 |
 | `--state` | Print only `no-changes`, `compatible` or `breaking` |
 | `--profile <name>` | `wire` (default) or `sdk`: raises rules that break generated SDKs, such as `operation-id-changed` |
+| `--policy <file>`, `--no-policy` | The policy file: `api-diff.yaml` in the working directory by default, if present. See [POLICY.md](POLICY.md) |
+| `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
 | `--color`, `--no-color` | Colour is on for terminals unless `NO_COLOR` is set |
 
 Exit codes: `0` no findings at or above `--fail-on`, `1` findings at or above it, `2` usage or input error (missing file, unknown revision).
@@ -65,6 +67,10 @@ WARN   GET /pets               success response 202 added  revision.yaml:11 · r
 
 3 findings: 2 error, 1 warn, 0 info · state: breaking
 ```
+
+## Policy and in-spec hints
+
+A team sets severities, overrides for parts of the API and other settings in a policy file, `api-diff.yaml` ([POLICY.md](POLICY.md)). Spec authors can also steer `api-diff` from the spec itself with vendor extensions such as `x-api-diff: { enum: open }` or `x-stability-level: beta`: [docs/spec-authors.md](docs/spec-authors.md) lists every one.
 
 ## As a library
 

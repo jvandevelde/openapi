@@ -13,6 +13,8 @@ import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
 import { buildContext } from './policy/context.ts';
+import { HintIndex } from './policy/hints.ts';
+import { parseHintRules } from './policy/policy.ts';
 import type { Policy } from './policy/policy.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
@@ -27,6 +29,7 @@ export interface CompareOptions {
 
 interface LoadedSide {
   model?: Model;
+  hints?: HintIndex;
   compared: ComparedSide;
   changes: Change[];
 }
@@ -65,7 +68,10 @@ async function loadSide(input: OpenedInput, side: Side): Promise<LoadedSide> {
     changes.push({ rule: 'spec-invalid', subject: SIDE_NAME[side], [side]: docs.location({ file: docs.root, segs: [] }), details: { reason: `${compared.file}: ${e.message}`, side } });
   }
   for (const n of docs.notices) changes.push(noticeToChange(n, side));
-  return model ? { model, compared, changes } : { compared, changes };
+  if (!model) return { compared, changes };
+  const hints = HintIndex.build(docs, side, parseHintRules);
+  changes.push(...hints.problems);
+  return { model, hints, compared, changes };
 }
 
 export async function compareOpened(base: OpenedInput, revision: OpenedInput, opts: CompareOptions = {}): Promise<Result> {
@@ -79,11 +85,17 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     const diffs = [...diffOperations(b.model, r.model, pairs)];
     diffs.push(...diffSchemaEngine(b.model, r.model, pairs));
     diffs.push(...diffDocs(b.model, r.model, pairs));
-    changes.push(...collapseBulk(diffs));
+    changes.push(...collapseBulk(applyIgnore(diffs, b, r)), ...ignoredNotices(b, r));
   }
   const policy = opts.policy;
-  const context = policy?.overrides?.length ? buildContext(b.model, r.model, policy.lifecycle) : undefined;
-  const findings = classify(changes, policy ? (context ? { profile, policy, context } : { profile, policy }) : { profile });
+  const hasHints = !!(b.hints?.size || r.hints?.size);
+  const context = policy?.overrides?.length || hasHints ? buildContext(b.model, r.model, policy?.lifecycle, { base: b.hints, revision: r.hints }) : undefined;
+  const findings = classify(changes, {
+    profile,
+    ...(policy ? { policy } : {}),
+    ...(context ? { context } : {}),
+    hints: { base: b.hints, revision: r.hints },
+  });
   return {
     schemaVersion: 0,
     tool: { name: 'api-diff', version: VERSION },
@@ -93,6 +105,42 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     counts: countFindings(findings),
     findings,
   };
+}
+
+/**
+ * Drops changes inside nodes marked `x-api-diff: { ignore: true }` (on the
+ * side the change is on), and removes ignored operations from impact lists.
+ * Runs before bulk collapsing, so a collapsed group never hides an ignored part.
+ */
+function applyIgnore(changes: Change[], b: LoadedSide, r: LoadedSide): Change[] {
+  if (!b.hints?.ignored.length && !r.hints?.ignored.length) return changes;
+  const ignoredOps = new Set<string>();
+  for (const s of [b, r]) {
+    for (const op of s.model?.operations.values() ?? []) if (s.hints!.isIgnored(s.model!.docs.location(op.at))) ignoredOps.add(`${op.method.toUpperCase()} ${op.path}`);
+  }
+  const out: Change[] = [];
+  for (const c of changes) {
+    if (b.hints?.isIgnored(c.base) || r.hints?.isIgnored(c.revision) || ignoredOps.has(c.subject)) continue;
+    if (c.impact?.some((s) => ignoredOps.has(s))) {
+      const impact = c.impact.filter((s) => !ignoredOps.has(s));
+      if (impact.length) out.push({ ...c, impact }); // otherwise only ignored operations use it
+    } else out.push(c);
+  }
+  return out;
+}
+
+/** One `not-compared` notice per ignored node (once if it is ignored on both sides). */
+function ignoredNotices(b: LoadedSide, r: LoadedSide): Change[] {
+  const byPointer = new Map<string, Change>();
+  for (const [s, side] of [[b, 'base'], [r, 'revision']] as const) {
+    for (const h of s.hints?.ignored ?? []) {
+      const key = h.atRoot || h.file === s.model!.docs.root.display ? h.pointer : `${h.file}#${h.pointer}`;
+      let c = byPointer.get(key);
+      if (!c) byPointer.set(key, (c = { rule: 'not-compared', subject: 'document', details: { what: `#${h.pointer} (x-api-diff: { ignore: true })` } }));
+      c[side] = { file: h.file, pointer: h.pointer };
+    }
+  }
+  return [...byPointer.values()];
 }
 
 /** The documents-unrelated precheck, unless the policy turns it off or the inputs are one file in git. */

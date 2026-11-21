@@ -216,7 +216,15 @@ Set on a schema, operation or the document, using the `x-api-diff` extension:
 | `x-api-diff: { ignore: true }` | This node is not compared (reported as `not-compared`) |
 | `x-api-diff: { rules: { <rule-id>: <severity> } }` | Rule severities for this node and everything under it |
 
+- **`enum: open`** goes on the schema that has the `enum`. The policy can list other extensions that mean the same, e.g. `open-extensions: [x-extensible-enum]` (section 4).
+- **`ignore: true`** works on an operation, a path item or any schema. Changes inside the node are not reported, on whichever side has the hint, and an operation marked ignored is removed from other findings' affected operations; a component used only by ignored operations is not reported either. One `not-compared` notice per ignored node says what was skipped.
+- **`rules`** takes the same severities as an override's `rules` (section 5): `severity` and the conditional-case option, no other rule options. For a finding, the hints checked are, in order: the nodes containing the change, nearest first; the affected operation and its path item (so an operation's hint covers the shared components it uses); then the document root. The first that names the finding's rule wins.
+- **Invalid hints** (an unknown key, rule ID or value) are `spec-invalid` findings at the hint, like other problems in the spec.
+- **Changes to `x-api-diff` itself** are not reported as `extension-changed`: they configure this tool, not the API.
+
 **Precedence**, highest first: acknowledgement → in-spec hint → `overrides` (last match) → `rules` → profile default → built-in default.
+
+For every extension a spec author can use, with defaults and examples, see [docs/spec-authors.md](docs/spec-authors.md).
 
 ## 13. Keeping these docs in sync
 

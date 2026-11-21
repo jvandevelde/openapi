@@ -2,10 +2,13 @@
 // specific rule ID, message, stable ID).
 //
 // Severity precedence (POLICY.md section 12), highest first:
-//   policy `overrides` (the last matching entry that sets this rule)
+//   in-spec hints (`x-api-diff`): `enum: open`, then `rules` on the nodes
+//     containing the change (nearest first), the affected operation and its
+//     path item, then the document root
+//   → policy `overrides` (the last matching entry that sets this rule)
 //   → policy `rules` (the most specific rule ID wins; `--rule` beats the file)
 //   → profile → built-in default.
-// Acknowledgements and in-spec hints are added by later M6 steps.
+// Acknowledgements are added by a later M6 step.
 //
 // Overrides apply per operation. A finding that affects several operations
 // (a shared component's `impact`, or a bulk change) is split when they end up
@@ -13,6 +16,7 @@
 
 import { createHash } from 'node:crypto';
 import type { OperationInfo, SpecContext } from '../policy/context.ts';
+import { parentPointer, type Hint, type HintIndex } from '../policy/hints.ts';
 import { matches, type Override } from '../policy/overrides.ts';
 import type { Policy, RuleSetting } from '../policy/policy.ts';
 import { getRule, specificRuleId, type RuleMeta } from '../rules/registry.ts';
@@ -23,6 +27,8 @@ export interface ClassifyOptions {
   policy?: Policy;
   /** Operations, components and document extensions, for overrides. */
   context?: SpecContext;
+  /** `x-api-diff` hints per side. */
+  hints?: { base: HintIndex | undefined; revision: HintIndex | undefined };
 }
 
 type Resolved = { severity: Severity | 'off'; source: string };
@@ -69,11 +75,50 @@ function fromRules(c: Change, meta: RuleMeta, settings: [string, RuleSetting][],
   return undefined;
 }
 
+const hintLabel = (h: Hint): string => `in-spec hint ${h.file}#${h.pointer}`;
+
+/** `enum: open` on the schema holding the enum, or an `open-extensions` extension there. */
+function openEnum(c: Change, rule: string, opts: ClassifyOptions): Resolved | undefined {
+  if (ruleOption(opts.policy, rule, 'honour-open-hint') === false) return undefined;
+  const exts = (ruleOption(opts.policy, rule, 'open-extensions') as string[] | undefined) ?? [];
+  for (const [loc, idx] of [[c.revision, opts.hints?.revision], [c.base, opts.hints?.base]] as const) {
+    if (!loc || !idx || !loc.pointer.endsWith('/enum')) continue;
+    const schema = { file: loc.file, pointer: parentPointer(loc.pointer) };
+    const h = idx.at(schema);
+    if (h?.enumOpen) return { severity: 'info', source: `${hintLabel(h)}: enum: open` };
+    const node = exts.length ? idx.node(schema) : undefined;
+    const x = node && typeof node === 'object' ? exts.find((e) => (node as Record<string, unknown>)[e] !== undefined && (node as Record<string, unknown>)[e] !== false) : undefined;
+    if (x) return { severity: 'info', source: `${opts.policy?.file ? `policy ${opts.policy.file}` : 'policy'}: rules.enum-value-added.open-extensions (${x} at ${loc.file}#${schema.pointer})` };
+  }
+  return undefined;
+}
+
+/** `x-api-diff: { rules }` hints that apply, in precedence order. */
+function hintsFor(c: Change, op: OperationInfo | undefined, opts: ClassifyOptions): Hint[] {
+  if (!opts.hints) return [];
+  const near: Hint[] = [];
+  for (const [loc, idx] of [[c.revision, opts.hints.revision], [c.base, opts.hints.base]] as const) {
+    if (loc && idx) near.push(...idx.around(loc).filter((h) => !h.atRoot));
+  }
+  const roots = [opts.hints.revision?.root, opts.hints.base?.root].filter((h): h is Hint => !!h);
+  return [...near, ...(op?.hints ?? []), ...roots].filter((h) => h.rules);
+}
+
 /** The severity for a change in one operation (or none), or `off`, and where it came from. */
 export function resolveSeverity(c: Change, rule: string, opts: ClassifyOptions, op?: OperationInfo): Resolved {
   const meta = getRule(c.rule);
   const policy = opts.policy;
   const fileLabel = `policy ${policy?.file ?? ''}`.trimEnd();
+
+  if (meta.id === 'enum-value-added') {
+    const open = openEnum(c, rule, opts);
+    if (open) return open;
+  }
+  for (const h of hintsFor(c, op, opts)) {
+    const r = fromRules(c, meta, settingsIn(h.rules, rule, meta), (id, key = '') => `${hintLabel(h)}: rules.${id}${key}`);
+    if (r === 'conditional') return defaultSeverity(c, opts.profile);
+    if (r) return r;
+  }
 
   const overrides = policy?.overrides ?? [];
   if (overrides.length) {
@@ -121,7 +166,7 @@ function operationsOf(c: Change): string[] {
  * change whole; several mean overrides treat the operations differently.
  */
 function resolveGroups(c: Change, rule: string, opts: ClassifyOptions): { resolved: Resolved; ops: string[] | undefined }[] {
-  const ops = opts.policy?.overrides?.length ? operationsOf(c) : [];
+  const ops = opts.policy?.overrides?.length || opts.context?.operations.size ? operationsOf(c) : [];
   if (ops.length <= 1) return [{ resolved: resolveSeverity(c, rule, opts, ops[0] ? opts.context?.operations.get(ops[0]) : undefined), ops: undefined }];
   const groups = new Map<string, { resolved: Resolved; ops: string[] }>();
   for (const s of ops) {

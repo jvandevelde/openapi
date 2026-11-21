@@ -610,7 +610,7 @@ export class SchemaEngine {
     if (!isObject(bv) || !isObject(rv)) return;
     const keys = new Set([...Object.keys(bv), ...Object.keys(rv)]);
     for (const k of keys) {
-      const rule = DOCS[k] ?? (k.startsWith('x-') ? 'extension-changed' : undefined);
+      const rule = DOCS[k] ?? (k.startsWith('x-') && k !== 'x-api-diff' ? 'extension-changed' : undefined); // x-api-diff configures this tool
       if (!rule || canon(bv[k]) === canon(rv[k])) continue;
       this.#emit(rule, undefined, eb.at, er.at, { keyword: k }, [k]);
     }

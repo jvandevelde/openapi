@@ -39,8 +39,13 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`enum-value-added`](../../test/cases/enum-value-added/) | `enum-value-added-in-response` · warn · #/components/schemas/Pet | A value added to a response enum: exhaustive clients may break. |
+| [`enum-value-added-open-extension`](../../test/cases/enum-value-added-open-extension/) | `enum-value-added-in-response` · info · #/components/schemas/Pet | The policy lists x-extensible-enum in open-extensions, so an enum carrying it counts as open: adding a value is info. |
+| [`enum-value-added-open-hint`](../../test/cases/enum-value-added-open-hint/) | `enum-value-added-in-response` · info · #/components/schemas/Pet | The enum is marked open with x-api-diff, so clients must accept unknown values and adding one is info, not warn. |
 
 ## Policy options
 

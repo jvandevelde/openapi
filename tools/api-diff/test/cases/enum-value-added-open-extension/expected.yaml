@@ -1,0 +1,11 @@
+description: "The policy lists x-extensible-enum in open-extensions, so an enum carrying it counts as open: adding a value is info."
+milestone: M6
+options:
+  policy:
+    rules:
+      enum-value-added:
+        open-extensions: [x-extensible-enum]
+findings:
+  - rule: enum-value-added-in-response
+    severity: info
+    subject: '#/components/schemas/Pet'

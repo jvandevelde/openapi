@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-21 19:29 UTC |
 | **Summary** | Override operation keys match a finding's operations (its subject, or the operations in its `impact`); when those operations get different severities the finding is split, one part per severity. |
 | **Milestone** | M6 |

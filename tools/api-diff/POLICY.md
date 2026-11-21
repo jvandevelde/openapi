@@ -71,6 +71,12 @@ Only these rules take options beyond those in section 3. Every other rule takes 
 | `component-renamed` | `match` | `exact` | `exact` (same shape hash) or `similar` (same properties, different docs) |
 | `stability-decreased` | `levels` | `[draft, alpha, beta, stable]` | Order of stability levels, lowest first |
 | `version-bump-too-small`, `version-unchanged` | `scheme` | `semver` | `semver`, `calver` or `none` (`none` turns off both rules) |
+| `documents-unrelated` | `min-overlap` | `0.1` | The documents count as related if any signal reaches this share: shared items ÷ the smaller document's count (the overlap coefficient) |
+| `documents-unrelated` | `signals` | `[operations, operation-ids, schemas]` | Which overlaps to measure. One signal at or above `min-overlap` is enough; a signal empty on either side is skipped |
+| `documents-unrelated` | `min-size` | `5` | Skip the check when the smaller document has fewer operations and fewer schemas than this |
+| `documents-unrelated` | `ignore-path-segments` | `['^v\d+([a-z]+\d*)?$', '^\d{4}-\d{2}-\d{2}$']` | Path segments dropped before comparing paths, anywhere in the path (`v1`, `v2beta1`, `2024-01-01`), so any number of different prefixes work |
+| `documents-unrelated` | `strip-prefixes` | `[]` | Extra path prefixes removed before comparing, e.g. `[/api, /internal]` |
+| `documents-unrelated` | `when` | `manual` | `manual` skips the check when both inputs are the same path at two git revisions; `always` checks those too |
 | `unclassified-change` | — | — | Severity only. Set it to `error` for a strict CI gate |
 
 ## 5. Overrides

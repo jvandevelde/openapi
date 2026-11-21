@@ -22,11 +22,103 @@ Comparing two unrelated APIs reports every operation as removed and added: hundr
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`documents-unrelated`](../../test/cases/documents-unrelated/): A pet store compared with a book store: no operations, operationIds or schema names are shared and the titles differ, so the documents look like different APIs. The diff stops and this is the only finding.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  openapi: 3.1.0
+  info:
+-   title: Pet Store
++   title: Book Store
+    version: 1.0.0
+  paths:
+-   /pets:
++   /books:
+      get:
+-       operationId: listPets
++       operationId: listBooks
+        responses:
+          '200':
+  …
+              application/json:
+                schema:
+-                 $ref: '#/components/schemas/Pet'
++                 $ref: '#/components/schemas/Book'
+      post:
+-       operationId: createPet
++       operationId: createBook
+        responses:
+          '200':
+  …
+              application/json:
+                schema:
+-                 $ref: '#/components/schemas/Pet'
+-   /pets/{petId}:
++                 $ref: '#/components/schemas/Book'
++   /books/{isbn}:
+      get:
+-       operationId: getPet
++       operationId: getBook
+        responses:
+          '200':
+  …
+              application/json:
+                schema:
+-                 $ref: '#/components/schemas/Pet'
++                 $ref: '#/components/schemas/Book'
+      delete:
+-       operationId: deletePet
++       operationId: deleteBook
+        responses:
+          '200':
+            description: ok
+-   /owners:
++   /authors:
+      get:
+-       operationId: listOwners
++       operationId: listAuthors
+        responses:
+          '200':
+  …
+              application/json:
+                schema:
+-                 $ref: '#/components/schemas/Owner'
+-   /owners/{ownerId}:
++                 $ref: '#/components/schemas/Author'
++   /authors/{authorId}:
+      get:
+-       operationId: getOwner
++       operationId: getAuthor
+        responses:
+          '200':
+  …
+              application/json:
+                schema:
+-                 $ref: '#/components/schemas/Owner'
++                 $ref: '#/components/schemas/Author'
+  components:
+    schemas:
+-     Pet:
++     Book:
+        type: object
+        properties:
+          name:
+            type: string
+-     Owner:
++     Author:
+        type: object
+        properties:
+```
+
+Findings:
+
+- `documents-unrelated` · error · document
 
 ## Test cases
 
-_None yet._
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

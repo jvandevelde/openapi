@@ -1,0 +1,23 @@
+description: >-
+  Every path moved from /api/billing to /billing and the title changed, so no normalised path matches, but every
+  operationId is kept. One related signal is enough.
+milestone: M6
+findings:
+  - rule: operation-path-changed
+    severity: error
+    subject: GET /billing/invoices
+  - rule: operation-path-changed
+    severity: error
+    subject: GET /billing/invoices/{id}
+  - rule: operation-path-changed
+    severity: error
+    subject: GET /billing/payments
+  - rule: operation-path-changed
+    severity: error
+    subject: GET /billing/payments/{id}
+  - rule: operation-path-changed
+    severity: error
+    subject: POST /billing/invoices
+  - rule: title-changed
+    severity: info
+    subject: document

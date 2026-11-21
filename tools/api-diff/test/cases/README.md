@@ -14,6 +14,9 @@ description: Why this case exists, and what the expected result means.
 milestone: M3            # cases for later milestones run as "todo" until then
 options:
   profile: sdk           # optional
+  policy:                # optional, from M6: a policy file's contents
+    rules:
+      documents-unrelated: off
 findings:
   - rule: query-parameter-removed   # most specific rule ID
     severity: warn

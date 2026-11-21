@@ -49,10 +49,14 @@ Findings:
 
 ## Test cases
 
-3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+7 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
+| [`documents-unrelated-api-grew`](../../test/cases/documents-unrelated-api-grew/) | `operation-added` · info · GET /resources1/{id}<br>`operation-added` · info · GET /resources10/{id}<br>`operation-added` · info · GET /resources11/{id}<br>`operation-added` · info · GET /resources12/{id}<br>`operation-added` · info · GET /resources13/{id}<br>… and 59 more | The API grew from 6 to 70 operations and was renamed. Jaccard would score 6/70 ≈ 0.09, below the threshold; the overlap coefficient scores 6/6 = 1.0, so the documents count as related. |
+| [`documents-unrelated-off`](../../test/cases/documents-unrelated-off/) | `operation-added` · info · DELETE /books/{isbn}<br>`operation-added` · info · GET /authors<br>`operation-added` · info · GET /authors/{authorId}<br>`operation-added` · info · GET /books<br>`operation-added` · info · GET /books/{isbn}<br>`operation-added` · info · POST /books | The same unrelated pair with documents-unrelated turned off in the policy: the full diff runs, e.g. for an intentional rewrite. |
+| [`documents-unrelated-too-small`](../../test/cases/documents-unrelated-too-small/) | `operation-added` · info · GET /books<br>`operation-added` · info · POST /books | Two unrelated documents with two operations each: below min-size (5), so the check is skipped and the diff runs. |
+| [`documents-unrelated-version-prefixes`](../../test/cases/documents-unrelated-version-prefixes/) | `operation-added` · info · GET /billing/v2/invoices<br>`operation-added` · info · GET /billing/v2/invoices/{invoiceId}<br>`operation-added` · info · GET /orders/2025-06-01/orders<br>`operation-added` · info · GET /users/v2/me<br>`operation-added` · info · POST /orders/2025-06-01/orders | Several different prefixes, each with its own version segment (v1 → v2, 2024-01-01 → 2025-06-01), no operationIds or schemas and a new title. Version segments are dropped anywhere in the path, so the operations still match and the documents count as related; the diff reports the moved operations as usual. |
 | [`operation-added`](../../test/cases/operation-added/) | `operation-added` · info · GET /pets/{id} | A new operation is info. |
 | [`operation-path-changed-without-id`](../../test/cases/operation-path-changed-without-id/) | `operation-added` · info · GET /animals/{id} | Without a matching operationId, a moved operation is removed + added. |
 | [`query-method-3-2`](../../test/cases/query-method-3-2/) | `operation-added` · info · QUERY /pets | OpenAPI 3.2 QUERY operations are compared. |

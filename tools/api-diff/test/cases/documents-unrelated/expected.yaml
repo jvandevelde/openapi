@@ -1,0 +1,8 @@
+description: >-
+  A pet store compared with a book store: no operations, operationIds or schema names are shared and the titles differ,
+  so the documents look like different APIs. The diff stops and this is the only finding.
+milestone: M6
+findings:
+  - rule: documents-unrelated
+    severity: error
+    subject: document

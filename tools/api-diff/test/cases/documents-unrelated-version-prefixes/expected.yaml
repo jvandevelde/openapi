@@ -1,0 +1,39 @@
+description: >-
+  Several different prefixes, each with its own version segment (v1 → v2, 2024-01-01 → 2025-06-01), no operationIds or
+  schemas and a new title. Version segments are dropped anywhere in the path, so the operations still match and the
+  documents count as related; the diff reports the moved operations as usual.
+milestone: M6
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: GET /billing/v1/invoices
+  - rule: operation-removed
+    severity: error
+    subject: GET /billing/v1/invoices/{invoiceId}
+  - rule: operation-removed
+    severity: error
+    subject: GET /orders/2024-01-01/orders
+  - rule: operation-removed
+    severity: error
+    subject: GET /users/v1/me
+  - rule: operation-removed
+    severity: error
+    subject: POST /orders/2024-01-01/orders
+  - rule: title-changed
+    severity: info
+    subject: document
+  - rule: operation-added
+    severity: info
+    subject: GET /billing/v2/invoices
+  - rule: operation-added
+    severity: info
+    subject: GET /billing/v2/invoices/{invoiceId}
+  - rule: operation-added
+    severity: info
+    subject: GET /orders/2025-06-01/orders
+  - rule: operation-added
+    severity: info
+    subject: GET /users/v2/me
+  - rule: operation-added
+    severity: info
+    subject: POST /orders/2025-06-01/orders

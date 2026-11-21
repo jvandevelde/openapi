@@ -42,10 +42,11 @@ Findings:
 
 ## Test cases
 
-2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
+| [`documents-unrelated-prefix-renamed`](../../test/cases/documents-unrelated-prefix-renamed/) | `operation-path-changed` · error · GET /billing/invoices<br>`operation-path-changed` · error · GET /billing/invoices/{id}<br>`operation-path-changed` · error · GET /billing/payments<br>`operation-path-changed` · error · GET /billing/payments/{id}<br>`operation-path-changed` · error · POST /billing/invoices | Every path moved from /api/billing to /billing and the title changed, so no normalised path matches, but every operationId is kept. One related signal is enough. |
 | [`operation-path-changed`](../../test/cases/operation-path-changed/) | `operation-path-changed` · error · GET /animals/{id} | Same operationId and method at a new path: the path changed. |
 | [`operation-path-param-removed`](../../test/cases/operation-path-param-removed/) | `operation-path-changed` · error · GET /pets | Removing a path parameter changes the path, so it is reported as operation-path-changed, not as a parameter change. |
 

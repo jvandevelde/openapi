@@ -20,7 +20,8 @@ const CASES = fileURLToPath(new URL('./cases/', import.meta.url));
 interface Expected {
   description: string;
   milestone: string;
-  options?: { profile?: Profile };
+  /** `policy` is read from M6; until then only cases for M6 or later use it. */
+  options?: { profile?: Profile; policy?: Record<string, unknown> };
   findings: { rule: string; severity: Severity; subject: string }[];
 }
 

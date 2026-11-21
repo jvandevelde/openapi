@@ -41,8 +41,16 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+6 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`documents-unrelated-api-grew`](../../test/cases/documents-unrelated-api-grew/) | `title-changed` · info · document | The API grew from 6 to 70 operations and was renamed. Jaccard would score 6/70 ≈ 0.09, below the threshold; the overlap coefficient scores 6/6 = 1.0, so the documents count as related. |
+| [`documents-unrelated-off`](../../test/cases/documents-unrelated-off/) | `title-changed` · info · document | The same unrelated pair with documents-unrelated turned off in the policy: the full diff runs, e.g. for an intentional rewrite. |
+| [`documents-unrelated-prefix-renamed`](../../test/cases/documents-unrelated-prefix-renamed/) | `title-changed` · info · document | Every path moved from /api/billing to /billing and the title changed, so no normalised path matches, but every operationId is kept. One related signal is enough. |
+| [`documents-unrelated-too-small`](../../test/cases/documents-unrelated-too-small/) | `title-changed` · info · document | Two unrelated documents with two operations each: below min-size (5), so the check is skipped and the diff runs. |
+| [`documents-unrelated-version-prefixes`](../../test/cases/documents-unrelated-version-prefixes/) | `title-changed` · info · document | Several different prefixes, each with its own version segment (v1 → v2, 2024-01-01 → 2025-06-01), no operationIds or schemas and a new title. Version segments are dropped anywhere in the path, so the operations still match and the documents count as related; the diff reports the moved operations as usual. |
+| [`title-changed`](../../test/cases/title-changed/) | `title-changed` · info · document | The document's info.title changed. |
 
 ## Policy options
 

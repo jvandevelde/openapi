@@ -223,6 +223,17 @@ jobs:
 
 The library API takes a document source, so other callers (an editor plugin, a test) can supply their own, e.g. in-memory documents, without git.
 
+### Checking both inputs are the same API
+
+When two paths are passed by hand, nothing guarantees they are two versions of one API. A wrong path produces "every operation removed, every operation added": hundreds of errors and nothing pointing at the mistake. So before the diff, the `documents-unrelated` rule (M6, default `error`) checks the two documents share something. If they don't, the diff stops and that is the only finding. The full reasoning, including the algorithms considered, is in decision record *Detect unrelated documents before diffing, with the overlap coefficient*.
+
+- **Signals**, each a set: operations (`METHOD /normalised/path`), `operationId`s and `components.schemas` names. They come from the index the diff builds anyway, so the check costs a few set intersections.
+- **Score**: the overlap coefficient, shared items ÷ the smaller set's size. Unlike Jaccard (shared ÷ union), an API that grew from 20 to 200 operations still scores 1.0 instead of 0.1.
+- **Combining**: the documents are related if **any** scored signal reaches `min-overlap` (default 0.1). A signal empty on either side is skipped. Even if every signal is low, the documents count as related when their `info.title` and a server host match.
+- **Path normalisation**, so many different prefixes work: the effective `servers` base path is joined in front, `strip-prefixes` are removed, version-like segments (`v1`, `v2beta1`, `2024-01-01`) are dropped wherever they appear, and parameter names become `{}`. `/billing/v1/invoices/{id}` and `/billing/v2/invoices/{invoiceId}` both become `GET /billing/invoices/{}`. A renamed prefix (`/api/billing` → `/billing`) is usually caught by `operationId`s or schema names instead.
+- **Skipped** when the rule is `off`, either document is `spec-invalid`, the base is empty (a new API), the smaller document has fewer than `min-size` (5) operations and schemas, or (with `when: manual`, the default) both inputs are one path at two git revisions.
+- **Override**: `documents-unrelated: off` in the policy runs the full diff, e.g. for an intentional rewrite. The options are in POLICY.md section 4.
+
 ### Performance (measured)
 
 Measured on a generated 8 MB OpenAPI 3.1 spec (3,650 paths and schemas, about 240k nodes), Node 22, a single run each:
@@ -673,7 +684,7 @@ Each milestone is one or a few pull requests and ends with something that runs.
 | **M3** ✅ | Operation-level diff | Model, diff and rules for paths, operations, security, parameters, request bodies, responses; txt and json output; `--fail-on`, `--state` | **First usable version:** M1 cases pass, and it can gate a PR on operation-level changes |
 | **M4** ✅ | Schema index | Graph, iterative Tarjan, productive-cycle check, shape/full hashes, skipping unchanged subtrees, `unclassified-change` | Recursive cases load and hash, and no input causes a stack overflow |
 | **M5** ✅ | Schema engine | Effective `allOf` merge, pair-cached comparison for cycles, variance, union branch and discriminator matching, schema rules (section 7), usages and direction (incl. `readOnly`/`writeOnly`), root-cause aggregation, ref rules, docs rules, profiles, bulk-change collapsing (3+ operations). Example re-validation moved to the backlog | All schema cases pass, and each shared-component change appears once |
-| **M6** | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance | Every POLICY.md example is a passing test |
+| **M6** | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance, the `documents-unrelated` precheck | Every POLICY.md example is a passing test |
 | **M7** | PR check | Report presets, `ci`, `review` and `summary` reports (txt/json/html), multiple `--report`, versions header, cached base index | **Used as a required PR check on a real API repo** |
 | **M8** | Presentation | `explore` HTML, `changelog`, `sdk`, rename detection, semver advice, explanations and fixes, history timeline | Reviewers prefer it to the tools in section 1 |
 | **M9** | Governance | `audit`, custom reports and templates, `--uses` consumer reports, ownership routing | Release notes and governance reviews use it without manual editing |

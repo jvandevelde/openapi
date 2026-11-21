@@ -1,0 +1,48 @@
+description: >-
+  The same unrelated pair with documents-unrelated turned off in the policy: the full diff runs, e.g. for an intentional
+  rewrite.
+milestone: M6
+options:
+  policy:
+    rules:
+      documents-unrelated: 'off'
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: DELETE /pets/{petId}
+  - rule: operation-removed
+    severity: error
+    subject: GET /owners
+  - rule: operation-removed
+    severity: error
+    subject: GET /owners/{ownerId}
+  - rule: operation-removed
+    severity: error
+    subject: GET /pets
+  - rule: operation-removed
+    severity: error
+    subject: GET /pets/{petId}
+  - rule: operation-removed
+    severity: error
+    subject: POST /pets
+  - rule: operation-added
+    severity: info
+    subject: DELETE /books/{isbn}
+  - rule: title-changed
+    severity: info
+    subject: document
+  - rule: operation-added
+    severity: info
+    subject: GET /authors
+  - rule: operation-added
+    severity: info
+    subject: GET /authors/{authorId}
+  - rule: operation-added
+    severity: info
+    subject: GET /books
+  - rule: operation-added
+    severity: info
+    subject: GET /books/{isbn}
+  - rule: operation-added
+    severity: info
+    subject: POST /books

@@ -149,6 +149,44 @@ api-diff --base main... openapi.yaml                # merge-base with main (what
 - **Recorded in reports.** The `compared` section records the revision as given, the resolved commit SHA and the blob SHA of each file, and `commit` is filled in automatically as a version label.
 - **Caching.** Git blob SHAs are already content hashes, so they're the cache key for the cached base index (backlog): an unchanged base costs one `cat-file` lookup.
 
+#### Using it in other repositories
+
+The tool never assumes it's inside this tools repo. Git commands run **in the repository that contains the spec**, not the one that contains the tool:
+
+- For `rev:path`, the path is resolved from the current directory, and git runs in that path's directory (`git -C <dir>`), which finds the enclosing repository itself. Each side is located independently, so the two sides can even come from different repositories:
+
+  ```sh
+  cd ~/src/orders-api
+  api-diff main:openapi.yaml openapi.yaml                    # this repo
+  api-diff main:../billing-api/openapi.yaml openapi.yaml     # base from another clone
+  ```
+
+- `-C <dir>` (as in git) runs everything as if started in `<dir>`, for scripts that don't `cd`.
+- Paths inside the reports are shown relative to that repository's root (`orders-api:main:openapi.yaml`), not to where the tool lives.
+- **Remote repositories aren't read directly** (no `https://github.com/…` URLs). Clone or fetch first; that keeps authentication with git, where it already works.
+
+**Getting the tool into another repo's CI.** The API repos need the tool without cloning this one by hand. Options, in order of preference:
+
+1. **Publish the package** to an npm registry (npmjs.com, or GitHub Packages if it should stay private). Then any repo runs `npx api-diff …`, with the version pinned in its own `package.json` or in the CI step.
+2. **A single bundled file.** Build `api-diff.mjs` (all dependencies bundled with esbuild) and attach it to a GitHub release of this repo. CI downloads one file and runs `node api-diff.mjs`. No npm registry needed.
+3. **Check out this repo as a second checkout** in the CI job and run `npx ./tools/api-diff`. This works today with no publishing, but every API repo depends on this repo's layout.
+
+A minimal workflow in another repo, using option 1:
+
+```yaml
+# .github/workflows/api-diff.yml in the API repo
+on: pull_request
+jobs:
+  api-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }            # the base commit must be present
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npx api-diff@1 origin/${{ github.base_ref }}...:openapi.yaml openapi.yaml --report ci --report review:html:api-diff.html
+```
+
 **What stays outside the core.** Workflows that need more than reading files go in a separate `git` module of the CLI, not the engine:
 
 - **History mode:** `api-diff history v1.0..HEAD openapi.yaml` lists the commits that touched the spec and its `$ref` files (`git log --follow`), then compares each consecutive pair (backlog).
@@ -504,7 +542,8 @@ Out of scope at first: **webhooks and callbacks** (if a spec has them, a single 
 2. **OpenAPI versions.** Proposal: 3.0, 3.1 and 3.2 from the start, using the normalise step.
 3. **Default stance on ambiguous changes.** Examples: a new enum value in a response, a new optional request property where the server sets `additionalProperties: false`, a new required response header. Proposal: `warn` by default, and the policy can change it.
 4. **Which reports first.** Proposal: `ci` and `review` first (phase 3), since they make the tool usable as a PR check. Is there an audience in section 5 that matters more to you, or one that's missing?
-5. **Name.** `api-diff` is a placeholder.
+5. **Name.** `api-diff` is a placeholder. The published package name must be free on the registry we pick.
+6. **Distribution.** Proposal: publish to an npm registry (GitHub Packages if it should stay private), plus a single bundled file on each GitHub release for CI without registry access.
 
 ## 8. Further ideas (backlog)
 

@@ -76,6 +76,10 @@ export interface ComparedSide {
   sha256?: string;
   /** Resolved commit, for git inputs. */
   commit?: string;
+  /** Where `version` came from: a policy source such as `info.version`, or `command line`. */
+  versionSource?: string;
+  /** Version labels (POLICY.md section 9); `commit` is filled in for git inputs. */
+  labels?: Record<string, string>;
 }
 
 export interface Counts {

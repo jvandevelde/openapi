@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { compareInputs, shouldFail } from '../engine.ts';
+import { compareInputs, shouldFail, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
 import { renderTxt } from '../render/txt.ts';
@@ -40,6 +40,10 @@ Options:
       --profile <name>   wire (default) or sdk
       --policy <file>    policy file (default: api-diff.yaml in the working directory, if present)
       --no-policy        ignore api-diff.yaml
+      --base-version <v>, --revision-version <v>
+                         the versions to record and check (default: from the documents, see the policy's versions)
+      --base-label <k=v>, --revision-label <k=v>
+                         extra version labels, e.g. build=8812; repeatable
       --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
       --rule <id>=<sev>  set a rule's severity (error, warn, info, off); repeatable, beats the policy file
       --color / --no-color
@@ -96,6 +100,10 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'no-policy': { type: 'boolean' },
       rule: { type: 'string', multiple: true },
       'as-of': { type: 'string' },
+      'base-version': { type: 'string' },
+      'revision-version': { type: 'string' },
+      'base-label': { type: 'string', multiple: true },
+      'revision-label': { type: 'string', multiple: true },
       color: { type: 'boolean' },
       'no-color': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
@@ -130,7 +138,25 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   const [base, revision] = inputsFromArgs(positionals, { base: values.base, revision: values.revision }, cwd);
   const asOf = values['as-of'];
   if (asOf !== undefined && !isoDate(asOf)) throw new UsageError(`--as-of must be a date (YYYY-MM-DD), got '${asOf}'`);
-  const result = await compareInputs(base, revision, cwd, asOf !== undefined ? { profile, policy, asOf } : { profile, policy });
+  const labels = (name: string, list: string[] | undefined): Record<string, string> | undefined => {
+    if (!list?.length) return undefined;
+    const out: Record<string, string> = {};
+    for (const l of list) {
+      const eq = l.indexOf('=');
+      if (eq <= 0) throw new UsageError(`--${name} must be <name>=<value>, got '${l}'`);
+      out[l.slice(0, eq)] = l.slice(eq + 1);
+    }
+    return out;
+  };
+  const opts: CompareOptions = { profile, policy };
+  if (asOf !== undefined) opts.asOf = asOf;
+  if (values['base-version'] !== undefined) opts.baseVersion = values['base-version'];
+  if (values['revision-version'] !== undefined) opts.revisionVersion = values['revision-version'];
+  const bl = labels('base-label', values['base-label']);
+  const rl = labels('revision-label', values['revision-label']);
+  if (bl) opts.baseLabels = bl;
+  if (rl) opts.revisionLabels = rl;
+  const result = await compareInputs(base, revision, cwd, opts);
 
   let text: string;
   if (values.state) text = `${result.state}\n`;

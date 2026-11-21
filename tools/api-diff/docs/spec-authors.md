@@ -23,7 +23,7 @@ Status: some of these are still being built in milestone M6. Each section says w
 | `x-sunset` | An operation | Date it will be removed; removal is allowed once it passes, and moving it earlier is a finding | `lifecycle.sunset`, `operation-removed.unless.past-sunset` | Available |
 | `x-enum-varnames`, `x-go-type`, … | Anywhere | Changes to them are `extension-changed-sdk` (or `-wire`) instead of `docs` | `extensions` | Available |
 | `x-internal` | An operation, path item or schema | Puts it in an exclusion set: not compared if the policy ignores the set; otherwise findings are tagged so reports can leave them out (M7) | `exclusions.<set>.extensions` | Available (report filtering in M7) |
-| `x-api-version`, `x-build-id`, `x-git.sha` | The document root | The version and labels recorded in reports | `versions` | M6 step 7 |
+| `x-api-version`, `x-build-id`, `x-git.sha` | The document root | The version and labels recorded in reports; checked by `version-unchanged` and `version-bump-too-small` | `versions` | Available |
 | `x-owner` | An operation or schema | Routes findings to an owner | — | Backlog (M9) |
 
 ## 1. `x-api-diff` hints
@@ -165,7 +165,9 @@ info:
   version: 2.4.0
 ```
 
-Every report records the versions it compared. By default that's `info.version`; the policy's `versions` section can read it from another extension (`x-api-version`) and add labels (`x-build-id`, `x-git.sha`). Comparing versions also powers `version-unchanged` and `version-bump-too-small`. *M6 step 7.*
+Every report records the versions it compared. By default that's `info.version`; the policy's `versions` section can read it from another extension (`x-api-version`) and add labels (`x-build-id`, `x-git.sha`, which reads `sha` inside `x-git`).
+
+The versions are also checked: changing the spec without changing the version is `version-unchanged` (`warn`), and under semver a bump smaller than the changes need is `version-bump-too-small` (`warn`): breaking changes need a major bump, other API changes a minor bump, documentation-only changes a patch bump (one level lower below 1.0.0).
 
 ## See also
 

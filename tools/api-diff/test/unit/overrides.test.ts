@@ -52,7 +52,7 @@ const REVISION = spec(['open', 'closed', 'archived'], false);
 
 async function findings(policy: unknown): Promise<Finding[]> {
   const r = await compareOpened({ source: new MemorySource({ 'a.yaml': BASE }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': REVISION }), root: 'b.yaml' }, { policy: parsePolicy(policy, 'p.yaml') });
-  return r.findings;
+  return r.findings.filter((f) => !f.baseRule.startsWith('version-')); // version checks have their own tests
 }
 
 const summary = (fs: Finding[]): string[] => fs.map((f) => `${f.rule} ${f.severity} ${f.subject}${f.impact ? ` [${f.impact.join(', ')}]` : ''}`).sort();
@@ -127,7 +127,7 @@ test('operation keys match a component finding through its impact', async () => 
 test('operation keys never match findings without an operation', async () => {
   const dir = fileURLToPath(new URL('../cases/title-changed/', import.meta.url));
   const r = await compareInputs({ kind: 'fs', arg: 'base.yaml', path: 'base.yaml' }, { kind: 'fs', arg: 'revision.yaml', path: 'revision.yaml' }, dir, { policy: parsePolicy({ overrides: [{ match: { path: '/**' }, severity: 'off' }] }) });
-  assert.deepEqual(r.findings.map((f) => f.subject), ['document']);
+  assert.deepEqual(r.findings.filter((f) => !f.baseRule.startsWith('version-')).map((f) => f.subject), ['document']);
 });
 
 test('glob: * is one path segment, a trailing /** is zero or more', () => {

@@ -17,7 +17,8 @@ const where = (l: Location | undefined): string => (l ? `${l.file}${l.line ? `:$
 function side(s: ComparedSide): string {
   const parts = [s.file];
   if (s.commit) parts.push(`@ ${s.commit.slice(0, 7)}`);
-  const meta = [s.openapi ? `OpenAPI ${s.openapi}` : undefined, `version ${s.version}`].filter(Boolean).join(', ');
+  const labels = Object.entries(s.labels ?? {}).filter(([k]) => k !== 'commit').map(([k, v]) => `${k} ${v}`);
+  const meta = [s.openapi ? `OpenAPI ${s.openapi}` : undefined, `version ${s.version}`, ...labels].filter(Boolean).join(', ');
   return `${parts.join(' ')}  (${meta})`;
 }
 

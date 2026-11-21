@@ -49,7 +49,9 @@
         "openapi": { "type": "string" },
         "version": { "type": "string", "description": "info.version, or 'unknown'." },
         "sha256": { "type": "string" },
-        "commit": { "type": "string", "description": "Resolved commit SHA for git inputs." }
+        "commit": { "type": "string", "description": "Resolved commit SHA for git inputs." },
+        "versionSource": { "type": "string", "description": "Where version came from, e.g. info.version, x-api-version or command line." },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Version labels from the policy or the command line; commit for git inputs." }
       }
     },
     "location": {

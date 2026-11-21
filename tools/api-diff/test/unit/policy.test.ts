@@ -19,7 +19,7 @@ const fails = (data: unknown, message: RegExp): void => assert.throws(() => pars
 async function compareCase(name: string, policy: unknown): Promise<{ rule: string; severity: string; severitySource: string }[]> {
   const dir = join(cases, name);
   const r = await compareInputs({ kind: 'fs', arg: 'base.yaml', path: 'base.yaml' }, { kind: 'fs', arg: 'revision.yaml', path: 'revision.yaml' }, dir, { policy: parsePolicy(policy, 'p.yaml') });
-  return r.findings.map((f) => ({ rule: f.rule, severity: f.severity, severitySource: f.severitySource }));
+  return r.findings.filter((f) => !f.baseRule.startsWith('version-')).map((f) => ({ rule: f.rule, severity: f.severity, severitySource: f.severitySource }));
 }
 
 test('an empty policy is valid', () => {

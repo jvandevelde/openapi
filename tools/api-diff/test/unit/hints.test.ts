@@ -32,7 +32,7 @@ ${o.schema ?? ''}
 
 async function run(base: string, revision: string, policy: unknown = {}): Promise<Finding[]> {
   const r = await compareOpened({ source: new MemorySource({ 'a.yaml': base }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': revision }), root: 'b.yaml' }, { policy: parsePolicy(policy, 'p.yaml') });
-  return r.findings;
+  return r.findings.filter((f) => !f.baseRule.startsWith('version-')); // version checks have their own tests
 }
 const brief = (fs: Finding[]): string[] => fs.map((f) => `${f.rule} ${f.severity}`).sort();
 
@@ -92,5 +92,5 @@ paths:
     { source: new MemorySource({ 'a/openapi.yaml': main('a'), 'a/pet-a.yaml': pet('a') }), root: 'a/openapi.yaml' },
     { source: new MemorySource({ 'b/openapi.yaml': main('a'), 'b/pet-a.yaml': pet('a, b') }), root: 'b/openapi.yaml' },
   );
-  assert.deepEqual(brief(r.findings), ['enum-value-added-in-response error']);
+  assert.deepEqual(brief(r.findings.filter((f) => !f.baseRule.startsWith('version-'))), ['enum-value-added-in-response error']);
 });

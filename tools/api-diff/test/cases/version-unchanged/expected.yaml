@@ -1,0 +1,11 @@
+description: "An operation was added but info.version stayed 1.0.0: version-unchanged (warn)."
+milestone: M6
+options:
+  check-versions: true
+findings:
+  - rule: operation-added
+    severity: info
+    subject: 'DELETE /pets/{id}'
+  - rule: version-unchanged
+    severity: warn
+    subject: 'document'

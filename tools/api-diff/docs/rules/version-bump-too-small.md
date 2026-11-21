@@ -9,12 +9,12 @@ Version bump smaller than the changes need
 | **Kind** | `wire` |
 | **Default severity** | `warn` |
 | **Rule IDs** | `version-bump-too-small` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Lifecycle and versions ([RULES.md section 9](../../RULES.md)) |
 
 ## What it detects
 
-The recorded version changed less than the findings require, e.g. a minor bump with breaking changes.
+Under `semver`, the version went up by less than the findings need: any `error` finding needs a major bump, any other `wire` or `sdk` finding a minor bump, and `docs`-only changes a patch bump. Below 1.0.0 each need is one level lower (a breaking change needs a minor bump). Uses the final severities, after the policy. Not checked under `calver`; a version that isn't semver gives a `not-compared` notice instead.
 
 ## Why this default
 
@@ -22,11 +22,42 @@ Consumers relying on semantic versioning upgrade without expecting breakage.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`version-bump-too-small`](../../test/cases/version-bump-too-small/): An operation was removed (error, breaking) but the version only went 1.2.0 to 1.3.0: a major bump is needed.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+  info:
+    title: Pets
+-   version: 1.2.0
++   version: 1.3.0
+  paths:
+    /pets:
+  …
+          '200':
+            description: ok
+-   /pets/{id}:
+-     delete:
+-       responses:
+-         '200':
+-           description: ok
+```
+
+Findings:
+
+- `operation-removed` · error · DELETE /pets/{id}
+- `version-bump-too-small` · warn · document
 
 ## Test cases
 
-_None yet._
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`version-bump-0x`](../../test/cases/version-bump-0x/) | `version-bump-too-small` · warn · document | Below 1.0.0, needs shift down one level: a breaking change needs a minor bump (0.3 to 0.4), so a patch bump is too small. |
+| [`version-bump-minor-for-addition`](../../test/cases/version-bump-minor-for-addition/) | `version-bump-too-small` · warn · document | An added operation (wire, info) needs at least a minor bump; 1.2.0 to 1.2.1 is a patch. |
+| [`version-bump-too-small`](../../test/cases/version-bump-too-small/) | `version-bump-too-small` · warn · document | An operation was removed (error, breaking) but the version only went 1.2.0 to 1.3.0: a major bump is needed. |
 
 ## Policy options
 
@@ -36,7 +67,7 @@ Options for this rule:
 
 | Option | Default | Description |
 |---|---|---|
-| `scheme` | `semver` | `semver`, `calver` or `none` (turns this rule off). |
+| `scheme` | `semver` | `semver`, `calver` (this rule doesn't apply) or `none` (turns off both version rules). |
 
 ```yaml
 rules:

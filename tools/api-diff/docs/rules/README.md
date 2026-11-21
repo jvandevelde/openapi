@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 130 rules, with their default severities. 126 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 130 rules, with their default severities. 128 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -161,8 +161,8 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`deprecated-removed`](deprecated-removed.md) | wire | info | M6 ✅ | Deprecation withdrawn |
 | [`sunset-moved-earlier`](sunset-moved-earlier.md) | wire | warn | M6 ✅ | Sunset date moved earlier |
 | [`stability-decreased`](stability-decreased.md) | wire | error | M6 ✅ | Stability level decreased |
-| [`version-bump-too-small`](version-bump-too-small.md) | wire | warn | M6 | Version bump smaller than the changes need |
-| [`version-unchanged`](version-unchanged.md) | wire | warn | M6 | Spec changed but the version didn't |
+| [`version-bump-too-small`](version-bump-too-small.md) | wire | warn | M6 ✅ | Version bump smaller than the changes need |
+| [`version-unchanged`](version-unchanged.md) | wire | warn | M6 ✅ | Spec changed but the version didn't |
 
 ## 10. Docs (annotations only)
 

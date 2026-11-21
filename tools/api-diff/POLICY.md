@@ -185,7 +185,13 @@ versions:
     commit: x-git.sha
 ```
 
-Sources: an `x-` extension at the document root, `info.<field>`, or a JSON Pointer (`/info/x-meta/version`). The CLI options `--base-version`, `--revision-version` and `--base-label`/`--revision-label key=value` take precedence.
+Sources: an `x-` extension at the document root (dots step into it: `x-git.sha` is `sha` inside `x-git`), `info.<field>`, or a JSON Pointer (`/info/x-meta/version`). The CLI options `--base-version`, `--revision-version` and `--base-label`/`--revision-label key=value` take precedence. For git inputs, `commit` is filled in automatically. Each side's `version`, `versionSource` and `labels` are in the JSON result's `compared` section.
+
+The recorded versions are checked against the findings:
+
+- **`version-unchanged`** (`warn`): the spec changed but the version didn't. Notices (`spec-invalid`, `ref-unresolved`, `not-compared`, `cycle-not-productive`, `documents-unrelated`) don't count as changes.
+- **`version-bump-too-small`** (`warn`, semver only): any `error` finding needs a major bump, any other `wire` or `sdk` finding a minor bump, `docs`-only changes a patch bump. Below 1.0.0, each need is one level lower (breaking changes need a minor bump, as semver allows). Findings turned `off` or below `min-severity` don't count; lowered severities do. A lower version counts as no bump.
+- **`scheme`** (option on either rule): `semver` (default), `calver` (only `version-unchanged` applies), or `none` (both off). A version that isn't semver under `semver` gives a `not-compared` notice rather than a guess.
 
 ## 10. Reports
 

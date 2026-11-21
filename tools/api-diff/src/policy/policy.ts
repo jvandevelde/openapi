@@ -10,6 +10,7 @@ import { resolve } from 'node:path';
 import { load } from 'js-yaml';
 import { removalOptions, stabilityLevels } from '../diff/lifecycle.ts';
 import { unrelatedOptions } from '../diff/unrelated.ts';
+import { DEFAULT_VERSIONS, parseVersions, schemeOption, type VersionSettings } from '../diff/versions.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { DEFAULT_LIFECYCLE, type LifecycleSettings } from './context.ts';
 import { parseOverrides, type Override } from './overrides.ts';
@@ -47,6 +48,8 @@ export interface Policy {
   exclusions: Map<string, ExclusionSet>;
   /** Exclusion sets that are not compared at all. */
   ignore: string[];
+  /** Where each side's version and labels are read from. */
+  versions: VersionSettings;
   /** Sections not validated yet, as given. */
   raw: Record<string, unknown>;
 }
@@ -63,7 +66,7 @@ const SETTING_KEYS = ['severity', 'fix', 'explanation'] as const;
 const SEVERITIES = ['error', 'warn', 'info', 'off'] as const;
 
 export function emptyPolicy(): Policy {
-  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], raw: {} };
+  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, raw: {} };
 }
 
 /**
@@ -90,7 +93,7 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
 export function parsePolicy(data: unknown, file = 'policy'): Policy {
   const at = (path: string): string => `${file}: ${path}`;
   const obj = asObject(data, at('the policy'));
-  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], raw: {} };
+  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, raw: {} };
   for (const [k, v] of Object.entries(obj)) {
     if (!(TOP_KEYS as readonly string[]).includes(k)) throw new PolicyError(`${at(k)}: unknown key${suggest(k, TOP_KEYS)}`);
     switch (k) {
@@ -113,6 +116,9 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
       case 'ignore':
         if (!Array.isArray(v) || !v.every((s) => typeof s === 'string')) throw new PolicyError(`${at('ignore')}: must be a list of exclusion set names`);
         policy.ignore = v as string[];
+        break;
+      case 'versions':
+        policy.versions = parseVersions(asObject(v, at('versions')), at('versions'));
         break;
       case 'exclusions':
         policy.exclusions = parseExclusions(asObject(v, at('exclusions')), at('exclusions'), suggest);
@@ -204,6 +210,8 @@ const OPTION_CHECKS: Record<string, (options: Record<string, unknown>, where: st
   'documents-unrelated': (o, where) => void unrelatedOptions(o, where),
   'operation-removed': (o, where) => void removalOptions(o.unless, `${where}.unless`),
   'stability-decreased': (o, where) => void stabilityLevels(o.levels, `${where}.levels`),
+  'version-unchanged': (o, where) => void schemeOption(o.scheme, `${where}.scheme`),
+  'version-bump-too-small': (o, where) => void schemeOption(o.scheme, `${where}.scheme`),
   'enum-value-added': (o, where) => {
     if (o['honour-open-hint'] !== undefined && typeof o['honour-open-hint'] !== 'boolean') throw new PolicyError(`${where}.honour-open-hint: must be true or false`);
     const x = o['open-extensions'];

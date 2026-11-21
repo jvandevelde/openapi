@@ -22,8 +22,21 @@ interface Expected {
   description: string;
   milestone: string;
   /** `policy` is read from M6; until then only cases for M6 or later use it. */
-  options?: { profile?: Profile; policy?: Record<string, unknown>; 'as-of'?: string };
+  options?: { profile?: Profile; policy?: Record<string, unknown>; 'as-of'?: string; 'check-versions'?: boolean };
   findings: { rule: string; severity: Severity; subject: string }[];
+}
+
+/**
+ * The case's policy. Version checks are off unless the case opts in with
+ * `check-versions: true`: most cases change a spec without bumping its
+ * version, and version-unchanged would appear in all of them.
+ */
+function casePolicy(expected: Expected, name: string): ReturnType<typeof parsePolicy> {
+  const policy = parsePolicy(expected.options?.policy ?? {}, `${name}/expected.yaml`);
+  if (!expected.options?.['check-versions']) {
+    for (const id of ['version-unchanged', 'version-bump-too-small']) policy.rules.set(id, { ...policy.rules.get(id), severity: 'off', options: policy.rules.get(id)?.options ?? {} });
+  }
+  return policy;
 }
 
 function input(dir: string, side: 'base' | 'revision'): string {
@@ -53,7 +66,7 @@ for (const name of names) {
   const todo = milestone > CURRENT_MILESTONE ? `needs ${expected.milestone}` : pending.length ? `needs ${[...new Set(pending)].join(', ')}` : undefined;
 
   test(name, { todo }, async () => {
-    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: parsePolicy(expected.options?.policy ?? {}, `${name}/expected.yaml`), asOf: expected.options?.['as-of'] ?? '2026-11-21' });
+    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: casePolicy(expected, name), asOf: expected.options?.['as-of'] ?? '2026-11-21' });
     const actual = result.findings.map((f) => ({ rule: f.rule, severity: f.severity, subject: f.subject }));
     if (process.env.UPDATE_CASES && !todo) {
       const next = { ...expected, findings: actual };

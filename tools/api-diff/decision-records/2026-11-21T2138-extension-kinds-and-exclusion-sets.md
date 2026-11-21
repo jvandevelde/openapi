@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-21 21:38 UTC |
 | **Summary** | Changes to extensions the policy classifies are `extension-changed-sdk` (info, sdk profile warn) and `extension-changed-wire` (warn); exclusion sets match operations and components by any key, `ignore`d sets aren't compared, and other sets are recorded on findings for reports. |
 | **Milestone** | M6 |

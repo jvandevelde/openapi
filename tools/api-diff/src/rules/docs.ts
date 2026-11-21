@@ -469,12 +469,12 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
   'sunset-moved-earlier': { description: 'A sunset date (from the configured extension, `x-sunset` by default) moved earlier.', why: 'Clients planning around the old date have less time.', fix: 'Keep the original sunset date.' },
   'stability-decreased': { description: 'A stability level went down, e.g. `stable` → `beta` (from the configured extension, `x-stability-level` by default).', why: 'Clients relying on stability guarantees lose them.', fix: 'Keep the stability level.', options: [{ name: 'levels', default: '[draft, alpha, beta, stable]', description: 'Order of stability levels, lowest first.' }] },
   'version-bump-too-small': {
-    description: 'The recorded version changed less than the findings require, e.g. a minor bump with breaking changes.',
+    description: 'Under `semver`, the version went up by less than the findings need: any `error` finding needs a major bump, any other `wire` or `sdk` finding a minor bump, and `docs`-only changes a patch bump. Below 1.0.0 each need is one level lower (a breaking change needs a minor bump). Uses the final severities, after the policy. Not checked under `calver`; a version that isn\'t semver gives a `not-compared` notice instead.',
     why: 'Consumers relying on semantic versioning upgrade without expecting breakage.',
     fix: 'Bump the major version, or avoid the breaking change.',
-    options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` or `none` (turns this rule off).' }],
+    options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` (this rule doesn\'t apply) or `none` (turns off both version rules).' }],
   },
-  'version-unchanged': { description: "The spec changed but the recorded version didn't.", why: 'Consumers cannot tell versions apart.', fix: 'Bump the version.', options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` or `none` (turns this rule off).' }] },
+  'version-unchanged': { description: "The spec changed (any finding except notices such as `spec-invalid` or `not-compared`) but the recorded version didn't. The version comes from the policy's `versions` section (`info.version` by default) or `--base-version` / `--revision-version`.", why: 'Consumers cannot tell versions apart.', fix: 'Bump the version.', options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` or `none` (turns off both version rules).' }] },
 
   // 10. Docs
   'description-changed': { description: 'A `description` changed.', why: 'Documentation only.', fix: 'Nothing to fix.' },

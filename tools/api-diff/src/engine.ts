@@ -8,6 +8,8 @@ import { collapseBulk } from './diff/bulk.ts';
 import { diffDocs } from './diff/docs.ts';
 import { diffSchemaEngine } from './diff/schema-engine.ts';
 import { checkUnrelated, unrelatedOptions } from './diff/unrelated.ts';
+import { checkVersions, DEFAULT_VERSIONS, recordVersions, schemeOption } from './diff/versions.ts';
+import { compareFindings } from './classify/classify.ts';
 import { applyDeprecationPeriod, diffLifecycle, removalOptions, stabilityLevels, today, type LifecycleOptions } from './diff/lifecycle.ts';
 import { DEFAULT_LIFECYCLE } from './policy/context.ts';
 import { SchemaIndex } from './index/schema-index.ts';
@@ -27,6 +29,11 @@ export interface CompareOptions {
   /** Overrides the policy's profile. */
   profile?: Profile;
   policy?: Policy;
+  /** Versions and labels given on the command line; they beat the documents. */
+  baseVersion?: string;
+  revisionVersion?: string;
+  baseLabels?: Record<string, string>;
+  revisionLabels?: Record<string, string>;
   /** Reference date for deprecation periods and sunsets, `YYYY-MM-DD`; today (UTC) by default. */
   asOf?: string;
   /** Both inputs are one file at two git revisions (`documents-unrelated` skips those unless `when: always`). */
@@ -99,12 +106,30 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     const classified = classifyExtensions(diffs, policy?.extensions);
     changes.push(...collapseBulk(applyIgnore(classified, b, r, ignoredSets, context!)), ...ignoredNotices(b, r), ...ignoredSetNotices(ignoredSets, context!));
   }
-  const findings = classify(changes, {
+  const findings: Finding[] = classify(changes, {
     profile,
     ...(policy ? { policy } : {}),
     ...(context ? { context } : {}),
     hints: { base: b.hints, revision: r.hints },
   });
+  // Versions: recorded for each side, then checked against the findings.
+  const vs = policy?.versions ?? DEFAULT_VERSIONS;
+  for (const [s, side, version, labels] of [[b, b.compared, opts.baseVersion, opts.baseLabels], [r, r.compared, opts.revisionVersion, opts.revisionLabels]] as const) {
+    recordVersions(side, s.model?.docs.root.parsed.value, vs, { ...(version !== undefined ? { version } : {}), ...(labels ? { labels } : {}) });
+  }
+  if (!unrelated && b.model && r.model) {
+    const scheme = (id: string): ReturnType<typeof schemeOption> | undefined => {
+      const v = policy?.rules.get(id)?.options.scheme;
+      return v === undefined ? undefined : schemeOption(v, `rules.${id}.scheme`);
+    };
+    const chosen = scheme('version-bump-too-small') ?? scheme('version-unchanged') ?? 'semver';
+    const set = [scheme('version-bump-too-small'), scheme('version-unchanged')].includes('none') ? 'none' : chosen;
+    const extra = checkVersions(findings, b.compared, r.compared, { unchanged: set, bump: set });
+    if (extra.length) {
+      findings.push(...classify(extra, { profile, ...(policy ? { policy } : {}) }));
+      findings.sort(compareFindings);
+    }
+  }
   const tagged = policy?.exclusions.size && context ? [...policy.exclusions.values()].filter((s) => !policy.ignore.includes(s.name)) : [];
   if (tagged.length) {
     const sets = new Map(tagged.map((s) => [s.name, s]));

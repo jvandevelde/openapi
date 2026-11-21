@@ -11,10 +11,7 @@ export type Milestone = 3 | 4 | 5 | 6 | 8;
 export const CURRENT_MILESTONE = 6;
 
 /** Rules of the current milestone that aren't built yet. */
-const PENDING = new Set([
-  'version-bump-too-small',
-  'version-unchanged',
-]);
+const PENDING = new Set<string>([]);
 
 export interface RuleMeta {
   id: string;
@@ -210,8 +207,8 @@ rule({ id: 'deprecated-added', section: 9, kind: 'wire', title: 'Marked deprecat
 rule({ id: 'deprecated-removed', section: 9, kind: 'wire', title: 'Deprecation withdrawn', severity: 'info', milestone: 6, message: (c) => `${d(c, 'what') || 'schema'}${c.details.name !== undefined ? ` '${d(c, 'name')}'` : ''} no longer deprecated${c.details.path ? ` at ${d(c, 'path').replace(/\/deprecated$/, '') || '/'}` : ''}` });
 rule({ id: 'sunset-moved-earlier', section: 9, kind: 'wire', title: 'Sunset date moved earlier', severity: 'warn', milestone: 6, message: (c) => `sunset moved earlier from ${d(c, 'from')} to ${d(c, 'to')}` });
 rule({ id: 'stability-decreased', section: 9, kind: 'wire', title: 'Stability level decreased', severity: 'error', milestone: 6, message: (c) => `stability decreased from ${d(c, 'from')} to ${d(c, 'to')}` });
-rule({ id: 'version-bump-too-small', section: 9, kind: 'wire', title: 'Version bump smaller than the changes need', severity: 'warn', milestone: 6, message: () => 'version bump too small' });
-rule({ id: 'version-unchanged', section: 9, kind: 'wire', title: "Spec changed but the version didn't", severity: 'warn', milestone: 6, message: () => 'version unchanged' });
+rule({ id: 'version-bump-too-small', section: 9, kind: 'wire', title: 'Version bump smaller than the changes need', severity: 'warn', milestone: 6, message: (c) => `version went from ${d(c, 'from')} to ${d(c, 'to')} (${d(c, 'got') === 'none' ? 'no increase' : `a ${d(c, 'got')} bump`}), but the changes need a ${d(c, 'needed')} bump${c.details.because ? ` (e.g. ${d(c, 'because')})` : ''}` });
+rule({ id: 'version-unchanged', section: 9, kind: 'wire', title: "Spec changed but the version didn't", severity: 'warn', milestone: 6, message: (c) => `the spec changed (${d(c, 'changes')} finding${c.details.changes === 1 ? '' : 's'}) but the version is still ${d(c, 'from')}` });
 
 // 10. Docs
 for (const [id, title] of [

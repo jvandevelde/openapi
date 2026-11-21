@@ -47,7 +47,7 @@ ${extra}
 
 async function run(policy: unknown): Promise<Finding[]> {
   const r = await compareOpened({ source: new MemorySource({ 'a.yaml': doc('a') }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': doc('a, b') }), root: 'b.yaml' }, { policy: parsePolicy(policy) });
-  return r.findings;
+  return r.findings.filter((f) => !f.baseRule.startsWith('version-')); // version checks have their own tests
 }
 
 test('findings record the exclusion sets they belong to', async () => {
@@ -68,7 +68,7 @@ test('an ignored set leaves shared components in for their other operations', as
 
 test('extension-changed-sdk is warn under --profile sdk; docs-classified extensions stay extension-changed', async () => {
   const dir = fileURLToPath(new URL('../cases/extension-changed-sdk/', import.meta.url));
-  const go = async (policy: unknown, profile: 'wire' | 'sdk') => (await compareInputs({ kind: 'fs', arg: 'base.yaml', path: 'base.yaml' }, { kind: 'fs', arg: 'revision.yaml', path: 'revision.yaml' }, dir, { policy: parsePolicy(policy), profile })).findings.map((f) => `${f.rule} ${f.severity}`);
+  const go = async (policy: unknown, profile: 'wire' | 'sdk') => (await compareInputs({ kind: 'fs', arg: 'base.yaml', path: 'base.yaml' }, { kind: 'fs', arg: 'revision.yaml', path: 'revision.yaml' }, dir, { policy: parsePolicy(policy), profile })).findings.filter((f) => !f.baseRule.startsWith('version-')).map((f) => `${f.rule} ${f.severity}`);
   assert.deepEqual(await go({ extensions: { 'x-enum-varnames': 'sdk' } }, 'sdk'), ['extension-changed-sdk warn']);
   assert.deepEqual(await go({ extensions: { 'x-enum-varnames': 'docs' } }, 'wire'), ['extension-changed info']);
 });

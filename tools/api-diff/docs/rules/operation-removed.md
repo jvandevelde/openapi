@@ -43,7 +43,7 @@ Findings:
 
 ## Test cases
 
-7 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+10 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
@@ -54,6 +54,9 @@ Findings:
 | [`operation-removed`](../../test/cases/operation-removed/) | `operation-removed` · error · DELETE /pets/{id} | Removing an operation is an error. |
 | [`operation-removed-deprecated-too-short`](../../test/cases/operation-removed-deprecated-too-short/) | `operation-removed` · error · DELETE /pets/{id} | Deprecated on 2026-10-01, removed 51 days later: short of the 90-day period, so it is still operation-removed (error), and the message says by how much. |
 | [`operation-removed-undated-deprecation-blocked`](../../test/cases/operation-removed-undated-deprecation-blocked/) | `operation-removed` · error · DELETE /pets/{id} | Deprecated without a date, with undated-deprecation: block: the period cannot be checked, so the removal is an error. |
+| [`version-bump-0x`](../../test/cases/version-bump-0x/) | `operation-removed` · error · DELETE /pets/{id} | Below 1.0.0, needs shift down one level: a breaking change needs a minor bump (0.3 to 0.4), so a patch bump is too small. |
+| [`version-bump-major`](../../test/cases/version-bump-major/) | `operation-removed` · error · DELETE /pets/{id} | A breaking removal with a major bump (1.2.0 to 2.0.0): no version finding. |
+| [`version-bump-too-small`](../../test/cases/version-bump-too-small/) | `operation-removed` · error · DELETE /pets/{id} | An operation was removed (error, breaking) but the version only went 1.2.0 to 1.3.0: a major bump is needed. |
 
 ## Policy options
 

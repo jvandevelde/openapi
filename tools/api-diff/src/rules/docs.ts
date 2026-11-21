@@ -503,6 +503,19 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
     why: 'Tools that expand it loop forever; the schema is meaningless.',
     fix: 'Break the cycle with a property or array step.',
   },
+  'documents-unrelated': {
+    description: "The two documents share almost nothing, so they look like different APIs rather than two versions of one. The check runs before the diff and compares three signals: operations (method plus path, with version-like segments, server base paths and parameter names normalised), `operationId`s and component schema names. Each is measured as shared items divided by the size of the smaller document, so an API that grew a lot still counts as related. It fires only when every usable signal is below `min-overlap` and the `info.title` or every server host also differs. When it fires, the diff stops and this is the only finding.",
+    why: 'Comparing two unrelated APIs reports every operation as removed and added: hundreds of errors that hide the real mistake, usually a wrong path on the command line.',
+    fix: 'Check that both inputs point at the same API. For an intentional rewrite, set `documents-unrelated: off` in the policy, or lower `min-overlap`.',
+    options: [
+      { name: 'min-overlap', default: '0.1', description: 'The documents count as related if any signal reaches this share (shared items divided by the size of the smaller document).' },
+      { name: 'signals', default: '[operations, operation-ids, schemas]', description: 'Which overlaps to measure. One signal at or above `min-overlap` is enough. A signal that is empty on either side is skipped.' },
+      { name: 'min-size', default: '5', description: 'Skip the check when the smaller document has fewer operations and fewer schemas than this, since a tiny overlap means little there. An empty base is always skipped.' },
+      { name: 'ignore-path-segments', default: "['^v\\d+([a-z]+\\d*)?$', '^\\d{4}-\\d{2}-\\d{2}$']", description: 'Regular expressions for path segments dropped before comparing paths, anywhere in the path (by default `v1`, `v2beta1`, `2024-01-01`). Works with any number of different prefixes.' },
+      { name: 'strip-prefixes', default: '[]', description: 'Extra path prefixes removed before comparing, e.g. `[/api, /internal]`.' },
+      { name: 'when', default: 'manual', description: '`manual` skips the check when both inputs are the same path at two git revisions. `always` checks those too.' },
+    ],
+  },
   'not-compared': {
     description: "Notice for parts of the spec that weren't compared: webhooks, callbacks, `$ref`s to external URLs, and ignored exclusions.",
     why: 'So nothing is skipped silently.',

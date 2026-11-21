@@ -1,6 +1,6 @@
 # api-diff: plan
 
-Status: **planning**. No code yet. The initial rule set is in [RULES.md](RULES.md), and the policy file reference in [POLICY.md](POLICY.md). This directory has no `Makefile`, so the root `make` ignores it for now.
+Status: **planning**. No code yet. The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
 
 `api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Several tools already do parts of this (section 1). We're building our own so that we decide what counts as breaking and how results are shown, and so the tool is built around the problems those tools leave open (section 3): shared and recursive schemas, request vs response direction, wire vs SDK compatibility, and reports for different readers.
 
@@ -685,7 +685,7 @@ Out of scope at first: **webhooks and callbacks** (if a spec has them, a single 
 
 ## 7. Decisions to make
 
-Decided on 2026-11-21:
+Each decision has a full record (background, alternatives, impacts) in [decision-records/](decision-records/README.md). Summary of the main ones, decided on 2026-11-21:
 
 1. **Language: TypeScript on Node ≥ 22.18**, run directly with Node's built-in type stripping (no build step for development and tests; `tsc --noEmit` for type checks; `erasableSyntaxOnly`, so no `enum`s or namespaces), bundled with esbuild for releases. Uses `js-yaml` / `jsonc-parser` for position-aware loading (see Performance).
 2. **OpenAPI versions: 3.0, 3.1 and 3.2** from the start, using the normalise step.

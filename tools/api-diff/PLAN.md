@@ -129,7 +129,7 @@ Each stage is a pure function with its own tests, so the stages can be swapped o
 ```sh
 api-diff main:openapi.yaml openapi.yaml             # branch tip vs working tree
 api-diff v1.4.0:openapi.yaml v1.5.0:openapi.yaml    # two tags
-api-diff --base main... openapi.yaml                # merge-base with main (what a PR changed)
+api-diff --base main... openapi.yaml                # same file at the merge-base with main (what a PR changed)
 ```
 
 **Why built in rather than a helper script.** A script that runs `git show main:openapi.yaml > /tmp/base.yaml` and passes the temp file looks simpler, but it breaks in three ways:
@@ -184,7 +184,7 @@ jobs:
         with: { fetch-depth: 0 }            # the base commit must be present
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: npx api-diff@1 origin/${{ github.base_ref }}...:openapi.yaml openapi.yaml --report ci --report review:html:api-diff.html
+      - run: npx api-diff@1 --base origin/${{ github.base_ref }}... openapi.yaml --report ci --report review:html:api-diff.html
 ```
 
 **What stays outside the core.** Workflows that need more than reading files go in a separate `git` module of the CLI, not the engine:

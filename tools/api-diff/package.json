@@ -13,7 +13,8 @@
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc --noEmit -p .",
-    "bench": "node test/bench/bench.ts"
+    "bench": "node test/bench/bench.ts",
+    "docs": "node scripts/rule-docs.ts"
   },
   "engines": {
     "node": ">=22.18"

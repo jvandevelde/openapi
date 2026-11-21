@@ -48,7 +48,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 
 Exit codes: `0` no findings at or above `--fail-on`, `1` findings at or above it, `2` usage or input error (missing file, unknown revision).
 
-`api-diff rules` lists the implemented rules with their default severities (`--all` includes planned ones, `--format json` for scripts). `api-diff rules <id>` shows one rule.
+`api-diff rules` lists the implemented rules with their default severities (`--all` includes planned ones, `--format json` for scripts). `api-diff rules <id>` explains one rule. The full reference, one page per rule, is in [docs/rules/](docs/rules/README.md).
 
 ### Example
 
@@ -91,6 +91,8 @@ UPDATE_CASES=1 npm test      # rewrite expected.yaml files from actual results (
 ```
 
 - `src/`: one folder per pipeline stage (`sources`, `load`, `normalize`, `model`, `diff`, `classify`, `render`, `cli`), described in [PLAN.md](PLAN.md) section 6.
-- `src/rules/registry.ts`: every rule's ID, kind, default severities and message. A test keeps it in sync with RULES.md.
+- `src/rules/registry.ts`: every rule's ID, kind, default severities and message. `src/rules/docs.ts`: its description, reason, fix and options. A test keeps both in sync with RULES.md.
+- `docs/rules/` is generated: run `npm run docs` after changing rules or test cases (a test fails if it's stale).
+- **Adding or changing a rule:** update the registry and `src/rules/docs.ts`, add or update its test case, run `npm run docs`, update RULES.md if the design changed, and add a decision record if a default was decided.
 - `test/cases/`: one folder per rule or scenario; see [test/cases/README.md](test/cases/README.md).
 - New decisions get a record in [decision-records/](decision-records/README.md), in the same commit as the change.

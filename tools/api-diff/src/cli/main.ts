@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { compareInputs, shouldFail } from '../engine.ts';
 import { renderTxt } from '../render/txt.ts';
+import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
 import { SourceError } from '../sources/source.ts';
@@ -133,6 +134,15 @@ function rulesCommand(argv: string[], out: Io['stdout']): number {
   if (format === 'json') {
     const data = pick.map((r) => ({ id: r.id, section: r.section, kind: r.kind, title: r.title, severity: r.severity, sdkProfile: r.sdkProfile, variants: r.variants, milestone: `M${r.milestone}`, implemented: isImplemented(r) }));
     out.write(JSON.stringify(data, null, 2) + '\n');
+    return 0;
+  }
+  if (positionals[0]) {
+    const r = pick[0]!;
+    const doc = RULE_DOCS[r.id];
+    const sev = severityText(r) + (r.sdkProfile ? ` (--profile sdk: ${r.sdkProfile})` : '');
+    out.write(`${r.id}: ${r.title}\n\nkind      ${r.kind}\nseverity  ${sev}${typeof r.severity === 'string' ? '' : ' (request / response)'}\nstatus    ${isImplemented(r) ? 'implemented' : 'planned'} (M${r.milestone})\n`);
+    if (doc) out.write(`\n${doc.description}\n\nWhy: ${doc.why}\n\nFix: ${doc.fix}\n`);
+    out.write(`\nMore: docs/rules/${r.id}.md\n`);
     return 0;
   }
   const w = Math.max(...pick.map((r) => r.id.length));

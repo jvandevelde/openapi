@@ -73,6 +73,7 @@ test('rules and schema commands', async () => {
   assert.match((await run('rules', '--all')).out, /enum-value-added .*\[M5\]/);
   const one = JSON.parse((await run('rules', 'query-parameter-removed', '--format', 'json')).out);
   assert.equal(one[0].id, 'parameter-removed');
+  assert.match((await run('rules', 'header-parameter-removed')).out, /^parameter-removed: Parameter removed[\s\S]*Why: Clients still send it/);
   assert.equal((await run('rules', 'no-such-rule')).code, 2);
   assert.equal(JSON.parse((await run('schema')).out).title, 'api-diff result, schema version 0');
 });

@@ -14,7 +14,7 @@ function documentedIds(): Set<string> {
   const md = read('../../RULES.md');
   const ids = new Set<string>();
   for (const line of md.split('\n')) {
-    const first = /^\| (`[^|]+)\|/.exec(line)?.[1];
+    const first = /^\| ((?:\[?`)[^|]+)\|/.exec(line)?.[1];
     if (first) for (const m of first.matchAll(/`([a-z][a-z0-9-]+)`/g)) ids.add(m[1]!);
   }
   const docs = md.slice(md.indexOf('## 10. Docs'), md.indexOf('## 11.'));

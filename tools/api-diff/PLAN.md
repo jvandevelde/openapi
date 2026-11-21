@@ -171,6 +171,14 @@ The tool never assumes it's inside this tools repo. Git commands run **in the re
 2. **A single bundled file.** Build `api-diff.mjs` (all dependencies bundled with esbuild) and attach it to a GitHub release of this repo. CI downloads one file and runs `node api-diff.mjs`. No npm registry needed.
 3. **Check out this repo as a second checkout** in the CI job and run `npx ./tools/api-diff`. This works today with no publishing, but every API repo depends on this repo's layout.
 
+**Nothing is copied into the API repo.** With options 1 and 2 the tool is downloaded when CI runs (npx keeps it in its cache), and with option 3 the second checkout exists only in the CI workspace. The API repo only commits:
+
+- the workflow file,
+- optionally the policy file (`api-diff.yaml`) and acknowledgements file (`api-diff.ack.yaml`),
+- the tool's version, pinned in the workflow (`npx api-diff@1.2.3`) or, in a Node repo, as a `devDependency`.
+
+The API repo needs a Node runtime in CI, but its own code can be in any language.
+
 A minimal workflow in another repo, using option 1:
 
 ```yaml

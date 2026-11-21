@@ -60,7 +60,7 @@ Parameters are matched by location and name. Header names are compared case-inse
 |---|---|---|---|---|---|
 | `parameter-added-required` | New required parameter: old clients don't send it | error | error | error | 1 |
 | `parameter-added-optional` | New optional parameter | info | info | info | 1 |
-| `parameter-removed` | Clients still send it. Usually the server ignores it, so behaviour silently changes (e.g. a removed `?status=` filter now returns everything). If the server rejects unknown parameters, the request fails ⚑ | warn | warn | warn | 1 |
+| `parameter-removed` | Clients still send it. Usually the server ignores it, so behaviour silently changes (e.g. a removed `?status=` filter now returns everything). If the server rejects unknown parameters, the request fails. **Decided:** servers are assumed lenient (`strict-servers: false`) | warn | warn | warn | 1 |
 | `parameter-became-required` | Optional → required | error | error | error | 1 |
 | `parameter-became-optional` | Required → optional | info | info | info | 1 |
 | `parameter-location-changed` | e.g. `query` → `header`. Old clients send it in the wrong place. Changes to or from `path` are reported as `operation-path-changed` | error | error | error | 1 |

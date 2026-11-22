@@ -39,8 +39,8 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 |---|---|
 | `--base <rev>`, `--revision <rev>` | Read the given file at these revisions. `<rev>...` means the merge-base with the other side (`HEAD` by default) |
 | `-C, --cwd <dir>` | Run as if started in `<dir>` |
-| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. Formats `txt` and `json`; without a file it goes to stdout (one report at most) |
-| `-f, --format <fmt>` | Format of the default `review` report: `txt` (default) or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
+| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. Formats `txt`, `json` and `html` (`review` and `summary`; one self-contained file); without a file it goes to stdout (one report at most). The policy's `reports` section can leave exclusion sets out of a report |
+| `-f, --format <fmt>` | Format of the default `review` report: `txt` (default), `html` or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
 | `-o, --output <file>` | Write the default report to a file |
 | `--fail-on <level>` | Exit with code 1 if any finding is at or above `error`, `warn` or `info`. The default is `never`: breaking changes are reported, not blocked, unless a team opts in |
 | `--state` | Print only `no-changes`, `compatible` or `breaking` |

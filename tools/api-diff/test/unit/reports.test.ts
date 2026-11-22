@@ -25,9 +25,10 @@ async function run(...argv: string[]): Promise<{ code: number; out: string; err:
 }
 
 test('--report specs', () => {
-  assert.deepEqual(parseReportSpec('ci'), { name: 'ci', format: 'txt' });
+  assert.deepEqual(parseReportSpec('ci'), { name: 'ci' }); // format from the policy, else txt
   assert.deepEqual(parseReportSpec('review:json:out/r.json'), { name: 'review', format: 'json', file: 'out/r.json' });
   assert.deepEqual(parseReportSpec('summary:txt:-'), { name: 'summary', format: 'txt' });
+  assert.deepEqual(parseReportSpec('summary::out.txt'), { name: 'summary', file: 'out.txt' });
   assert.deepEqual(parseReportSpec('summary:txt:C:\\out\\s.txt'), { name: 'summary', format: 'txt', file: 'C:\\out\\s.txt' });
   assert.throws(() => parseReportSpec('changelog'), (e: unknown) => e instanceof ReportError && /changelog arrives in a later milestone/.test(e.message));
   assert.throws(() => parseReportSpec('ci:xml'), (e: unknown) => e instanceof ReportError && /report ci has no xml format; formats: txt, json/.test(e.message));
@@ -129,4 +130,78 @@ test('summary data', async () => {
   assert.equal(d.byKindAndSeverity.docs.info, 1);
   assert.equal(d.advice?.needed, 'major');
   assert.ok(d.top.every((f) => !f.rule.startsWith('version-')));
+});
+
+// Policy `reports` section
+
+import { parsePolicy, PolicyError } from '../../src/policy/policy.ts';
+import { viewFor } from '../../src/render/config.ts';
+import { countFindings, stateOf } from '../../src/engine.ts';
+
+test('report settings are validated', () => {
+  const bad = (policy: unknown, msg: RegExp): void => assert.throws(() => parsePolicy(policy, 'p.yaml'), (e: unknown) => e instanceof PolicyError && msg.test(e.message));
+  bad({ reports: { review: { exclude: ['internal'] } } }, /reports\.review\.exclude: 'internal' is not an exclusion set/);
+  bad({ reports: { review: { includ: {} } } }, /reports\.review\.includ: unknown key \(did you mean include\?\)/);
+  bad({ reports: { review: { include: { kinds: ['api'] } } } }, /include\.kinds: must be wire, sdk or docs/);
+  bad({ reports: { review: { 'group-by': 'team' } } }, /group-by: must be one of severity, root-cause/);
+  bad({ reports: { mine: { extends: 'reviw' } } }, /mine\.extends: 'reviw' is not a report \(did you mean review\?\)/);
+  bad({ reports: { a: { extends: 'b' }, b: { extends: 'a' } } }, /extend each other in a loop \(a → b → a\)/);
+  bad({ reports: { review: { extends: 'ci' } } }, /built-in reports can't extend others/);
+  parsePolicy({ exclusions: { internal: { paths: ['/internal/**'] } }, reports: { changelog: { exclude: ['internal'], template: './t.html', 'group-by': 'tag' }, partner: { extends: 'changelog' } } });
+});
+
+const recount = (fs: Result['findings']) => ({ counts: countFindings(fs), state: stateOf(fs) });
+
+test('a report view leaves out excluded sets and findings outside include; notices stay', async () => {
+  const r = await shopResult();
+  r.findings.find((f) => f.subject === 'DELETE /legacy')!.exclusions = ['internal'];
+  const v = viewFor(r, { exclude: ['internal'], include: { kinds: ['wire'], minSeverity: 'warn' } }, recount);
+  assert.ok(!v.findings.some((f) => f.subject === 'DELETE /legacy'));
+  assert.ok(!v.findings.some((f) => f.kind === 'docs'));
+  assert.ok(v.findings.some((f) => f.rule === 'version-unchanged'));
+  assert.equal(v.counts.total, v.findings.length);
+  assert.equal(viewFor(r, undefined, recount), r);
+});
+
+test('the ci report settings apply to the exit code; unsupported settings are refused when used', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'api-diff-cfg-'));
+  try {
+    for (const f of ['base.yaml', 'revision.yaml']) writeFileSync(join(dir, f), readFileSync(join(cases, 'operation-removed', f)));
+    const policy = (p: string) => writeFileSync(join(dir, 'api-diff.yaml'), p);
+    policy('defaults: { fail-on: error }\nexclusions: { legacy: { paths: ["/pets/**"] } }\nreports: { ci: { exclude: [legacy] } }\n');
+    assert.equal((await run('-C', dir, '--report', 'ci', 'base.yaml', 'revision.yaml')).code, 0);
+    policy('defaults: { fail-on: error }\nreports: { summary: { format: json } }\n');
+    const s = await run('-C', dir, '--report', 'summary', 'base.yaml', 'revision.yaml');
+    assert.equal(JSON.parse(s.out).report, 'summary');
+    assert.equal(s.code, 1);
+    policy('reports: { review: { template: ./t.html } }\n');
+    const t = await run('-C', dir, 'base.yaml', 'revision.yaml');
+    assert.equal(t.code, 2);
+    assert.match(t.err, /reports\.review\.template: report templates arrive in M9/);
+    assert.equal((await run('-C', dir, '--report', 'ci', 'base.yaml', 'revision.yaml')).code, 0); // review's settings don't matter here
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// HTML
+
+import { renderReviewHtml, renderSummaryHtml } from '../../src/render/html.ts';
+
+test('HTML reports are self-contained and escape everything from the spec', async () => {
+  const r = await shopResult();
+  r.findings[0]!.message = '<script>alert(1)</script> & "quotes"';
+  for (const html of [renderReviewHtml(r), renderSummaryHtml(r)]) {
+    assert.match(html, /^<!doctype html>/);
+    assert.doesNotMatch(html, /<script|<link|src=|https?:\/\//);
+    assert.match(html, /prefers-color-scheme: dark/);
+  }
+  const review = renderReviewHtml(r);
+  assert.match(review, /&lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; &quot;quotes&quot;/);
+  assert.match(review, /<h2>Changes <span class="muted">\(2 places, 2 with breaking changes\)<\/span><\/h2>/);
+  assert.match(review, /<h2>Version<\/h2>/);
+  assert.match(review, /<h2>Documentation changes/);
+  assert.match(renderSummaryHtml(r), /<h2>Size and risk<\/h2><p>2 places changed, 2 with breaking changes; 3 operations affected\.<\/p>/);
+  assert.match((await run('-C', `${cases}operation-removed`, '-f', 'html', 'base.yaml', 'revision.yaml')).out, /<title>api-diff review<\/title>/);
+  assert.equal((await run('-C', `${cases}operation-removed`, '--report', 'ci:html', 'base.yaml', 'revision.yaml')).code, 2);
 });

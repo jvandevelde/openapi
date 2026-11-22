@@ -6,11 +6,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { compareInputs, shouldFail, type CompareOptions } from '../engine.ts';
+import { compareInputs, countFindings, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
-import { parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
+import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
+import { checkSupported, viewFor } from '../render/config.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
@@ -37,8 +38,9 @@ Options:
   -C, --cwd <dir>        run as if started in <dir>
       --report <name>[:<format>[:<file>]]
                          a report to write; repeatable. Reports: review (the default; what changed and who
-                         it affects), ci (short, for CI logs), summary (size and risk). Formats: txt, json
-  -f, --format <fmt>     format of the default report: txt (default) or json
+                         it affects), ci (short, for CI logs), summary (size and risk). Formats: txt, json,
+                         html (review and summary)
+  -f, --format <fmt>     format of the default report: txt (default), json or html
   -o, --output <file>    write the default report to a file instead of stdout
       --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
                          report without failing)
@@ -129,7 +131,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     io.stdout.write(`${VERSION}\n`);
     return 0;
   }
-  const format = oneOf('format', values.format, ['txt', 'json'] as const, 'txt');
+  const format = oneOf('format', values.format, ['txt', 'json', 'html'] as const, 'txt');
   const cwd = resolve(values.cwd ?? process.cwd());
   if (values.policy !== undefined && values['no-policy']) throw new UsageError('--policy and --no-policy cannot be used together');
   const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
@@ -171,19 +173,24 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   if (bl) opts.baseLabels = bl;
   if (rl) opts.revisionLabels = rl;
   if (values.report?.length && (values.format !== undefined || values.output !== undefined)) throw new UsageError('--format and --output set the default report; with --report, give the format and file in it (e.g. --report review:json:review.json)');
-  const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', format, ...(values.output ? { file: values.output } : {}) }];
+  const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
+  for (const spec of reports) checkSupported(spec.name, policy.reports.get(spec.name));
   if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
   const result = await compareInputs(base, revision, cwd, opts);
 
+  const recount = (fs: typeof result.findings) => ({ counts: countFindings(fs), state: stateOf(fs) });
   if (values.state) io.stdout.write(`${result.state}\n`);
   for (const spec of reports) {
     if (values.state && !spec.file) continue;
+    const cfg = policy.reports.get(spec.name);
+    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
-    const text = renderReport(spec, result, { color, failOn });
+    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn });
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }
-  return shouldFail(result, failOn) ? 1 : 0;
+  // The ci report is the gate: its exclusions and filters apply to the exit code too.
+  return shouldFail(viewFor(result, policy.reports.get('ci'), recount), failOn) ? 1 : 0;
 }
 
 function severityText(r: RuleMeta): string {

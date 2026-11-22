@@ -16,6 +16,7 @@ import { RULE_DOCS } from '../rules/docs.ts';
 import { DEFAULT_LIFECYCLE, type LifecycleSettings } from './context.ts';
 import { parseOverrides, type Override } from './overrides.ts';
 import { parseExclusions, type ExclusionSet } from './exclusions.ts';
+import { parseReports, type ReportConfig } from '../render/config.ts';
 import { allRuleIds, baseRuleId, getRule } from '../rules/registry.ts';
 import type { FailOn, Kind, Profile, Severity } from '../types.ts';
 
@@ -53,6 +54,8 @@ export interface Policy {
   ignore: string[];
   /** Where each side's version and labels are read from. */
   versions: VersionSettings;
+  /** Report settings by report name (POLICY.md section 10). */
+  reports: Map<string, ReportConfig>;
   /** Sections not validated yet, as given. */
   raw: Record<string, unknown>;
 }
@@ -69,7 +72,7 @@ const SETTING_KEYS = ['severity', 'fix', 'explanation'] as const;
 const SEVERITIES = ['error', 'warn', 'info', 'off'] as const;
 
 export function emptyPolicy(): Policy {
-  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, raw: {} };
+  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), raw: {} };
 }
 
 /**
@@ -99,7 +102,7 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
 export function parsePolicy(data: unknown, file = 'policy'): Policy {
   const at = (path: string): string => `${file}: ${path}`;
   const obj = asObject(data, at('the policy'));
-  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, raw: {} };
+  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), raw: {} };
   for (const [k, v] of Object.entries(obj)) {
     if (!(TOP_KEYS as readonly string[]).includes(k)) throw new PolicyError(`${at(k)}: unknown key${suggest(k, TOP_KEYS)}`);
     switch (k) {
@@ -155,6 +158,10 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
       default:
         policy.raw[k] = asObject(v, at(k));
     }
+  }
+  if (policy.raw.reports) {
+    policy.reports = parseReports(policy.raw.reports as Record<string, unknown>, at('reports'), [...policy.exclusions.keys()], suggest);
+    delete policy.raw.reports;
   }
   for (const name of policy.ignore) if (!policy.exclusions.has(name)) throw new PolicyError(`${at('ignore')}: '${name}' is not an exclusion set${suggest(name, [...policy.exclusions.keys()])}`);
   const levels = stabilityLevels(policy.rules.get('stability-decreased')?.options.levels);

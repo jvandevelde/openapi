@@ -68,9 +68,11 @@ export function loadAcknowledgements(cwd: string, explicit?: string): Acknowledg
 /**
  * Marks acknowledged findings, and returns notices for acknowledgements that
  * are stale (their finding doesn't appear) or expired (`asOf` is after
- * `expires`; the finding counts again).
+ * `expires`; the finding counts again). With `requireOwner`, an
+ * acknowledgement applies only if its `owner` is one of the finding's owners;
+ * otherwise it is reported as `acknowledgement-not-owner`.
  */
-export function applyAcknowledgements(findings: Finding[], acks: Acknowledgements, asOf: string): Change[] {
+export function applyAcknowledgements(findings: Finding[], acks: Acknowledgements, asOf: string, requireOwner = false): Change[] {
   const byId = new Map(findings.map((f) => [f.id, f]));
   const notices: Change[] = [];
   for (const a of acks.entries) {
@@ -82,6 +84,11 @@ export function applyAcknowledgements(findings: Finding[], acks: Acknowledgement
     }
     if (asOf > a.expires) {
       notices.push({ rule: 'acknowledgement-expired', subject: f.subject, details: { ...details, rule: f.rule } });
+      continue;
+    }
+    if (requireOwner && !(a.owner !== undefined && f.owners?.includes(a.owner))) {
+      // acknowledgements.require-owner: only an owner of the finding can accept it.
+      notices.push({ rule: 'acknowledgement-not-owner', subject: f.subject, details: { ...details, rule: f.rule, owners: f.owners ?? [] } });
       continue;
     }
     f.acknowledged = { reason: a.reason, expires: a.expires, file: acks.file, ...(a.owner ? { owner: a.owner } : {}) };

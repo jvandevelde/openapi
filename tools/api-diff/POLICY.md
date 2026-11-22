@@ -20,6 +20,8 @@ Command-line options beat the file: `--profile` and `--fail-on` replace `profile
 | `exclusions`, `ignore` | Named sets of things to leave out of reports, or out of the comparison | 8 |
 | `versions` | Where the compared versions are read from | 9 |
 | `reports` | Report presets and custom reports | 10 |
+| `acknowledgements` | `require-owner`: only an owner of a finding can acknowledge it | 11 |
+| `owners` | Which teams own which operations and components | 14 |
 
 Acknowledgements live in a separate file (`api-diff.ack.yaml` or `--acknowledgements <file>`), described in section 11.
 
@@ -41,6 +43,10 @@ defaults:
 | `severity` | `error`, `warn`, `info`, `off` | The rule's severity. `off` disables it. The short form `rule-id: warn` is the same as `rule-id: { severity: warn }` |
 | `fix` | text | Your own fix advice, shown instead of the built-in text, e.g. a link to your API guidelines |
 | `explanation` | text | Your own explanation of why this breaks clients |
+| `message` | text | The finding's message in every report, as a [Mustache](https://mustache.github.io/mustache.5.html) template over the finding (its JSON in the result), e.g. `"{{subject}} was retired"` |
+| `note` | text | The migration note for clients (changelog and explore), also a template over the finding, e.g. `"Use v2 instead: https://example.com/migrate"` |
+
+`message` and `note` are checked when the policy is loaded: a name that isn't in a finding (`{{subjct}}`) is an error with a suggestion. A finding's `details` differ per rule; see the rule's page in [docs/rules/](docs/rules/README.md). The most specific rule ID's wording wins, as for severities.
 
 **Paired rules** (the schema rules in RULES.md section 7, plus the core fallbacks) have three IDs. The more specific one wins:
 
@@ -55,7 +61,7 @@ Every finding records where its severity came from (`severitySource` in JSON), e
 
 ## 4. Rule-specific options
 
-Only these rules take options beyond those in section 3. Every other rule takes `severity`, `fix` and `explanation` only.
+Only these rules take options beyond those in section 3. Every other rule takes `severity`, `fix`, `explanation`, `message` and `note` only.
 
 `response-header-removed` and `property-removed` have a severity that depends on the change (a required header; a closed object). Their `severity` applies to the other findings, and `required-severity` / `closed-object-severity` set the dependent case. `format-changed` keeps widening formats at `info` whatever its `severity` is; `off` turns off every finding of a rule.
 
@@ -217,7 +223,30 @@ reports:
 
 The built-in reports (`ci`, `review`, `changelog`, `sdk`, `summary`, `audit`, `explore`) are presets with these keys, so the same keys change them.
 
-What works now: for `review`, `ci`, `summary`, `changelog`, `sdk` and `explore` (M8), `exclude`, `include.kinds`, `include.min-severity` and `format` (the format used when `--report` doesn't give one). A report leaves out findings in excluded sets or outside `include`, and its counts and state are worked out from what it shows; notices and version checks are always kept. **The `ci` report's settings also decide the exit code**, since `ci` is the gate. Every key above is validated now; the reports and settings that arrive later (`audit`, custom reports, `extends`, `template`, `include.extensions`, and grouping other than the preset's: `review` groups by root cause, `ci` by severity, `changelog` by tag, `sdk` by operation). `explore` (and the `history` timeline) take `explorer-url`, a URL template that links each finding's base and revision places into the separate spec explorer; `{pointer}` (required), `{file}` and `{side}` are filled in, URL-encoded (`--explorer-url` on the command line beats it). `changelog` leaves out documentation-only changes unless its `include.kinds` lists `docs` are refused only when such a report is produced, so they can be configured ahead of time.
+Report settings:
+
+- **`exclude`** and **`include`** filter what a report shows; its counts and state are worked out from what it shows. Notices and version checks are always kept. **The `ci` report's settings also decide the exit code**, since `ci` is the gate.
+- **`include.kinds`** and **`include.min-severity`** keep findings of those kinds and at or above that severity. `changelog` leaves out documentation-only changes unless its `include.kinds` lists `docs`.
+- **`include.extensions`** and **`include.owners`** keep the changes that reach matching operations: an operation with the extension value (on the operation, its path item or the document) or owned by one of the teams (section 14); a component change if the component matches, or if it affects a matching operation. The list of affected operations is narrowed to the matching ones, so a partner changelog doesn't name internal operations. Changes about the whole API (servers, a document-wide security requirement) are always kept.
+- **`group-by`**: `review` and `audit` can be grouped by any of the values; the other reports keep their grouping (`ci` by severity, `changelog` by tag, `sdk` by operation, `summary` none). Grouped by owner, tag or operation, a finding appears under each of its owners, tags or operations.
+- **`format`**: the format used when `--report` doesn't give one.
+- **`extends`**: a custom report starts from another report, built-in or custom, and its settings, then overrides them key by key (`include` is merged key by key too). Every custom report needs `extends`. Produce it with `--report partner-changelog[:<format>[:<file>]]`.
+- **`template`**: a [Mustache](https://mustache.github.io/mustache.5.html) template that renders the report's JSON data (exactly what `--report <name>:json` writes) instead of the built-in layout. It needs `format: html` or `format: txt`, the format it writes; the report's formats are then that one and `json`. The path is relative to the policy file. HTML output escapes every value (`{{{x}}}` doesn't); txt output doesn't escape. Every name is checked against the report's data before anything is compared, including names inside sections that are empty in this run, so a typo is an error with a suggestion rather than missing text. Partials (`{{> x}}`) aren't supported, and `explore` can't use a template.
+- **`explorer-url`** (`explore`, and the `history` timeline): a URL template that links each finding's base and revision places into the separate spec explorer; `{pointer}` (required), `{file}` and `{side}` are filled in, URL-encoded (`--explorer-url` on the command line beats it).
+- **`audit`** always shows everything, so it takes no `exclude` or `include`.
+
+`--uses <file>` keeps only the changes that reach a consumer's operations, in every report and in the exit code, the same way as `include.extensions`. The file lists one operation per line, `GET /orders/{id}` (any parameter names) or an operationId; blank lines and `#` comments are skipped. Entries that match no operation in either document are listed on stderr and in the report header. The changelog then starts with "3 changes affect you".
+
+A template for a partner changelog, as `./templates/changelog.html` above:
+
+```html
+<h1>{{title}} {{from}} → {{to}}</h1>
+{{#tags}}<h2>{{tag}}</h2>
+  {{#operations}}<h3>{{operation}}</h3><ul>
+    {{#entries}}<li>{{#breaking}}<b>Breaking:</b> {{/breaking}}{{text}}{{#note}}<br>{{note}}{{/note}}</li>{{/entries}}
+  </ul>{{/operations}}
+{{/tags}}
+```
 
 ## 11. Acknowledgements file
 
@@ -234,6 +263,7 @@ What works now: for `review`, `ci`, `summary`, `changelog`, `sdk` and `explore` 
 - **Expiry:** `expires` is the last day it applies, checked against today (UTC) or `--as-of`. After that the finding counts again, and `acknowledgement-expired` (`info`) says why it's back.
 - **Stale:** an acknowledgement whose finding no longer appears (fixed, or changed so it has a new ID) is `acknowledgement-stale` (`info`), so the file can be cleaned up.
 - **Version checks are unaffected:** an acknowledged breaking change still needs a major version bump.
+- **Owners only (optional):** with `acknowledgements: { require-owner: true }` in the policy, an acknowledgement applies only if its `owner` is one of the finding's owners (section 14). Otherwise the finding counts as if it weren't acknowledged, and `acknowledgement-not-owner` (`info`) says why.
 - The file is `api-diff.ack.yaml` in the working directory if present, `--acknowledgements <file>` to choose another, or `--no-acknowledgements` to ignore it.
 
 ## 12. In-spec hints
@@ -264,3 +294,29 @@ The docs should come from the code, not be written separately:
 - `api-diff rules` lists every rule (`--format json|txt|html`). `api-diff rules <id>` prints one rule with its options, defaults and an example.
 - `api-diff schema policy` prints a JSON Schema for the policy file, for editor validation and autocomplete.
 - A test fails if any rule has no description, no test case, or an option without a default.
+
+## 14. Owners
+
+Each finding lists the teams that own it (`owners` in JSON), so reports can be grouped by owner (`group-by: owner`), split per team (`include.owners`), and acknowledgements can be limited to owners (section 11).
+
+```yaml
+owners:
+  extension: x-owner                          # where spec authors name owners (the default)
+  assign:                                     # for operations and components the spec doesn't mark
+    - match: { path: "/orders/**" }
+      owners: "@orders-team"
+    - match: { tag: billing }
+      owners: ["@billing", "@finance"]
+    - match: { component: "Payment*" }
+      owners: "@payments"
+acknowledgements:
+  require-owner: true                         # section 11
+```
+
+An owner is any text, usually a team handle; `x-owner` takes one or a list. A value that is neither is `spec-invalid`.
+
+- **An operation's owners** are the first of: its `x-owner`, then its path item's; the `x-owner` of its tags (the top-level `tags` entries, all of them); the last `assign` entry whose `match` fits it; the document's `x-owner`.
+- **A component schema's owners** are its `x-owner`, else the last `assign` entry that matches it (`component` or `extension`).
+- **A finding's owners** are those of its operation or component, plus the owners of every operation it affects. A change to a shared component is owned by the component's team and by every team whose operations use it. A finding with neither gets the document's owners.
+- `match` takes the place keys of an override's match (section 5): `path`, `method`, `operationId`, `tag`, `stability`, `extension`, `component`.
+- Notices and version checks have no owners.

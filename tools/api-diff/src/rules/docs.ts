@@ -537,6 +537,11 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
     why: 'Notice only: it explains why a previously accepted finding is back.',
     fix: 'Fix the change, or renew the acknowledgement with a new `expires` date and reason.',
   },
+  'acknowledgement-not-owner': {
+    description: "With `acknowledgements.require-owner: true` in the policy, an acknowledgement whose `owner` isn't one of the finding's owners (or that has no `owner`) doesn't apply: the finding counts as if it weren't acknowledged.",
+    why: 'Notice only: it explains why an acknowledged finding still counts. Only a team that owns the affected operations should accept a change to them.',
+    fix: "Have an owner of the finding acknowledge it (set `owner` to one of the teams listed), or fix the finding's owners (`x-owner` or `owners.assign`).",
+  },
   'not-compared': {
     description: "Notice for parts of the spec that weren't compared: webhooks, callbacks, `$ref`s to external URLs, and ignored exclusions.",
     why: 'So nothing is skipped silently.',

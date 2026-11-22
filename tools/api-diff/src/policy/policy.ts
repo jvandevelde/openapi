@@ -7,7 +7,7 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { load } from 'js-yaml';
 import { removalOptions, stabilityLevels } from '../diff/lifecycle.ts';
 import { unrelatedOptions } from '../diff/unrelated.ts';
@@ -16,7 +16,9 @@ import { RULE_DOCS } from '../rules/docs.ts';
 import { DEFAULT_LIFECYCLE, type LifecycleSettings } from './context.ts';
 import { parseOverrides, type Override } from './overrides.ts';
 import { parseExclusions, type ExclusionSet } from './exclusions.ts';
+import { DEFAULT_OWNERS, parseOwners, type OwnerSettings } from './owners.ts';
 import { parseReports, type ReportConfig } from '../render/config.ts';
+import { checkTemplate, FINDING, TemplateError } from '../render/template.ts';
 import { allRuleIds, baseRuleId, getRule } from '../rules/registry.ts';
 import type { FailOn, Kind, Profile, Severity } from '../types.ts';
 
@@ -26,6 +28,10 @@ export interface RuleSetting {
   severity?: RuleSeverity;
   fix?: string;
   explanation?: string;
+  /** Mustache template over the finding, replacing its message in every report. */
+  message?: string;
+  /** Mustache template over the finding, replacing its migration note for clients (changelog, explore). */
+  note?: string;
   /** Rule-specific options (POLICY.md section 4), as given. */
   options: Record<string, unknown>;
   /** Where the setting came from when not the policy file, e.g. `--rule`. */
@@ -35,6 +41,8 @@ export interface RuleSetting {
 export interface Policy {
   /** File the policy came from, for messages and severity provenance. */
   file?: string;
+  /** Directory of the policy file, for paths in it (report templates). */
+  dir?: string;
   /** SHA-256 of the policy file's contents, when loaded from a file. */
   sha256?: string;
   profile?: Profile;
@@ -56,6 +64,10 @@ export interface Policy {
   versions: VersionSettings;
   /** Report settings by report name (POLICY.md section 10). */
   reports: Map<string, ReportConfig>;
+  /** Where finding owners come from (POLICY.md section 14). */
+  owners: OwnerSettings;
+  /** `acknowledgements.require-owner`: an acknowledgement applies only if its owner owns the finding. */
+  requireAckOwner?: boolean;
   /** Sections not validated yet, as given. */
   raw: Record<string, unknown>;
 }
@@ -65,14 +77,14 @@ import { PolicyError } from './errors.ts';
 
 export const DEFAULT_POLICY_FILE = 'api-diff.yaml';
 
-const TOP_KEYS = ['version', 'profile', 'defaults', 'rules', 'overrides', 'extensions', 'lifecycle', 'exclusions', 'ignore', 'versions', 'reports'] as const;
+const TOP_KEYS = ['version', 'profile', 'defaults', 'rules', 'overrides', 'extensions', 'lifecycle', 'exclusions', 'ignore', 'versions', 'reports', 'owners', 'acknowledgements'] as const;
 const DEFAULT_KEYS = ['fail-on', 'min-severity'] as const;
 const LIFECYCLE_KEYS = ['stability', 'default-stability', 'deprecated-since', 'sunset'] as const;
-const SETTING_KEYS = ['severity', 'fix', 'explanation'] as const;
+const SETTING_KEYS = ['severity', 'fix', 'explanation', 'message', 'note'] as const;
 const SEVERITIES = ['error', 'warn', 'info', 'off'] as const;
 
 export function emptyPolicy(): Policy {
-  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), raw: {} };
+  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), owners: { ...DEFAULT_OWNERS }, raw: {} };
 }
 
 /**
@@ -95,6 +107,7 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
   }
   const policy = parsePolicy(data ?? {}, explicit ?? DEFAULT_POLICY_FILE);
   policy.sha256 = createHash('sha256').update(text).digest('hex');
+  policy.dir = dirname(path);
   return policy;
 }
 
@@ -102,7 +115,7 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
 export function parsePolicy(data: unknown, file = 'policy'): Policy {
   const at = (path: string): string => `${file}: ${path}`;
   const obj = asObject(data, at('the policy'));
-  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), raw: {} };
+  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), owners: { ...DEFAULT_OWNERS }, raw: {} };
   for (const [k, v] of Object.entries(obj)) {
     if (!(TOP_KEYS as readonly string[]).includes(k)) throw new PolicyError(`${at(k)}: unknown key${suggest(k, TOP_KEYS)}`);
     switch (k) {
@@ -137,6 +150,16 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
           if (!x.startsWith('x-')) throw new PolicyError(`${at(`extensions.${x}`)}: extension names start with x-`);
           if (x === 'x-api-diff') throw new PolicyError(`${at('extensions.x-api-diff')}: x-api-diff configures api-diff and can't be classified`);
           policy.extensions.set(x, oneOf(kind, ['wire', 'sdk', 'docs'] as const, at(`extensions.${x}`)));
+        }
+        break;
+      case 'owners':
+        policy.owners = parseOwners(asObject(v, at('owners')), at('owners'), suggest);
+        break;
+      case 'acknowledgements':
+        for (const [ak, av] of Object.entries(asObject(v, at('acknowledgements')))) {
+          if (ak !== 'require-owner') throw new PolicyError(`${at(`acknowledgements.${ak}`)}: unknown key${suggest(ak, ['require-owner'])}`);
+          if (typeof av !== 'boolean') throw new PolicyError(`${at('acknowledgements.require-owner')}: must be true or false`);
+          policy.requireAckOwner = av;
         }
         break;
       case 'overrides':
@@ -207,10 +230,19 @@ export function parseRuleSetting(id: string, value: unknown, where: string): Rul
     else if (k === 'fix' || k === 'explanation') {
       if (typeof v !== 'string') throw new PolicyError(`${where}.${k}: must be text`);
       setting[k] = v;
+    } else if (k === 'message' || k === 'note') {
+      if (typeof v !== 'string' || v.trim() === '') throw new PolicyError(`${where}.${k}: must be text (a Mustache template over the finding, e.g. "{{subject}}: …")`);
+      try {
+        checkTemplate(v, FINDING, `${where}.${k}`);
+      } catch (e) {
+        if (e instanceof TemplateError) throw new PolicyError(e.message);
+        throw e;
+      }
+      setting[k] = v;
     } else if (allowed.includes(k)) setting.options[k] = v;
     else {
       const known = [...SETTING_KEYS, ...allowed];
-      const hint = allowed.length ? suggest(k, known) : ` (${base} takes only severity, fix and explanation)`;
+      const hint = allowed.length ? suggest(k, known) : suggest(k, SETTING_KEYS) || ` (${base} takes only ${SETTING_KEYS.join(', ')})`;
       throw new PolicyError(`${where}.${k}: unknown option${hint}`);
     }
   }

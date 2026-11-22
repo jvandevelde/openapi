@@ -33,7 +33,7 @@ test('unknown keys and rule IDs are errors with a suggestion', () => {
   fails({ rules: { 'enum-value-aded': 'warn' } }, /rules\.enum-value-aded: unknown rule \(did you mean enum-value-added\?\)/);
   fails({ defaults: { 'fail-onn': 'warn' } }, /did you mean fail-on\?/);
   fails({ rules: { 'enum-value-added': { severity: 'warn', 'honor-open-hint': false } } }, /unknown option \(did you mean honour-open-hint\?\)/);
-  fails({ rules: { 'operation-added': { strict: true } } }, /operation-added takes only severity, fix and explanation/);
+  fails({ rules: { 'operation-added': { strict: true } } }, /operation-added takes only severity, fix, explanation, message, note/);
 });
 
 test('values are checked', () => {
@@ -62,11 +62,11 @@ test('every YAML example in POLICY.md is a valid policy or acknowledgements file
   const acks = blocks.filter((d) => Array.isArray(d)); // section 11
   const policies = blocks.filter((d) => d && !Array.isArray(d));
   assert.equal(acks.length, 1);
-  assert.equal(policies.length, 8);
+  assert.equal(policies.length, 9);
   for (const d of policies) parsePolicy(d, 'POLICY.md');
   for (const d of acks) parseAcknowledgements(d, 'POLICY.md');
   // The behaviour each example shows is tested in policy, overrides, lifecycle,
-  // exclusions, versions, hints and acks tests; reports (section 10) are M7.
+  // exclusions, versions, hints, acks, reports, views, templates and owners tests.
 });
 
 test('a policy severity beats the default and says where it came from', async () => {

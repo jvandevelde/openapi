@@ -174,6 +174,7 @@ const NOTES: Record<string, Note> = {
 
 /** The migration note for a finding, or undefined when a client has nothing to do. */
 export function clientNote(f: Finding): string | undefined {
+  if (f.note !== undefined) return f.note; // the policy's wording (rules.<id>.note)
   const note = NOTES[f.baseRule];
   if (!note) return undefined;
   const dir: Dir = f.rule.endsWith('-in-request') ? 'request' : f.rule.endsWith('-in-response') ? 'response' : undefined;

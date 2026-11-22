@@ -5,10 +5,10 @@
 import type { Change, Kind, Severity } from '../types.ts';
 
 /** Milestone in which a rule is implemented (see PLAN.md section 6). */
-export type Milestone = 3 | 4 | 5 | 6 | 8;
+export type Milestone = 3 | 4 | 5 | 6 | 8 | 9;
 
 /** The milestone being built. Its rules count as implemented once they leave `PENDING`. */
-export const CURRENT_MILESTONE = 8;
+export const CURRENT_MILESTONE = 9;
 
 /** Rules of the current milestone that aren't built yet. */
 const PENDING = new Set<string>([]);
@@ -240,6 +240,11 @@ rule({ id: 'cycle-not-productive', section: 11, kind: 'wire', title: 'Cycle with
 rule({ id: 'documents-unrelated', section: 11, kind: 'wire', title: 'The two documents look like different APIs', severity: 'error', milestone: 6, message: (c) => `documents look unrelated: ${d(c, 'summary')}; set documents-unrelated: off in the policy to compare them anyway` });
 rule({ id: 'acknowledgement-stale', section: 11, kind: 'wire', title: "An acknowledgement's finding no longer appears", severity: 'info', milestone: 6, message: (c) => `acknowledgement for finding ${d(c, 'name')} matches nothing now (fixed, or the finding changed); remove it from ${d(c, 'file')}` });
 rule({ id: 'acknowledgement-expired', section: 11, kind: 'wire', title: 'An acknowledgement expired', severity: 'info', milestone: 6, message: (c) => `acknowledgement for ${d(c, 'rule')} (${d(c, 'name')}) expired on ${d(c, 'expires')}, so the finding counts again` });
+rule({ id: 'acknowledgement-not-owner', section: 11, kind: 'wire', title: "An acknowledgement's owner doesn't own the finding", severity: 'info', milestone: 9, message: (c) => {
+  const owners = Array.isArray(c.details.owners) ? (c.details.owners as string[]) : [];
+  const by = c.details.owner ? `by ${d(c, 'owner')}` : 'without an owner';
+  return `acknowledgement ${by} for ${d(c, 'rule')} (${d(c, 'name')}) doesn't apply: ${owners.length ? `the finding is owned by ${owners.join(', ')}` : 'the finding has no owner'} (acknowledgements.require-owner)`;
+} });
 rule({ id: 'not-compared', section: 11, kind: 'wire', title: "Parts of the spec that weren't compared", severity: 'info', milestone: 3, message: (c) => `${d(c, 'what')} not compared` });
 
 export const RULES: readonly RuleMeta[] = R;

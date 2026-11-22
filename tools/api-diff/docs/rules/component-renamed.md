@@ -9,12 +9,12 @@ Component renamed (same structure)
 | **Kind** | `sdk` |
 | **Default severity** | `info` · `--profile sdk`: `error` |
 | **Rule IDs** | `component-renamed` |
-| **Status** | Planned (M8) |
+| **Status** | Implemented (M8) |
 | **Group** | References and components ([RULES.md section 8](../../RULES.md)) |
 
 ## What it detects
 
-A component was renamed: same structure (shape hash), new name.
+A component was renamed: a component disappeared and one with the same structure (shape hash) and a new name appeared. Matches are one-to-one; when several components share a structure, they stay removed + added. A `$ref` that now points at the new name is part of the rename, not a separate `ref-target-changed`.
 
 ## Why this default
 
@@ -22,11 +22,36 @@ Generated SDK type names change.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`component-renamed`](../../test/cases/component-renamed/): Pet was renamed to Animal with the same structure: one component-renamed (info; error under --profile sdk) instead of a ref change, since the JSON is the same but generated type names change.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+              application/json:
+                schema:
+-                 $ref: '#/components/schemas/Pet'
++                 $ref: '#/components/schemas/Animal'
+  components:
+    schemas:
+-     Pet:
++     Animal:
+        type: object
+        properties:
+```
+
+Findings:
+
+- `component-renamed` · info · #/components/schemas/Animal
 
 ## Test cases
 
-_None yet._
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`component-renamed`](../../test/cases/component-renamed/) | `component-renamed` · info · #/components/schemas/Animal | Pet was renamed to Animal with the same structure: one component-renamed (info; error under --profile sdk) instead of a ref change, since the JSON is the same but generated type names change. |
+| [`component-renamed-similar`](../../test/cases/component-renamed-similar/) | `component-renamed` · info · #/components/schemas/Animal | Renamed and a limit changed. With match: similar (same type and property names and types) it is still a rename, and the limit change is reported on the new component. |
 
 ## Policy options
 
@@ -36,7 +61,7 @@ Options for this rule:
 
 | Option | Default | Description |
 |---|---|---|
-| `match` | `exact` | `exact` (same shape hash) or `similar` (same properties, different docs). |
+| `match` | `exact` | `exact` (same shape hash; descriptions and examples may differ) or `similar` (also matches when the type and the property names and types are the same, e.g. only limits changed). |
 
 ```yaml
 rules:

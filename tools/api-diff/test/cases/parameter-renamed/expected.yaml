@@ -1,0 +1,12 @@
+description: "The query parameter limit became max, with the same schema and position. On the wire that is removed + added (old clients send limit); for SDKs it is also parameter-renamed (error under --profile sdk)."
+milestone: M8
+findings:
+  - rule: query-parameter-removed
+    severity: warn
+    subject: 'GET /pets'
+  - rule: query-parameter-added-optional
+    severity: info
+    subject: 'GET /pets'
+  - rule: query-parameter-renamed
+    severity: info
+    subject: 'GET /pets'

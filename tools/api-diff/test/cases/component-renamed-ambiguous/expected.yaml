@@ -1,0 +1,9 @@
+description: "Two components with the same structure were renamed: it can't tell which became which, so no rename is guessed and the $ref changes are reported as they are."
+milestone: M8
+findings:
+  - rule: ref-target-changed
+    severity: info
+    subject: 'GET /a'
+  - rule: ref-target-changed
+    severity: info
+    subject: 'GET /b'

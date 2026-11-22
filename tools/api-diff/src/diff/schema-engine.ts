@@ -103,7 +103,10 @@ export class SchemaEngine {
   readonly #unclassified = new Map<string, { b: Pos; r: Pos; pointers: Set<string>; pairs: Set<string> }>();
   #pair = '';
 
-  constructor(base: Model, rev: Model) {
+  readonly #opts: SchemaEngineOptions;
+
+  constructor(base: Model, rev: Model, opts: SchemaEngineOptions = {}) {
+    this.#opts = opts;
     this.#b = { model: base, index: base.schemaIndex!, docs: base.docs, version: base.version };
     this.#r = { model: rev, index: rev.schemaIndex!, docs: rev.docs, version: rev.version };
   }
@@ -681,11 +684,15 @@ export class SchemaEngine {
     const bUsed = used(this.#b);
     const rUsed = used(this.#r);
     const isComponent = (n: SchemaNode): boolean => n.logical.startsWith('#/components/schemas/') && n.logical.split('/').length === 4;
+    const renamed = this.#renames(isComponent);
+    for (const [b, r] of renamed) out.push(this.#change('component-renamed', undefined, { node: b, path: [] }, { node: r, path: [] }, { from: b.logical, to: r.logical, match: b.deep.shape === r.deep.shape ? 'exact' : 'similar' }));
+    const renamedFrom = new Set([...renamed.keys()].map((b) => b.id));
+    const renamedTo = new Set([...renamed.values()].map((r) => r.id));
     for (const b of this.#b.index.nodes) {
       if (!b.named || !isComponent(b)) continue;
       const r = this.#r.index.byLogical.get(b.logical);
       if (!r) {
-        if (!bUsed.has(b.id)) out.push(this.#change('component-removed', undefined, { node: b, path: [] }, undefined, {}));
+        if (!bUsed.has(b.id) && !renamedFrom.has(b.id)) out.push(this.#change('component-removed', undefined, { node: b, path: [] }, undefined, {}));
         continue;
       }
       if (!bUsed.has(b.id) && !rUsed.has(r.id) && b.deep.shape !== r.deep.shape) {
@@ -694,8 +701,48 @@ export class SchemaEngine {
       }
     }
     for (const r of this.#r.index.nodes) {
-      if (!r.named || !isComponent(r) || this.#b.index.byLogical.has(r.logical) || rUsed.has(r.id)) continue;
+      if (!r.named || !isComponent(r) || this.#b.index.byLogical.has(r.logical) || rUsed.has(r.id) || renamedTo.has(r.id)) continue;
       out.push(this.#change('component-added', undefined, undefined, { node: r, path: [] }, {}));
+    }
+    return out;
+  }
+
+  /**
+   * Components that disappeared, matched one-to-one with components that
+   * appeared: by shape hash, then (with `similar`) by type and property names
+   * and types. Ambiguous matches (several candidates with the same key) are
+   * left as removed + added.
+   */
+  #renames(isComponent: (n: SchemaNode) => boolean): Map<SchemaNode, SchemaNode> {
+    const gone = this.#b.index.nodes.filter((n) => n.named && isComponent(n) && !this.#r.index.byLogical.has(n.logical));
+    const fresh = this.#r.index.nodes.filter((n) => n.named && isComponent(n) && !this.#b.index.byLogical.has(n.logical));
+    const out = new Map<SchemaNode, SchemaNode>();
+    const match = (key: (n: SchemaNode, which: 'b' | 'r') => string | undefined): void => {
+      const left = gone.filter((n) => !out.has(n));
+      const taken = new Set(out.values());
+      const right = fresh.filter((n) => !taken.has(n));
+      const group = (ns: SchemaNode[], which: 'b' | 'r'): Map<string, SchemaNode[]> => {
+        const m = new Map<string, SchemaNode[]>();
+        for (const n of ns) {
+          const k = key(n, which);
+          if (k !== undefined) m.set(k, [...(m.get(k) ?? []), n]);
+        }
+        return m;
+      };
+      const rg = group(right, 'r');
+      for (const [k, bs] of group(left, 'b')) {
+        const rs = rg.get(k);
+        if (bs.length === 1 && rs?.length === 1) out.set(bs[0]!, rs[0]!);
+      }
+    };
+    match((n) => n.deep.shape);
+    if (this.#opts.renameMatch === 'similar') {
+      match((n, which) => {
+        const v = this.#side(which).docs.value(n.ref);
+        if (!isObject(v)) return undefined;
+        const props = isObject(v.properties) ? Object.entries(v.properties).map(([k, p]) => `${k}:${isObject(p) ? canon(p.type ?? (typeof p.$ref === 'string' ? p.$ref : null)) : ''}`).sort() : [];
+        return props.length ? `${canon(v.type ?? null)}|${props.join(',')}` : undefined;
+      });
     }
     return out;
   }
@@ -729,6 +776,11 @@ function diffPointers(a: unknown, b: unknown): string[] {
   return out.sort();
 }
 
-export function diffSchemaEngine(base: Model, rev: Model, pairs: [Operation, Operation][]): Change[] {
-  return new SchemaEngine(base, rev).run(pairs);
+export interface SchemaEngineOptions {
+  /** component-renamed: `exact` (same shape hash) or `similar` (same type and property names and types). */
+  renameMatch?: 'exact' | 'similar';
+}
+
+export function diffSchemaEngine(base: Model, rev: Model, pairs: [Operation, Operation][], opts: SchemaEngineOptions = {}): Change[] {
+  return new SchemaEngine(base, rev, opts).run(pairs);
 }

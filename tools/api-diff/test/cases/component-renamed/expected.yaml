@@ -1,0 +1,6 @@
+description: "Pet was renamed to Animal with the same structure: one component-renamed (info; error under --profile sdk) instead of a ref change, since the JSON is the same but generated type names change."
+milestone: M8
+findings:
+  - rule: component-renamed
+    severity: info
+    subject: '#/components/schemas/Animal'

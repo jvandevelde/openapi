@@ -72,7 +72,7 @@ test('rules and schema commands', async () => {
   const r = await run('rules');
   assert.match(r.out, /operation-removed\s+wire\s+error/);
   assert.match(r.out, /implemented rules/);
-  assert.match((await run('rules', '--all')).out, /parameter-renamed .*\[M8\]/);
+  assert.match((await run('rules', '--all')).out, /^parameter-renamed /m); // every rule is implemented now, so --all shows no [M…] markers
   const one = JSON.parse((await run('rules', 'query-parameter-removed', '--format', 'json')).out);
   assert.equal(one[0].id, 'parameter-removed');
   assert.match((await run('rules', 'header-parameter-removed')).out, /^parameter-removed: Parameter removed[\s\S]*Why: Clients still send it/);

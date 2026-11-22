@@ -8,7 +8,7 @@ import type { Change, Kind, Severity } from '../types.ts';
 export type Milestone = 3 | 4 | 5 | 6 | 8;
 
 /** The milestone being built. Its rules count as implemented once they leave `PENDING`. */
-export const CURRENT_MILESTONE = 6;
+export const CURRENT_MILESTONE = 8;
 
 /** Rules of the current milestone that aren't built yet. */
 const PENDING = new Set<string>([]);
@@ -196,7 +196,7 @@ schemaRule('discriminator-mapping-changed', 'Discriminator mapping changed', 'er
 rule({ id: 'ref-target-changed', section: 8, kind: 'sdk', title: '$ref points at a different component', severity: 'info', sdkProfile: 'error', milestone: 5, message: (c) => `$ref changed from ${d(c, 'from')} to ${d(c, 'to')}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
 rule({ id: 'ref-inlined', section: 8, kind: 'sdk', title: '$ref replaced by an inline schema', severity: 'info', sdkProfile: 'error', milestone: 5, message: (c) => `$ref ${d(c, 'from')} replaced by an inline schema${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
 rule({ id: 'ref-extracted', section: 8, kind: 'sdk', title: 'Inline schema became a $ref', severity: 'info', sdkProfile: 'warn', milestone: 5, message: (c) => `inline schema replaced by $ref ${d(c, 'to')}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
-rule({ id: 'component-renamed', section: 8, kind: 'sdk', title: 'Component renamed (same structure)', severity: 'info', sdkProfile: 'error', milestone: 8, message: (c) => `component ${d(c, 'from')} renamed to ${d(c, 'to')}` });
+rule({ id: 'component-renamed', section: 8, kind: 'sdk', title: 'Component renamed (same structure)', severity: 'info', sdkProfile: 'error', milestone: 8, message: (c) => `component '${d(c, 'from').replace('#/components/schemas/', '')}' renamed to '${d(c, 'to').replace('#/components/schemas/', '')}'` });
 rule({ id: 'schema-title-changed', section: 8, kind: 'sdk', title: 'Schema title changed', severity: 'info', sdkProfile: 'warn', milestone: 5, message: (c) => schemaMessage('Schema title changed', c) });
 rule({ id: 'component-added', section: 8, kind: 'wire', title: 'Unused component added', severity: 'info', milestone: 5, message: () => 'component added' });
 rule({ id: 'component-removed', section: 8, kind: 'wire', title: 'Unused component removed', severity: 'info', milestone: 5, message: () => 'component removed' });

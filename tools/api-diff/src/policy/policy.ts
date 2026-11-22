@@ -222,6 +222,9 @@ export function parseRuleSetting(id: string, value: unknown, where: string): Rul
 const OPTION_CHECKS: Record<string, (options: Record<string, unknown>, where: string) => void> = {
   'documents-unrelated': (o, where) => void unrelatedOptions(o, where),
   'operation-removed': (o, where) => void removalOptions(o.unless, `${where}.unless`),
+  'component-renamed': (o, where) => {
+    if (o.match !== undefined && o.match !== 'exact' && o.match !== 'similar') throw new PolicyError(`${where}.match: must be exact or similar`);
+  },
   'stability-decreased': (o, where) => void stabilityLevels(o.levels, `${where}.levels`),
   'version-unchanged': (o, where) => void schemeOption(o.scheme, `${where}.scheme`),
   'version-bump-too-small': (o, where) => void schemeOption(o.scheme, `${where}.scheme`),

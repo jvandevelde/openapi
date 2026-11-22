@@ -107,7 +107,8 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     const lc = lifecycleOptions(opts);
     const diffs = applyDeprecationPeriod([...diffOperations(b.model, r.model, pairs)], b.model, lc);
     diffs.push(...diffLifecycle(b.model, r.model, pairs, lc));
-    diffs.push(...diffSchemaEngine(b.model, r.model, pairs));
+    const renameMatch = policy?.rules.get('component-renamed')?.options.match as 'exact' | 'similar' | undefined;
+    diffs.push(...withoutRenamedRefs(diffSchemaEngine(b.model, r.model, pairs, renameMatch ? { renameMatch } : {})));
     diffs.push(...diffDocs(b.model, r.model, pairs, new Set([lc.lifecycle.stability, lc.lifecycle.deprecatedSince, lc.lifecycle.sunset])));
     const classified = classifyExtensions(diffs, policy?.extensions);
     changes.push(...collapseBulk(applyIgnore(classified, b, r, ignoredSets, context!)), ...ignoredNotices(b, r), ...ignoredSetNotices(ignoredSets, context!));
@@ -165,6 +166,13 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   if (policy?.file && policy.sha256) result.policy = { file: policy.file, sha256: policy.sha256 };
   return result;
 
+}
+
+/** A $ref that now points at a renamed component's new name is the rename itself, reported once as component-renamed. */
+function withoutRenamedRefs(changes: Change[]): Change[] {
+  const renames = new Set(changes.filter((c) => c.rule === 'component-renamed').map((c) => `${String(c.details.from)}\u0000${String(c.details.to)}`));
+  if (!renames.size) return changes;
+  return changes.filter((c) => c.rule !== 'ref-target-changed' || !renames.has(`${String(c.details.from)}\u0000${String(c.details.to)}`));
 }
 
 function lifecycleOptions(opts: CompareOptions): LifecycleOptions {

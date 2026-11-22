@@ -52,8 +52,12 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`component-renamed-ambiguous`](../../test/cases/component-renamed-ambiguous/) | `ref-target-changed` · info · GET /a<br>`ref-target-changed` · info · GET /b | Two components with the same structure were renamed: it can't tell which became which, so no rename is guessed and the $ref changes are reported as they are. |
+| [`ref-target-changed`](../../test/cases/ref-target-changed/) | `ref-target-changed` · info · GET /pets | An operation now references a different but identical component: ref-target-changed (an sdk change), and nothing else. |
 
 ## Policy options
 

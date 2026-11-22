@@ -62,11 +62,11 @@ test('every YAML example in POLICY.md is a valid policy or acknowledgements file
   const acks = blocks.filter((d) => Array.isArray(d)); // section 11
   const policies = blocks.filter((d) => d && !Array.isArray(d));
   assert.equal(acks.length, 1);
-  assert.equal(policies.length, 8);
+  assert.equal(policies.length, 9);
   for (const d of policies) parsePolicy(d, 'POLICY.md');
   for (const d of acks) parseAcknowledgements(d, 'POLICY.md');
   // The behaviour each example shows is tested in policy, overrides, lifecycle,
-  // exclusions, versions, hints and acks tests; reports (section 10) are M7.
+  // exclusions, versions, hints, acks, reports, views, templates and owners tests.
 });
 
 test('a policy severity beats the default and says where it came from', async () => {

@@ -140,7 +140,7 @@ paths:
       x-internal: true
 ```
 
-The policy defines named exclusion sets, for example `internal` by path, tag, operationId, component name or extension. `x-internal` works on an operation, its path item or a component schema; any value except `false` counts (a policy can also require specific values, e.g. `x-audience: internal`). If the policy `ignore`s the set, those operations and components aren't compared, and a `not-compared` notice lists them. Otherwise their findings are tagged with the set, so reports can leave them out (the public changelog skips internal operations; reports arrive in M7). Nothing is excluded unless the policy says so.
+The policy defines named exclusion sets, for example `internal` by path, tag, operationId, component name or extension. `x-internal` works on an operation, its path item or a component schema; any value except `false` counts (a policy can also require specific values, e.g. `x-audience: internal`). If the policy `ignore`s the set, those operations and components aren't compared, and a `not-compared` notice lists them. Otherwise their findings are tagged with the set, so reports can leave them out (e.g. the public changelog skips internal operations). Nothing is excluded unless the policy says so.
 
 ## 5. Extensions that change the kind of a change
 

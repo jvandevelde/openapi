@@ -1,9 +1,9 @@
 // Policy `reports` (POLICY.md section 10): settings for the built-in report
-// presets, and custom reports. Every documented key is validated now; the
-// reports and keys that arrive later (changelog, sdk, audit, explore,
-// custom reports, templates, grouping other than the preset's, and
-// include.extensions) are accepted in the file but refused when such a
-// report is produced, so configuring them early is harmless.
+// presets, and custom reports (which extend another report). Report views:
+// exclusion sets, include filters, and the reach filters (include.extensions,
+// include.owners, --uses) that keep only changes reaching some operations.
+// Settings a report can't apply (grouping for reports with a fixed
+// grouping, filters on audit) are refused when that report is produced.
 
 import { componentName, type SpecContext } from '../policy/context.ts';
 import { PolicyError } from '../policy/errors.ts';

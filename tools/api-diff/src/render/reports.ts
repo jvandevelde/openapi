@@ -4,8 +4,9 @@
 //
 //   --report <name>[:<format>[:<file>]]   e.g. ci, review:txt:out/review.txt
 //
-// Formats: txt for all, json for all (ci and review write the full result;
-// summary writes its own data), html for review and summary.
+// <name> is a built-in report or a custom one from the policy. Formats: see
+// FORMATS; json writes the report's data (the full result for review and
+// ci), which is also what a report template renders.
 
 import type { Result } from '../types.ts';
 import { renderCi } from './ci.ts';

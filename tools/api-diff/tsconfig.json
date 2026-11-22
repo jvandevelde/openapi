@@ -17,5 +17,5 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["bin", "src", "test", "scripts"]
+  "include": ["bin", "src", "test", "scripts", "ci"]
 }

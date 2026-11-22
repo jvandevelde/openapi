@@ -2,7 +2,7 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M6.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (130 of 132 implemented; rename detection is M8). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Audience reports (`ci`, `review`) arrive in M7.
+> **Status: milestone M7.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (130 of 132 implemented; rename detection is M8). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Reports: `review` (the default), `ci` and `summary`, in text, JSON or HTML, with a ready-to-copy PR workflow. `changelog`, `sdk` and `explore` arrive in M8.
 
 ## Requirements
 
@@ -72,6 +72,10 @@ WARN   GET /pets               success response 202 added  revision.yaml:11 · r
 
 3 findings: 2 error, 1 warn, 0 info · state: breaking
 ```
+
+## On pull requests
+
+[docs/ci.md](docs/ci.md) has a ready-to-copy GitHub Actions workflow: it compares the spec with the base branch, posts the `review` report as a PR comment (updated on each push) and keeps the HTML and JSON reports as artifacts. It reports changes without failing the build unless you opt in. This repository runs the same workflow on [`examples/petstore`](examples/petstore/openapi.yaml) for every PR.
 
 ## Policy and in-spec hints
 

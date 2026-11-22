@@ -61,6 +61,8 @@ export interface Finding {
   impact?: string[];
   /** Policy exclusion sets the finding belongs to (POLICY.md section 8); reports can leave them out. */
   exclusions?: string[];
+  /** Teams that own the finding (POLICY.md section 14): its operation's or component's owners, plus those of the operations it affects. */
+  owners?: string[];
   /** Set when an acknowledgement covers the finding: it's reported but doesn't fail CI or count towards `state`. */
   acknowledged?: { reason: string; owner?: string; expires: string; file: string };
 }
@@ -128,4 +130,6 @@ export interface OperationSummary {
   operationId?: string;
   tags: string[];
   summary?: string;
+  /** The operation's owners (POLICY.md section 14), when any. */
+  owners?: string[];
 }

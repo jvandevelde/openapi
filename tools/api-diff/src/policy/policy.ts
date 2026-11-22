@@ -16,6 +16,7 @@ import { RULE_DOCS } from '../rules/docs.ts';
 import { DEFAULT_LIFECYCLE, type LifecycleSettings } from './context.ts';
 import { parseOverrides, type Override } from './overrides.ts';
 import { parseExclusions, type ExclusionSet } from './exclusions.ts';
+import { DEFAULT_OWNERS, parseOwners, type OwnerSettings } from './owners.ts';
 import { parseReports, type ReportConfig } from '../render/config.ts';
 import { allRuleIds, baseRuleId, getRule } from '../rules/registry.ts';
 import type { FailOn, Kind, Profile, Severity } from '../types.ts';
@@ -56,6 +57,10 @@ export interface Policy {
   versions: VersionSettings;
   /** Report settings by report name (POLICY.md section 10). */
   reports: Map<string, ReportConfig>;
+  /** Where finding owners come from (POLICY.md section 14). */
+  owners: OwnerSettings;
+  /** `acknowledgements.require-owner`: an acknowledgement applies only if its owner owns the finding. */
+  requireAckOwner?: boolean;
   /** Sections not validated yet, as given. */
   raw: Record<string, unknown>;
 }
@@ -65,14 +70,14 @@ import { PolicyError } from './errors.ts';
 
 export const DEFAULT_POLICY_FILE = 'api-diff.yaml';
 
-const TOP_KEYS = ['version', 'profile', 'defaults', 'rules', 'overrides', 'extensions', 'lifecycle', 'exclusions', 'ignore', 'versions', 'reports'] as const;
+const TOP_KEYS = ['version', 'profile', 'defaults', 'rules', 'overrides', 'extensions', 'lifecycle', 'exclusions', 'ignore', 'versions', 'reports', 'owners', 'acknowledgements'] as const;
 const DEFAULT_KEYS = ['fail-on', 'min-severity'] as const;
 const LIFECYCLE_KEYS = ['stability', 'default-stability', 'deprecated-since', 'sunset'] as const;
 const SETTING_KEYS = ['severity', 'fix', 'explanation'] as const;
 const SEVERITIES = ['error', 'warn', 'info', 'off'] as const;
 
 export function emptyPolicy(): Policy {
-  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), raw: {} };
+  return { rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), owners: { ...DEFAULT_OWNERS }, raw: {} };
 }
 
 /**
@@ -102,7 +107,7 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
 export function parsePolicy(data: unknown, file = 'policy'): Policy {
   const at = (path: string): string => `${file}: ${path}`;
   const obj = asObject(data, at('the policy'));
-  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), raw: {} };
+  const policy: Policy = { file, rules: new Map(), lifecycle: { ...DEFAULT_LIFECYCLE }, extensions: new Map(), exclusions: new Map(), ignore: [], versions: { ...DEFAULT_VERSIONS, labels: new Map() }, reports: new Map(), owners: { ...DEFAULT_OWNERS }, raw: {} };
   for (const [k, v] of Object.entries(obj)) {
     if (!(TOP_KEYS as readonly string[]).includes(k)) throw new PolicyError(`${at(k)}: unknown key${suggest(k, TOP_KEYS)}`);
     switch (k) {
@@ -137,6 +142,16 @@ export function parsePolicy(data: unknown, file = 'policy'): Policy {
           if (!x.startsWith('x-')) throw new PolicyError(`${at(`extensions.${x}`)}: extension names start with x-`);
           if (x === 'x-api-diff') throw new PolicyError(`${at('extensions.x-api-diff')}: x-api-diff configures api-diff and can't be classified`);
           policy.extensions.set(x, oneOf(kind, ['wire', 'sdk', 'docs'] as const, at(`extensions.${x}`)));
+        }
+        break;
+      case 'owners':
+        policy.owners = parseOwners(asObject(v, at('owners')), at('owners'), suggest);
+        break;
+      case 'acknowledgements':
+        for (const [ak, av] of Object.entries(asObject(v, at('acknowledgements')))) {
+          if (ak !== 'require-owner') throw new PolicyError(`${at(`acknowledgements.${ak}`)}: unknown key${suggest(ak, ['require-owner'])}`);
+          if (typeof av !== 'boolean') throw new PolicyError(`${at('acknowledgements.require-owner')}: must be true or false`);
+          policy.requireAckOwner = av;
         }
         break;
       case 'overrides':

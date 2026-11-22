@@ -21,11 +21,13 @@ import { buildContext, componentName, type SpecContext } from './policy/context.
 import { applyAcknowledgements, type Acknowledgements } from './policy/acks.ts';
 import { componentInSet, operationInSet, setsFor, type ExclusionSet } from './policy/exclusions.ts';
 import { HintIndex } from './policy/hints.ts';
+import { DEFAULT_OWNERS, OwnerIndex, ownerProblems } from './policy/owners.ts';
 import { parseHintRules } from './policy/policy.ts';
 import type { Policy } from './policy/policy.ts';
 import type { Kind, Location, OperationSummary, Snippet } from './types.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
+import { isChange } from './render/common.ts';
 
 export interface CompareOptions {
   /** Overrides the policy's profile. */
@@ -116,6 +118,8 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     diffs.push(...diffDocs(b.model, r.model, pairs, new Set([lc.lifecycle.stability, lc.lifecycle.deprecatedSince, lc.lifecycle.sunset])));
     const classified = classifyExtensions(diffs, policy?.extensions);
     changes.push(...collapseBulk(applyIgnore(classified, b, r, ignoredSets, context!)), ...ignoredNotices(b, r), ...ignoredSetNotices(ignoredSets, context!));
+    const ownerExt = (policy?.owners ?? DEFAULT_OWNERS).extension;
+    changes.push(...ownerProblems(b.model, 'base', ownerExt), ...ownerProblems(r.model, 'revision', ownerExt));
   }
   const findings: Finding[] = classify(changes, {
     profile,
@@ -141,8 +145,17 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
       findings.sort(compareFindings);
     }
   }
+  // Owners: before acknowledgements, which may require one of them.
+  const owners = context ? new OwnerIndex(context, policy?.owners ?? DEFAULT_OWNERS) : undefined;
+  if (owners) {
+    for (const f of findings) {
+      if (!isChange(f)) continue;
+      const o = owners.finding(f);
+      if (o.length) f.owners = o;
+    }
+  }
   if (opts.acknowledgements?.entries.length) {
-    const notices = applyAcknowledgements(findings, opts.acknowledgements, opts.asOf ?? today());
+    const notices = applyAcknowledgements(findings, opts.acknowledgements, opts.asOf ?? today(), !!policy?.requireAckOwner);
     if (notices.length) {
       findings.push(...classify(notices, { profile, ...(policy ? { policy } : {}) }));
       findings.sort(compareFindings);
@@ -174,7 +187,10 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     for (const f of findings) {
       for (const s of [f.subject, ...(f.impact ?? [])]) {
         const op = context.operations.get(s);
-        if (op && !ops[s]) ops[s] = { tags: op.tags, ...(op.operationId ? { operationId: op.operationId } : {}), ...(op.summary ? { summary: op.summary } : {}) };
+        if (op && !ops[s]) {
+          const o = owners!.operation(s);
+          ops[s] = { tags: op.tags, ...(op.operationId ? { operationId: op.operationId } : {}), ...(op.summary ? { summary: op.summary } : {}), ...(o.length ? { owners: o } : {}) };
+        }
       }
     }
     if (Object.keys(ops).length) result.operations = ops;

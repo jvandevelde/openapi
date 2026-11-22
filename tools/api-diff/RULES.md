@@ -224,6 +224,7 @@ Extensions the policy's `extensions` section classifies (POLICY.md section 6) ha
 | [`documents-unrelated`](docs/rules/documents-unrelated.md) | The two documents share almost no operations, `operationId`s or schema names, and the title or server hosts differ, so they look like different APIs (usually a wrong path). Measured per signal as shared items ÷ the smaller document's count. The diff stops and this is the only finding; set it to `off` for an intentional rewrite | error | 3 |
 | [`acknowledgement-stale`](docs/rules/acknowledgement-stale.md) | An entry in the acknowledgements file names a finding that no longer appears; clean it up | info | 3 |
 | [`acknowledgement-expired`](docs/rules/acknowledgement-expired.md) | An acknowledgement's `expires` date passed, so its finding counts again | info | 3 |
+| [`acknowledgement-not-owner`](docs/rules/acknowledgement-not-owner.md) | With `acknowledgements.require-owner`, an acknowledgement whose owner doesn't own the finding doesn't apply | info | 3 |
 | [`not-compared`](docs/rules/not-compared.md) | Parts of the spec that weren't compared: webhooks, callbacks, `ignore`d exclusions | info | 1 |
 
 ## Counts

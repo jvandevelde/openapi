@@ -64,7 +64,7 @@
       "additionalProperties": {
         "type": "object",
         "required": ["tags"],
-        "properties": { "operationId": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "summary": { "type": "string" } }
+        "properties": { "operationId": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "summary": { "type": "string" }, "owners": { "type": "array", "items": { "type": "string" }, "description": "The operation's owners." } }
       }
     },
     "policy": {
@@ -122,6 +122,7 @@
         "revision": { "$ref": "#/$defs/location" },
         "details": { "type": "object" },
         "impact": { "type": "array", "items": { "type": "string" } },
+        "owners": { "description": "Teams that own the finding: its operation's or component's owners, plus those of the operations it affects.", "type": "array", "items": { "type": "string" } },
         "exclusions": { "description": "Policy exclusion sets the finding belongs to; reports can leave them out.", "type": "array", "items": { "type": "string" } },
         "acknowledged": {
           "description": "Set when an acknowledgement covers the finding: reported, but it doesn't fail CI or count towards state.",

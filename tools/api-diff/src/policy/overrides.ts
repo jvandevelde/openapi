@@ -66,12 +66,14 @@ function strings(v: unknown, where: string): string[] {
   return l as string[];
 }
 
-function parseMatch(v: unknown, where: string, suggest: (w: string, c: readonly string[]) => string): { match: OverrideMatch; label: string } {
+/** Parses a `match` mapping; `allowed` limits the keys (ownership matches places only). */
+export function parseMatch(v: unknown, where: string, suggest: (w: string, c: readonly string[]) => string, allowed: readonly string[] = MATCH_KEYS): { match: OverrideMatch; label: string } {
   if (v === null || typeof v !== 'object' || Array.isArray(v)) throw new PolicyError(`${where}: must be a mapping`);
   const m: OverrideMatch = {};
   const label: string[] = [];
   for (const [k, raw] of Object.entries(v)) {
     const at = `${where}.${k}`;
+    if (!allowed.includes(k)) throw new PolicyError(`${at}: unknown match key${suggest(k, allowed)}`);
     switch (k) {
       case 'path':
         m.path = strings(raw, at).map((p) => {

@@ -24,7 +24,7 @@ Status: some of these are still being built in milestone M6. Each section says w
 | `x-enum-varnames`, `x-go-type`, … | Anywhere | Changes to them are `extension-changed-sdk` (or `-wire`) instead of `docs` | `extensions` | Available |
 | `x-internal` | An operation, path item or schema | Puts it in an exclusion set: not compared if the policy ignores the set; otherwise findings are tagged so reports can leave them out (M7) | `exclusions.<set>.extensions` | Available (report filtering in M7) |
 | `x-api-version`, `x-build-id`, `x-git.sha` | The document root | The version and labels recorded in reports; checked by `version-unchanged` and `version-bump-too-small` | `versions` | Available |
-| `x-owner` | An operation or schema | Routes findings to an owner | — | Backlog (M9) |
+| `x-owner` | An operation, path item, tag (in the top-level `tags` list), schema or the document | The teams that own it: `"@orders-team"` or a list. Each finding lists its owners; reports can be grouped or filtered by owner, and acknowledgements can be limited to owners | `owners.extension`, `owners.assign`, `acknowledgements.require-owner` | Available |
 
 ## 1. `x-api-diff` hints
 

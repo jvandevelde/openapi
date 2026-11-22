@@ -1,0 +1,17 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/pets':
+    get:
+      operationId: listPets
+      responses:
+        '200':
+          description: ok
+  '/pets/{id}':
+    x-owner: '@pets-team'
+    delete:
+      responses:
+        '200':
+          description: ok

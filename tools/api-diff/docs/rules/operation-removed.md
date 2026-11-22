@@ -43,12 +43,13 @@ Findings:
 
 ## Test cases
 
-13 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+14 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`acknowledged-finding`](../../test/cases/acknowledged-finding/) | `operation-removed` · error · DELETE /pets/{id} | The removal is acknowledged until 2027-01-31: it is still reported with its severity, but doesn't fail CI or make the state breaking (see test/unit/acks.test.ts). |
 | [`acknowledgement-expired`](../../test/cases/acknowledgement-expired/) | `operation-removed` · error · DELETE /pets/{id} | The acknowledgement expired on 2026-11-01 (as of 2026-11-21): acknowledgement-expired (info) explains why the removal counts again and fails CI. |
+| [`acknowledgement-not-owner`](../../test/cases/acknowledgement-not-owner/) | `operation-removed` · error · DELETE /pets/{id} | With acknowledgements.require-owner, only an owner of the finding can acknowledge it. The removed operation is owned by @pets-team (x-owner on its path item), but the acknowledgement is by @platform, so it doesn't apply: the removal still counts as breaking, and acknowledgement-not-owner says why. |
 | [`acknowledgement-stale`](../../test/cases/acknowledgement-stale/) | `operation-removed` · error · DELETE /pets/{id} | An acknowledgement names a finding ID that doesn't appear (the change was fixed or reworded): acknowledgement-stale (info) says to remove it. The real removal is not covered. |
 | [`documents-unrelated-off`](../../test/cases/documents-unrelated-off/) | `operation-removed` · error · DELETE /pets/{petId}<br>`operation-removed` · error · GET /owners<br>`operation-removed` · error · GET /owners/{ownerId}<br>`operation-removed` · error · GET /pets<br>`operation-removed` · error · GET /pets/{petId}<br>`operation-removed` · error · POST /pets | The same unrelated pair with documents-unrelated turned off in the policy: the full diff runs, e.g. for an intentional rewrite. |
 | [`documents-unrelated-too-small`](../../test/cases/documents-unrelated-too-small/) | `operation-removed` · error · GET /pets<br>`operation-removed` · error · POST /pets | Two unrelated documents with two operations each: below min-size (5), so the check is skipped and the diff runs. |

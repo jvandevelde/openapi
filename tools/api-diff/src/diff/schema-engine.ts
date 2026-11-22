@@ -713,7 +713,8 @@ export class SchemaEngine {
 
   /**
    * Components that disappeared, matched one-to-one with components that
-   * appeared: by shape hash, then (with `similar`) by type and property names
+   * appeared: by shape hash, then by their own content (when a schema they
+   * reference also changed), then (with `similar`) by type and property names
    * and types. Ambiguous matches (several candidates with the same key) are
    * left as removed + added.
    */
@@ -740,6 +741,8 @@ export class SchemaEngine {
       }
     };
     match((n) => n.deep.shape);
+    // Same own content, but a schema it references changed too (reported on its own): still a rename.
+    match((n) => `local:${n.local.shape}`);
     if (this.#opts.renameMatch === 'similar') {
       match((n, which) => {
         const v = this.#side(which).docs.value(n.ref);

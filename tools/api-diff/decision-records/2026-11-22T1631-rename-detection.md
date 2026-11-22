@@ -17,7 +17,7 @@ RULES.md defines `component-renamed` ("same structure, new name") and `parameter
 
 - **✅ Chosen: one-to-one, unique matches only.** If two removed components share a structure with two added ones, nothing is guessed; the changes are reported as they are. A wrong rename is worse than none, because it hides a real removal.
 - **Rejected: best match by similarity score.** Needs thresholds nobody can explain, and fails quietly.
-- **✅ `match: exact`** (default) uses the shape hash, so descriptions and examples may differ. **`similar`** also matches on the schema's type and the names and types of its properties, so a rename that also changed a limit is still found, and the limit change is reported on the new component.
+- **✅ `match: exact`** (default) uses the shape hash, then the component's own content (so a rename isn't missed when a schema it references also changed in the same release), so descriptions and examples may differ. **`similar`** also matches on the schema's type and the names and types of its properties, so a rename that also changed a limit is still found, and the limit change is reported on the new component.
 - **✅ Parameters** match on location, requiredness, position among that location's parameters, and the schema (or `content`). Path parameters are left to `path-param-renamed`.
 
 ### What a rename replaces

@@ -40,7 +40,8 @@ Options:
       --report <name>[:<format>[:<file>]]
                          a report to write; repeatable. Reports: review (the default; what changed and who
                          it affects), ci (short, for CI logs), summary (size and risk), changelog (for API
-                         consumers). Formats: txt, json, html (all but ci)
+                         consumers), sdk (for SDK maintainers). Formats: txt, json, html (review, summary,
+                         changelog)
   -f, --format <fmt>     format of the default report: txt (default), json or html
   -o, --output <file>    write the default report to a file instead of stdout
       --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:

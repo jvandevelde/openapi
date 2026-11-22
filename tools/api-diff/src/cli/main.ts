@@ -14,7 +14,7 @@ import { renderTimeline, renderTimelineHtml, timelineData } from '../render/time
 import { ParseCache } from '../load/cache.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
 import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
-import { checkSupported, viewFor } from '../render/config.ts';
+import { checkSupported, explorerUrl, viewFor } from '../render/config.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
@@ -57,6 +57,8 @@ Options:
                          the versions to record and check (default: from the documents, see the policy's versions)
       --base-label <k=v>, --revision-label <k=v>
                          extra version labels, e.g. build=8812; repeatable
+      --explorer-url <url>  explore and history: link findings into a spec explorer; {pointer}, {file} and
+                         {side} are filled in (or reports.explore.explorer-url in the policy)
       --cache-dir <dir>  cache the parsed base documents here, keyed by their content (for CI: keep the
                          directory between runs)
       --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
@@ -131,6 +133,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'no-acknowledgements': { type: 'boolean' },
       report: { type: 'string', multiple: true },
       'cache-dir': { type: 'string' },
+      'explorer-url': { type: 'string' },
       'base-version': { type: 'string' },
       'revision-version': { type: 'string' },
       'base-label': { type: 'string', multiple: true },
@@ -205,7 +208,8 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     const cfg = policy.reports.get(spec.name);
     const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : spec.name === 'explore' ? 'html' : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
-    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs') });
+    const linkTemplate = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : cfg?.explorerUrl;
+    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }
@@ -228,6 +232,7 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
       'all-commits': { type: 'boolean' },
       'tags-only': { type: 'boolean' },
       'max-steps': { type: 'string' },
+      'explorer-url': { type: 'string' },
     },
   });
   if (positionals.length !== 2) throw new UsageError('usage: api-diff history <start>..<end> <file>');
@@ -253,8 +258,9 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
   if (values['all-commits']) opts.allCommits = true;
   if (values['tags-only']) opts.tagsOnly = true;
   if (maxSteps !== undefined) opts.maxSteps = maxSteps;
+  const links = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : policy.reports.get('explore')?.explorerUrl;
   const h = await history(positionals[0]!, positionals[1]!, cwd, opts);
-  const text = format === 'json' ? JSON.stringify(timelineData(h), null, 2) + '\n' : format === 'html' ? renderTimelineHtml(h) : renderTimeline(h);
+  const text = format === 'json' ? JSON.stringify(timelineData(h), null, 2) + '\n' : format === 'html' ? renderTimelineHtml(h, links) : renderTimeline(h);
   if (file && file !== '-') writeFileSync(resolve(cwd, file), text);
   else io.stdout.write(text);
   return 0;

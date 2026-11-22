@@ -55,7 +55,7 @@ export function checkFormat(name: ReportName, format: string): Format {
 
 export function renderReport(spec: { name: ReportName; format: Format }, r: Result, opts: TxtOptions): string {
   if (spec.format === 'json') return JSON.stringify(spec.name === 'summary' ? summaryData(r) : spec.name === 'changelog' ? changelogData(r, opts) : spec.name === 'sdk' ? sdkData(r) : r, null, 2) + '\n';
-  if (spec.name === 'explore') return renderExplore(r);
+  if (spec.name === 'explore') return renderExplore(r, opts.explorerUrl);
   if (spec.format === 'html') return spec.name === 'summary' ? renderSummaryHtml(r) : spec.name === 'changelog' ? renderChangelogHtml(r, opts) : renderReviewHtml(r);
   switch (spec.name) {
     case 'review':

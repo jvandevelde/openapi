@@ -52,3 +52,22 @@ test('self-contained, and spec text can never close the script or inject HTML', 
   const data = JSON.parse(html.match(/<script type="application\/json" id="data">([\s\S]*?)<\/script>/)![1]!);
   assert.ok(data.findings.some((f: { note?: string }) => f.note?.includes('query parameter `limit`')));
 });
+
+// Links into the spec explorer (decision record: the explore report is a diff view)
+
+import { explorerLink } from '../../src/render/config.ts';
+import { parsePolicy, PolicyError } from '../../src/policy/policy.ts';
+
+test('explorer links: placeholders filled in and URL-encoded; the template is validated', async () => {
+  assert.equal(explorerLink('https://x.test/#{side}:{file}:{pointer}', 'revision', { file: 'specs/a b.yaml', pointer: '/paths/~1pets/get' }), 'https://x.test/#revision:specs%2Fa%20b.yaml:%2Fpaths%2F~1pets%2Fget');
+  assert.equal(explorerLink(undefined, 'base', { file: 'a', pointer: '/x' }), undefined);
+  for (const bad of ['javascript:alert(1)//{pointer}', 'https://x.test/#no-placeholder']) {
+    assert.throws(() => parsePolicy({ reports: { explore: { 'explorer-url': bad } } }), (e: unknown) => e instanceof PolicyError && /must be an http\(s\) URL template containing \{pointer\}/.test(e.message));
+  }
+  const html = renderExplore(await result(), 'https://explorer.test/view#{pointer}');
+  const data = JSON.parse(html.match(/<script type="application\/json" id="data">([\s\S]*?)<\/script>/)![1]!);
+  const f = data.findings.find((x: { rule: string }) => x.rule === 'maximum-decreased-in-request');
+  assert.equal(f.links.revision, 'https://explorer.test/view#%2Fpaths%2F~1pets%2Fget%2Fparameters%2F0%2Fschema%2Fmaximum');
+  assert.ok(f.links.base);
+  assert.equal(JSON.parse(renderExplore(await result()).match(/id="data">([\s\S]*?)<\/script>/)![1]!).findings[0].links, undefined);
+});

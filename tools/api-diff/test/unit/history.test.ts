@@ -95,3 +95,9 @@ test('PR numbers from merge commits and squash subjects', () => {
   assert.equal(prNumber('Add refunds (#7)'), 7);
   assert.equal(prNumber('Fix #7 in docs'), undefined);
 });
+
+test('the timeline HTML links findings into the spec explorer when asked', async () => {
+  const r = await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--report', 'timeline:html', '--explorer-url', 'https://explorer.test/#{side}{pointer}');
+  assert.match(r.out, /"links":\{"base":"https:\/\/explorer\.test\/#base%2Fpaths/);
+  assert.equal((await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--explorer-url', 'nope')).code, 2);
+});

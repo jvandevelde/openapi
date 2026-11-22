@@ -5,6 +5,7 @@ import type { History, RevertLink } from '../history.ts';
 import type { Finding, Result, Severity } from '../types.ts';
 import { isChange, isVersion } from './common.ts';
 import { scriptJson } from './explore.ts';
+import { explorerLink } from './config.ts';
 
 const RANK: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
 const LABEL: Record<Severity, string> = { error: 'ERROR', warn: 'WARN ', info: 'INFO ' };
@@ -99,7 +100,8 @@ function card(title, meta, ids, stepIndex) {
   for (const id of ids.slice().sort((a, b) => rank[data.findings[a].severity] - rank[data.findings[b].severity])) {
     const f = data.findings[id];
     const extra = stepIndex === undefined ? '' : linkFor(id, stepIndex);
-    const li = el('li', { 'data-text': (f.subject + ' ' + f.message + ' ' + f.rule).toLowerCase() }, el('span', { class: 'sev ' + f.severity }, f.severity), el('div', {}, el('strong', {}, f.subject), ' ', f.message, extra ? el('div', { class: 'revert' }, extra) : ''));
+    const links = f.links ? el('span', { class: 'revert' }, ...Object.entries(f.links).flatMap(([side, href], n) => [n ? ' · ' : ' ', el('a', { href, target: '_blank', rel: 'noopener' }, side)])) : '';
+    const li = el('li', { 'data-text': (f.subject + ' ' + f.message + ' ' + f.rule).toLowerCase() }, el('span', { class: 'sev ' + f.severity }, f.severity), el('div', {}, el('strong', {}, f.subject), ' ', f.message, links, extra ? el('div', { class: 'revert' }, extra) : ''));
     ul.append(li);
   }
   if (!ids.length) ul.append(el('li', {}, el('span'), el('span', { class: 'muted' }, 'No API changes (only notices or nothing).')));
@@ -133,8 +135,15 @@ $('#net').addEventListener('change', () => show());
 show();
 `;
 
-export function renderTimelineHtml(h: History): string {
-  const data = timelineData(h) as Record<string, unknown>;
+export function renderTimelineHtml(h: History, explorerUrl?: string): string {
+  const data = timelineData(h) as { findings: Record<string, Finding & { links?: Record<string, string> }> } & Record<string, unknown>;
+  if (explorerUrl) {
+    for (const f of [...Object.values(data.findings), ...h.net.findings] as (Finding & { links?: Record<string, string> })[]) {
+      const base = explorerLink(explorerUrl, 'base', f.base);
+      const revision = explorerLink(explorerUrl, 'revision', f.revision);
+      if (base || revision) f.links = { ...(base ? { base } : {}), ...(revision ? { revision } : {}) };
+    }
+  }
   const net = counts(shown(h.net));
   const title = `${h.spec}: ${h.range.start.rev} → ${h.range.end.rev}`;
   return `<!doctype html>

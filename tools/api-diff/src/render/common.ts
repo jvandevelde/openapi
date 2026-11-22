@@ -9,6 +9,8 @@ export interface TxtOptions {
   failOn?: Severity | 'never';
   /** Include documentation-only changes (changelog: when the report's include.kinds lists docs). */
   docs?: boolean;
+  /** explore: URL template for links into the spec explorer. */
+  explorerUrl?: string;
 }
 
 export type Paint = (code: string, s: string) => string;

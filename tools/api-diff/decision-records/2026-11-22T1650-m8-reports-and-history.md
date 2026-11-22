@@ -28,6 +28,7 @@ PLAN.md section 5 describes the `changelog`, `sdk` and `explore` reports and the
 ### explore
 
 - **✅ A few source lines around each finding (4 before and after), base and revision side by side,** instead of embedding both whole specs (up to 16 MB extra). Snippets are only computed when `explore` is requested.
+- **✅ Links into the spec explorer** through `explorer-url` (`{pointer}`, `{file}`, `{side}`), in `explore` and the history timeline, as [The explore report is a diff view](2026-11-22T1647-explore-is-a-diff-view.md) decided. The template must be http(s) and contain `{pointer}`.
 - **✅ Rendered by a small inline script** from embedded JSON; all spec text is inserted as text, and the JSON can't close its script tag.
 
 ### history

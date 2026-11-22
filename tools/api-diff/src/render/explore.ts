@@ -12,6 +12,7 @@
 import { clientNote } from '../rules/notes.ts';
 import type { Result } from '../types.ts';
 import { adviceLine } from './common.ts';
+import { explorerLink } from './config.ts';
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 
@@ -87,6 +88,11 @@ function item(f) {
     if (f.details.recursive) row('recursive', '↻ this schema refers to itself');
     if (f.acknowledged) row('acknowledged', 'until ' + f.acknowledged.expires + (f.acknowledged.owner ? ' by ' + f.acknowledged.owner : '') + ': ' + f.acknowledged.reason);
     if (f.exclusions) row('exclusion sets', f.exclusions.join(', '));
+    if (f.links) {
+      const dd = el('span');
+      for (const side of ['base', 'revision']) if (f.links[side]) { if (dd.childNodes.length) dd.append(' · '); dd.append(el('a', { href: f.links[side], target: '_blank', rel: 'noopener' }, side)); }
+      dl.append(el('dt', {}, 'spec explorer'), el('dd', {}, dd));
+    }
     body.append(dl);
     const s = (data.snippets || {})[f.id] || {};
     if (s.base || s.revision) body.append(el('div', { class: 'sides' }, side('base', s.base), side('revision', s.revision)));
@@ -112,10 +118,11 @@ document.querySelectorAll('.bar input, .bar select').forEach((x) => x.addEventLi
 apply();
 `;
 
-export function renderExplore(r: Result): string {
+export function renderExplore(r: Result, explorerUrl?: string): string {
   const findings = r.findings.map((f) => {
     const note = clientNote(f);
-    return note ? { ...f, note } : f;
+    const links = { base: explorerLink(explorerUrl, 'base', f.base), revision: explorerLink(explorerUrl, 'revision', f.revision) };
+    return { ...f, ...(note ? { note } : {}), ...(links.base || links.revision ? { links } : {}) };
   });
   const data = { findings, operations: r.operations ?? {}, snippets: r.snippets ?? {} };
   const side = (s: Result['compared']['base']): string => `<code>${esc(s.file)}</code>${s.commit ? ` <span class="mono">@ ${esc(s.commit.slice(0, 7))}</span>` : ''} · version ${esc(s.version)}`;

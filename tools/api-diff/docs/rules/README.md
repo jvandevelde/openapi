@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 128 rules, with their default severities. 118 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 132 rules, with their default severities. 130 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -21,7 +21,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 |---|---|---|---|---|
 | [`operation-added`](operation-added.md) | wire | info | M3 ✅ | New operation |
 | [`operation-removed`](operation-removed.md) | wire | error | M3 ✅ | Operation removed without enough deprecation |
-| [`operation-removed-after-deprecation`](operation-removed-after-deprecation.md) | wire | info | M6 | Operation removed after the deprecation period |
+| [`operation-removed-after-deprecation`](operation-removed-after-deprecation.md) | wire | info | M6 ✅ | Operation removed after the deprecation period |
 | [`operation-id-changed`](operation-id-changed.md) | sdk | info (sdk: error) | M3 ✅ | operationId changed |
 | [`path-param-renamed`](path-param-renamed.md) | sdk | info (sdk: warn) | M3 ✅ | Path parameter renamed (same endpoint) |
 | [`operation-path-changed`](operation-path-changed.md) | wire | error | M3 ✅ | Path changed for the same operationId |
@@ -157,12 +157,12 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 
 | Rule | Kind | Default | Status | Summary |
 |---|---|---|---|---|
-| [`deprecated-added`](deprecated-added.md) | wire | info | M6 | Marked deprecated |
-| [`deprecated-removed`](deprecated-removed.md) | wire | info | M6 | Deprecation withdrawn |
-| [`sunset-moved-earlier`](sunset-moved-earlier.md) | wire | warn | M6 | Sunset date moved earlier |
-| [`stability-decreased`](stability-decreased.md) | wire | error | M6 | Stability level decreased |
-| [`version-bump-too-small`](version-bump-too-small.md) | wire | warn | M6 | Version bump smaller than the changes need |
-| [`version-unchanged`](version-unchanged.md) | wire | warn | M6 | Spec changed but the version didn't |
+| [`deprecated-added`](deprecated-added.md) | wire | info | M6 ✅ | Marked deprecated |
+| [`deprecated-removed`](deprecated-removed.md) | wire | info | M6 ✅ | Deprecation withdrawn |
+| [`sunset-moved-earlier`](sunset-moved-earlier.md) | wire | warn | M6 ✅ | Sunset date moved earlier |
+| [`stability-decreased`](stability-decreased.md) | wire | error | M6 ✅ | Stability level decreased |
+| [`version-bump-too-small`](version-bump-too-small.md) | wire | warn | M6 ✅ | Version bump smaller than the changes need |
+| [`version-unchanged`](version-unchanged.md) | wire | warn | M6 ✅ | Spec changed but the version didn't |
 
 ## 10. Docs (annotations only)
 
@@ -178,6 +178,8 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`tag-description-changed`](tag-description-changed.md) | docs | info | M5 ✅ | Tag description changed |
 | [`info-changed`](info-changed.md) | docs | info | M5 ✅ | info (contact, license, terms) changed |
 | [`extension-changed`](extension-changed.md) | docs | info | M5 ✅ | Unclassified x- extension changed |
+| [`extension-changed-sdk`](extension-changed-sdk.md) | sdk | info (sdk: warn) | M6 ✅ | x- extension the policy classifies as sdk changed |
+| [`extension-changed-wire`](extension-changed-wire.md) | wire | warn | M6 ✅ | x- extension the policy classifies as wire changed |
 
 ## 11. Spec and engine notices
 
@@ -186,7 +188,9 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`spec-invalid`](spec-invalid.md) | wire | error | M3 ✅ | Document failed to load or validate |
 | [`ref-unresolved`](ref-unresolved.md) | wire | error | M3 ✅ | $ref points nowhere |
 | [`cycle-not-productive`](cycle-not-productive.md) | wire | error | M4 ✅ | Cycle with no property or items step |
-| [`documents-unrelated`](documents-unrelated.md) | wire | error | M6 | The two documents look like different APIs |
+| [`documents-unrelated`](documents-unrelated.md) | wire | error | M6 ✅ | The two documents look like different APIs |
+| [`acknowledgement-stale`](acknowledgement-stale.md) | wire | info | M6 ✅ | An acknowledgement's finding no longer appears |
+| [`acknowledgement-expired`](acknowledgement-expired.md) | wire | info | M6 ✅ | An acknowledgement expired |
 | [`not-compared`](not-compared.md) | wire | info | M3 ✅ | Parts of the spec that weren't compared |
 
 Default `in / out`: severity for data clients send (requests) / receive (responses). `(sdk: …)`: severity under `--profile sdk`.

@@ -1,0 +1,10 @@
+description: "The policy classifies x-enum-varnames as sdk: renaming the generated constants is extension-changed-sdk (info; warn under --profile sdk), not a docs change."
+milestone: M6
+options:
+  policy:
+    extensions:
+      x-enum-varnames: sdk
+findings:
+  - rule: extension-changed-sdk
+    severity: info
+    subject: '#/components/schemas/Status'

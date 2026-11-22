@@ -1,0 +1,12 @@
+description: "The removal is acknowledged until 2027-01-31: it is still reported with its severity, but doesn't fail CI or make the state breaking (see test/unit/acks.test.ts)."
+milestone: M6
+options:
+  acknowledgements:
+    - finding: 6862f893c35a
+      reason: Only the retired admin console called it.
+      owner: '@pets-team'
+      expires: 2027-01-31
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: DELETE /pets/{id}

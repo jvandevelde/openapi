@@ -1,0 +1,14 @@
+description: A beta operation deprecated 37 days ago; the policy requires 30 days for beta (90 for stable), so the removal is info.
+milestone: M6
+options:
+  policy:
+    rules:
+      operation-removed:
+        unless:
+          deprecated-for-days:
+            stable: 90
+            beta: 30
+findings:
+  - rule: operation-removed-after-deprecation
+    severity: info
+    subject: DELETE /pets/{id}

@@ -9,7 +9,7 @@ Sunset date moved earlier
 | **Kind** | `wire` |
 | **Default severity** | `warn` |
 | **Rule IDs** | `sunset-moved-earlier` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Lifecycle and versions ([RULES.md section 9](../../RULES.md)) |
 
 ## What it detects
@@ -22,15 +22,32 @@ Clients planning around the old date have less time.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`sunset-moved-earlier`](../../test/cases/sunset-moved-earlier/): The sunset date moved from 2027-06-01 to 2027-03-01: clients have less time, so warn.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+      get:
+        operationId: getPet
+-       x-sunset: 2027-06-01
++       x-sunset: 2027-03-01
+        responses:
+          '200':
+```
+
+Findings:
+
+- `sunset-moved-earlier` · warn · GET /pets/{id}
 
 ## Test cases
 
-_None yet._
+The example above is the only test case for this rule.
+
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. See [POLICY.md](../../POLICY.md).
 
 ```yaml
 rules:

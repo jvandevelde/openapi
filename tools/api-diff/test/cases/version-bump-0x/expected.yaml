@@ -1,0 +1,11 @@
+description: "Below 1.0.0, needs shift down one level: a breaking change needs a minor bump (0.3 to 0.4), so a patch bump is too small."
+milestone: M6
+options:
+  check-versions: true
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: 'DELETE /pets/{id}'
+  - rule: version-bump-too-small
+    severity: warn
+    subject: 'document'

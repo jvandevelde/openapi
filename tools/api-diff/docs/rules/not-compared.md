@@ -36,16 +36,18 @@ Findings:
 
 ## Test cases
 
-2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`callbacks-not-compared`](../../test/cases/callbacks-not-compared/) | `not-compared` · info · document | Callbacks are out of scope; one notice says so. |
+| [`exclusion-set-ignored`](../../test/cases/exclusion-set-ignored/) | `not-compared` · info · document | The policy's internal set (/internal/** and x-internal: true) is ignored: the removed parameter and changed schema of /internal/metrics, the removed x-internal operation and the changed x-internal component are not compared. One not-compared notice lists the set. |
+| [`hint-ignore-operation`](../../test/cases/hint-ignore-operation/) | `not-compared` · info · document | The operation is marked x-api-diff ignore: its removed parameter and the enum change it alone uses are not reported; a not-compared notice says so. |
 | [`webhooks-not-compared`](../../test/cases/webhooks-not-compared/) | `not-compared` · info · document | Webhooks are out of scope; one notice says so. |
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. See [POLICY.md](../../POLICY.md).
 
 ```yaml
 rules:

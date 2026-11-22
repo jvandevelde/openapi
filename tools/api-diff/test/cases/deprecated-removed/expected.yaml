@@ -1,0 +1,9 @@
+description: 'Deprecation withdrawn from an operation and a query parameter: info.'
+milestone: M6
+findings:
+  - rule: deprecated-removed
+    severity: info
+    subject: GET /pets
+  - rule: deprecated-removed
+    severity: info
+    subject: GET /pets/{id}

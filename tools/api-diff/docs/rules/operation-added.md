@@ -49,7 +49,7 @@ Findings:
 
 ## Test cases
 
-7 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+10 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
@@ -60,10 +60,13 @@ Findings:
 | [`operation-added`](../../test/cases/operation-added/) | `operation-added` · info · GET /pets/{id} | A new operation is info. |
 | [`operation-path-changed-without-id`](../../test/cases/operation-path-changed-without-id/) | `operation-added` · info · GET /animals/{id} | Without a matching operationId, a moved operation is removed + added. |
 | [`query-method-3-2`](../../test/cases/query-method-3-2/) | `operation-added` · info · QUERY /pets | OpenAPI 3.2 QUERY operations are compared. |
+| [`version-bump-minor-for-addition`](../../test/cases/version-bump-minor-for-addition/) | `operation-added` · info · DELETE /pets/{id} | An added operation (wire, info) needs at least a minor bump; 1.2.0 to 1.2.1 is a patch. |
+| [`version-from-extension`](../../test/cases/version-from-extension/) | `operation-added` · info · DELETE /pets/{id} | The policy reads the version from x-api-version before info.version: x-api-version stayed 2.1.0, so version-unchanged even though info.version moved. |
+| [`version-unchanged`](../../test/cases/version-unchanged/) | `operation-added` · info · DELETE /pets/{id} | An operation was added but info.version stayed 1.0.0: version-unchanged (warn). |
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. See [POLICY.md](../../POLICY.md).
 
 ```yaml
 rules:

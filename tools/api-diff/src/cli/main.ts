@@ -5,7 +5,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { compareInputs, shouldFail } from '../engine.ts';
+import { compareInputs, shouldFail, type CompareOptions } from '../engine.ts';
+import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
+import { isoDate } from '../diff/lifecycle.ts';
+import { loadAcknowledgements } from '../policy/acks.ts';
 import { renderTxt } from '../render/txt.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
@@ -36,6 +39,16 @@ Options:
       --fail-on <level>  exit 1 if any finding is at or above: error (default), warn, info, never
       --state            print only the state: no-changes, compatible or breaking
       --profile <name>   wire (default) or sdk
+      --policy <file>    policy file (default: api-diff.yaml in the working directory, if present)
+      --no-policy        ignore api-diff.yaml
+      --base-version <v>, --revision-version <v>
+                         the versions to record and check (default: from the documents, see the policy's versions)
+      --base-label <k=v>, --revision-label <k=v>
+                         extra version labels, e.g. build=8812; repeatable
+      --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
+      --acknowledgements <file>  accepted findings (default: api-diff.ack.yaml in the working directory, if present)
+      --no-acknowledgements      ignore api-diff.ack.yaml
+      --rule <id>=<sev>  set a rule's severity (error, warn, info, off); repeatable, beats the policy file
       --color / --no-color
   -h, --help
   -v, --version
@@ -64,9 +77,9 @@ export async function main(argv: string[], io: Io = { stdout: process.stdout, st
     }
     return await diffCommand(argv, io);
   } catch (e) {
-    if (e instanceof UsageError || e instanceof SourceError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+    if (e instanceof UsageError || e instanceof SourceError || e instanceof PolicyError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
       io.stderr.write(`api-diff: ${(e as Error).message}\n`);
-      if (e instanceof UsageError || !(e instanceof SourceError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
+      if (e instanceof UsageError || !(e instanceof SourceError || e instanceof PolicyError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
       return 2;
     }
     throw e;
@@ -86,6 +99,16 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'fail-on': { type: 'string' },
       state: { type: 'boolean' },
       profile: { type: 'string' },
+      policy: { type: 'string' },
+      'no-policy': { type: 'boolean' },
+      rule: { type: 'string', multiple: true },
+      'as-of': { type: 'string' },
+      acknowledgements: { type: 'string' },
+      'no-acknowledgements': { type: 'boolean' },
+      'base-version': { type: 'string' },
+      'revision-version': { type: 'string' },
+      'base-label': { type: 'string', multiple: true },
+      'revision-label': { type: 'string', multiple: true },
       color: { type: 'boolean' },
       'no-color': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
@@ -101,15 +124,47 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     return 0;
   }
   const format = oneOf('format', values.format, ['txt', 'json'] as const, 'txt');
-  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], 'error');
-  const profile = oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], 'wire');
   const cwd = resolve(values.cwd ?? process.cwd());
+  if (values.policy !== undefined && values['no-policy']) throw new UsageError('--policy and --no-policy cannot be used together');
+  const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
+  for (const r of values.rule ?? []) {
+    const eq = r.indexOf('=');
+    if (eq <= 0) throw new UsageError(`--rule must be <rule-id>=<severity>, got '${r}'`);
+    const id = r.slice(0, eq);
+    const setting = parseRuleSetting(id, r.slice(eq + 1), `--rule ${id}`);
+    policy.rules.set(id, { ...policy.rules.get(id), severity: setting.severity!, options: policy.rules.get(id)?.options ?? {}, from: '--rule' });
+  }
+  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], policy.failOn ?? 'error');
+  const profile = oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], policy.profile ?? 'wire');
   if (positionals.length === 0 && values.base === undefined) {
     io.stdout.write(HELP);
     return 2;
   }
   const [base, revision] = inputsFromArgs(positionals, { base: values.base, revision: values.revision }, cwd);
-  const result = await compareInputs(base, revision, cwd, { profile });
+  const asOf = values['as-of'];
+  if (asOf !== undefined && !isoDate(asOf)) throw new UsageError(`--as-of must be a date (YYYY-MM-DD), got '${asOf}'`);
+  const labels = (name: string, list: string[] | undefined): Record<string, string> | undefined => {
+    if (!list?.length) return undefined;
+    const out: Record<string, string> = {};
+    for (const l of list) {
+      const eq = l.indexOf('=');
+      if (eq <= 0) throw new UsageError(`--${name} must be <name>=<value>, got '${l}'`);
+      out[l.slice(0, eq)] = l.slice(eq + 1);
+    }
+    return out;
+  };
+  const opts: CompareOptions = { profile, policy };
+  if (values.acknowledgements !== undefined && values['no-acknowledgements']) throw new UsageError('--acknowledgements and --no-acknowledgements cannot be used together');
+  const acks = values['no-acknowledgements'] ? undefined : loadAcknowledgements(cwd, values.acknowledgements);
+  if (acks) opts.acknowledgements = acks;
+  if (asOf !== undefined) opts.asOf = asOf;
+  if (values['base-version'] !== undefined) opts.baseVersion = values['base-version'];
+  if (values['revision-version'] !== undefined) opts.revisionVersion = values['revision-version'];
+  const bl = labels('base-label', values['base-label']);
+  const rl = labels('revision-label', values['revision-label']);
+  if (bl) opts.baseLabels = bl;
+  if (rl) opts.revisionLabels = rl;
+  const result = await compareInputs(base, revision, cwd, opts);
 
   let text: string;
   if (values.state) text = `${result.state}\n`;

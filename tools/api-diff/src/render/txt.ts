@@ -17,7 +17,8 @@ const where = (l: Location | undefined): string => (l ? `${l.file}${l.line ? `:$
 function side(s: ComparedSide): string {
   const parts = [s.file];
   if (s.commit) parts.push(`@ ${s.commit.slice(0, 7)}`);
-  const meta = [s.openapi ? `OpenAPI ${s.openapi}` : undefined, `version ${s.version}`].filter(Boolean).join(', ');
+  const labels = Object.entries(s.labels ?? {}).filter(([k]) => k !== 'commit').map(([k, v]) => `${k} ${v}`);
+  const meta = [s.openapi ? `OpenAPI ${s.openapi}` : undefined, `version ${s.version}`, ...labels].filter(Boolean).join(', ');
   return `${parts.join(' ')}  (${meta})`;
 }
 
@@ -39,7 +40,7 @@ export function renderTxt(result: Result, opts: TxtOptions): string {
 
   const n = result.counts;
   lines.push('');
-  const summary = `${n.total} finding${n.total === 1 ? '' : 's'}: ${n.bySeverity.error} error, ${n.bySeverity.warn} warn, ${n.bySeverity.info} info · state: ${result.state}`;
+  const summary = `${n.total} finding${n.total === 1 ? '' : 's'}: ${n.bySeverity.error} error, ${n.bySeverity.warn} warn, ${n.bySeverity.info} info${n.acknowledged ? ` (${n.acknowledged} acknowledged)` : ''} · state: ${result.state}`;
   lines.push(c(BOLD, summary));
   return lines.join('\n') + '\n';
 }
@@ -51,6 +52,10 @@ function findingLines(f: Finding, width: number, c: (code: string, s: string) =>
   if (f.impact?.length) {
     const shown = f.impact.slice(0, 5).join(', ');
     out.push(`       ${c(DIM, `affects ${f.impact.length} operation${f.impact.length === 1 ? '' : 's'}: ${shown}${f.impact.length > 5 ? ', …' : ''}`)}`);
+  }
+  if (f.acknowledged) {
+    const a = f.acknowledged;
+    out.push(`       ${c(DIM, `acknowledged until ${a.expires}${a.owner ? ` by ${a.owner}` : ''}: ${a.reason} (doesn't fail CI)`)}`);
   }
   return out;
 }

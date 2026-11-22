@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      responses:
+        '200':
+          description: ok
+  /internal/metrics:
+    get:
+      operationId: metrics
+      parameters:
+        - name: window
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metrics'
+  /debug:
+    delete:
+      operationId: resetDebug
+      x-internal: true
+      responses:
+        '204':
+          description: done
+components:
+  schemas:
+    Metrics:
+      type: object
+      properties:
+        count:
+          type: integer
+    AuditRecord:
+      x-internal: true
+      type: object
+      properties:
+        id:
+          type: integer

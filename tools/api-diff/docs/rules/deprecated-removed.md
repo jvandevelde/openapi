@@ -9,7 +9,7 @@ Deprecation withdrawn
 | **Kind** | `wire` |
 | **Default severity** | `info` |
 | **Rule IDs** | `deprecated-removed` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Lifecycle and versions ([RULES.md section 9](../../RULES.md)) |
 
 ## What it detects
@@ -22,15 +22,38 @@ Nothing breaks.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`deprecated-removed`](../../test/cases/deprecated-removed/): Deprecation withdrawn from an operation and a query parameter: info.
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          - name: limit
+            in: query
+-           deprecated: true
+            schema:
+              type: integer
+  …
+      get:
+        operationId: getPet
+-       deprecated: true
+        responses:
+          '200':
+```
+
+Findings:
+
+- `deprecated-removed` · info · GET /pets
+- `deprecated-removed` · info · GET /pets/{id}
 
 ## Test cases
 
-_None yet._
+The example above is the only test case for this rule.
+
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. See [POLICY.md](../../POLICY.md).
 
 ```yaml
 rules:

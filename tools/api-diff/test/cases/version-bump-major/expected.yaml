@@ -1,0 +1,8 @@
+description: "A breaking removal with a major bump (1.2.0 to 2.0.0): no version finding."
+milestone: M6
+options:
+  check-versions: true
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: 'DELETE /pets/{id}'

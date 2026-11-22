@@ -1,0 +1,10 @@
+description: The policy reads the deprecation date from x-deprecation-date instead of x-deprecated-since.
+milestone: M6
+options:
+  policy:
+    lifecycle:
+      deprecated-since: x-deprecation-date
+findings:
+  - rule: operation-removed-after-deprecation
+    severity: info
+    subject: DELETE /pets/{id}

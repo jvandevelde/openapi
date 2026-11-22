@@ -7,8 +7,11 @@ import type { Change, Kind, Severity } from '../types.ts';
 /** Milestone in which a rule is implemented (see PLAN.md section 6). */
 export type Milestone = 3 | 4 | 5 | 6 | 8;
 
-/** The milestone the code currently implements. */
-export const CURRENT_MILESTONE = 5;
+/** The milestone being built. Its rules count as implemented once they leave `PENDING`. */
+export const CURRENT_MILESTONE = 6;
+
+/** Rules of the current milestone that aren't built yet. */
+const PENDING = new Set<string>([]);
 
 export interface RuleMeta {
   id: string;
@@ -28,6 +31,8 @@ export interface RuleMeta {
   milestone: Milestone;
   /** A severity that depends on the change's details, e.g. a removed required header. */
   conditional?: (c: Change) => Severity | undefined;
+  /** Policy option that sets the severity when `conditional` applies, e.g. `required-severity`. */
+  conditionalOption?: string;
   /** One-line message for a change. */
   message: (c: Change) => string;
 }
@@ -54,8 +59,20 @@ rule({ id: 'unclassified-change', section: 1, kind: 'wire', title: 'The shape ch
 
 // 2. Paths and operations
 rule({ id: 'operation-added', section: 2, kind: 'wire', title: 'New operation', severity: 'info', milestone: 3, message: () => 'operation added' });
-rule({ id: 'operation-removed', section: 2, kind: 'wire', title: "Operation removed without enough deprecation", severity: 'error', milestone: 3, message: () => 'operation removed' });
-rule({ id: 'operation-removed-after-deprecation', section: 2, kind: 'wire', title: 'Operation removed after the deprecation period', severity: 'info', milestone: 6, message: () => 'operation removed after its deprecation period' });
+rule({ id: 'operation-removed', section: 2, kind: 'wire', title: "Operation removed without enough deprecation", severity: 'error', milestone: 3, message: (c) => {
+  switch (c.details.reason) {
+    case 'deprecated-too-short': return `operation removed after ${d(c, 'deprecatedDays')} days of deprecation (since ${d(c, 'deprecatedSince')}; ${d(c, 'needDays')} needed)`;
+    case 'undated-deprecation-blocked': return `operation removed; it was deprecated but has no deprecation date, so the ${d(c, 'needDays')}-day period can't be checked`;
+    default: return 'operation removed';
+  }
+} });
+rule({ id: 'operation-removed-after-deprecation', section: 2, kind: 'wire', title: 'Operation removed after the deprecation period', severity: 'info', milestone: 6, message: (c) => {
+  switch (c.details.reason) {
+    case 'past-sunset': return `operation removed after its sunset date (${d(c, 'sunset')})`;
+    case 'undated-deprecation': return 'operation removed after being deprecated (no deprecation date)';
+    default: return c.details.deprecatedSince ? `operation removed after ${d(c, 'deprecatedDays')} days of deprecation (since ${d(c, 'deprecatedSince')})` : 'operation removed after being deprecated';
+  }
+} });
 rule({ id: 'operation-id-changed', section: 2, kind: 'sdk', title: 'operationId changed', severity: 'info', sdkProfile: 'error', milestone: 3, message: (c) => `operationId changed from '${d(c, 'from') || '(none)'}' to '${d(c, 'to') || '(none)'}'` });
 rule({ id: 'path-param-renamed', section: 2, kind: 'sdk', title: 'Path parameter renamed (same endpoint)', severity: 'info', sdkProfile: 'warn', milestone: 3, message: (c) => `path parameter '${d(c, 'from')}' renamed to '${d(c, 'to')}'` });
 rule({ id: 'operation-path-changed', section: 2, kind: 'wire', title: 'Path changed for the same operationId', severity: 'error', milestone: 3, message: (c) => `path changed from ${d(c, 'from')} to ${d(c, 'to')}` });
@@ -102,7 +119,7 @@ rule({ id: 'response-media-type-added', section: 6, kind: 'wire', title: 'Respon
 rule({ id: 'response-media-type-removed', section: 6, kind: 'wire', title: 'Response media type removed', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} media type '${d(c, 'mediaType')}' removed` });
 rule({ id: 'response-body-removed', section: 6, kind: 'wire', title: 'Response body removed', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} no longer has a body` });
 rule({ id: 'response-header-added', section: 6, kind: 'wire', title: 'Response header added', severity: 'info', milestone: 3, message: (c) => `response ${d(c, 'status')} header '${d(c, 'name')}' added` });
-rule({ id: 'response-header-removed', section: 6, kind: 'wire', title: 'Response header removed (error if it was required)', severity: 'warn', milestone: 3, conditional: (c) => (c.details.required === true ? 'error' : undefined), message: (c) => `${c.details.required === true ? 'required ' : ''}response ${d(c, 'status')} header '${d(c, 'name')}' removed` });
+rule({ id: 'response-header-removed', section: 6, kind: 'wire', title: 'Response header removed (error if it was required)', severity: 'warn', milestone: 3, conditional: (c) => (c.details.required === true ? 'error' : undefined), conditionalOption: 'required-severity', message: (c) => `${c.details.required === true ? 'required ' : ''}response ${d(c, 'status')} header '${d(c, 'name')}' removed` });
 rule({ id: 'response-header-became-optional', section: 6, kind: 'wire', title: 'Response header became optional', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} header '${d(c, 'name')}' became optional` });
 
 // 7. Schemas (all have request/response variants)
@@ -124,7 +141,7 @@ const schemaRule = (id: string, title: string, inS: Severity, outS: Severity, ex
   rule({ id, section: 7, kind: 'wire', title, severity: { in: inS, out: outS }, variants: 'direction', milestone: 5, message: (c) => schemaMessage(title, c), ...extra });
 schemaRule('property-added-required', 'New required property', 'error', 'info');
 schemaRule('property-added-optional', 'New optional property', 'info', 'info');
-schemaRule('property-removed', 'Property removed', 'warn', 'error', { conditional: (c) => (c.direction === 'in' && c.details.closed === true ? 'error' : undefined) });
+schemaRule('property-removed', 'Property removed', 'warn', 'error', { conditional: (c) => (c.direction === 'in' && c.details.closed === true ? 'error' : undefined), conditionalOption: 'closed-object-severity' });
 schemaRule('property-became-required', 'Property became required', 'error', 'info');
 schemaRule('property-became-optional', 'Property became optional', 'info', 'error');
 schemaRule('property-became-read-only', 'Property became readOnly', 'warn', 'info');
@@ -186,12 +203,12 @@ rule({ id: 'component-removed', section: 8, kind: 'wire', title: 'Unused compone
 rule({ id: 'component-unused', section: 8, kind: 'wire', title: 'Changed component has no usages', severity: 'info', milestone: 5, message: (c) => `component changed (${(c.details.changed as string[] | undefined)?.slice(0, 4).join(', ') ?? ''}), but no operation uses it` });
 
 // 9. Lifecycle and versions
-rule({ id: 'deprecated-added', section: 9, kind: 'wire', title: 'Marked deprecated', severity: 'info', milestone: 6, message: () => 'marked deprecated' });
-rule({ id: 'deprecated-removed', section: 9, kind: 'wire', title: 'Deprecation withdrawn', severity: 'info', milestone: 6, message: () => 'no longer deprecated' });
-rule({ id: 'sunset-moved-earlier', section: 9, kind: 'wire', title: 'Sunset date moved earlier', severity: 'warn', milestone: 6, message: () => 'sunset date moved earlier' });
-rule({ id: 'stability-decreased', section: 9, kind: 'wire', title: 'Stability level decreased', severity: 'error', milestone: 6, message: () => 'stability level decreased' });
-rule({ id: 'version-bump-too-small', section: 9, kind: 'wire', title: 'Version bump smaller than the changes need', severity: 'warn', milestone: 6, message: () => 'version bump too small' });
-rule({ id: 'version-unchanged', section: 9, kind: 'wire', title: "Spec changed but the version didn't", severity: 'warn', milestone: 6, message: () => 'version unchanged' });
+rule({ id: 'deprecated-added', section: 9, kind: 'wire', title: 'Marked deprecated', severity: 'info', milestone: 6, message: (c) => `${d(c, 'what') || 'schema'}${c.details.name !== undefined ? ` '${d(c, 'name')}'` : ''} marked deprecated${c.details.path ? ` at ${d(c, 'path').replace(/\/deprecated$/, '') || '/'}` : ''}` });
+rule({ id: 'deprecated-removed', section: 9, kind: 'wire', title: 'Deprecation withdrawn', severity: 'info', milestone: 6, message: (c) => `${d(c, 'what') || 'schema'}${c.details.name !== undefined ? ` '${d(c, 'name')}'` : ''} no longer deprecated${c.details.path ? ` at ${d(c, 'path').replace(/\/deprecated$/, '') || '/'}` : ''}` });
+rule({ id: 'sunset-moved-earlier', section: 9, kind: 'wire', title: 'Sunset date moved earlier', severity: 'warn', milestone: 6, message: (c) => `sunset moved earlier from ${d(c, 'from')} to ${d(c, 'to')}` });
+rule({ id: 'stability-decreased', section: 9, kind: 'wire', title: 'Stability level decreased', severity: 'error', milestone: 6, message: (c) => `stability decreased from ${d(c, 'from')} to ${d(c, 'to')}` });
+rule({ id: 'version-bump-too-small', section: 9, kind: 'wire', title: 'Version bump smaller than the changes need', severity: 'warn', milestone: 6, message: (c) => `version went from ${d(c, 'from')} to ${d(c, 'to')} (${d(c, 'got') === 'none' ? 'no increase' : `a ${d(c, 'got')} bump`}), but the changes need a ${d(c, 'needed')} bump${c.details.because ? ` (e.g. ${d(c, 'because')})` : ''}` });
+rule({ id: 'version-unchanged', section: 9, kind: 'wire', title: "Spec changed but the version didn't", severity: 'warn', milestone: 6, message: (c) => `the spec changed (${d(c, 'changes')} finding${c.details.changes === 1 ? '' : 's'}) but the version is still ${d(c, 'from')}` });
 
 // 10. Docs
 for (const [id, title] of [
@@ -209,11 +226,20 @@ for (const [id, title] of [
   rule({ id, section: 10, kind: 'docs', title, severity: 'info', milestone: 5, message: (c) => `${title.charAt(0).toLowerCase() + title.slice(1)}${c.details.name !== undefined ? ` '${String(c.details.name)}'` : ''}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
 }
 
+const extMessage = (c: Change): string => {
+  const at = d(c, 'path').slice(0, d(c, 'path').lastIndexOf('/'));
+  return `${d(c, 'name')} changed${at ? ` at ${at}` : ''}`;
+};
+rule({ id: 'extension-changed-sdk', section: 10, kind: 'sdk', title: 'x- extension the policy classifies as sdk changed', severity: 'info', sdkProfile: 'warn', milestone: 6, message: extMessage });
+rule({ id: 'extension-changed-wire', section: 10, kind: 'wire', title: 'x- extension the policy classifies as wire changed', severity: 'warn', milestone: 6, message: extMessage });
+
 // 11. Spec and engine notices
 rule({ id: 'spec-invalid', section: 11, kind: 'wire', title: 'Document failed to load or validate', severity: 'error', milestone: 3, message: (c) => d(c, 'reason') });
 rule({ id: 'ref-unresolved', section: 11, kind: 'wire', title: '$ref points nowhere', severity: 'error', milestone: 3, message: (c) => `$ref '${d(c, 'ref')}' can't be resolved${c.details.reason ? `: ${d(c, 'reason')}` : ''}` });
 rule({ id: 'cycle-not-productive', section: 11, kind: 'wire', title: 'Cycle with no property or items step', severity: 'error', milestone: 4, message: (c) => `schema cycle ${(c.details.cycle as string[]).join(' → ')} has no property or items step, so it describes no valid value` });
 rule({ id: 'documents-unrelated', section: 11, kind: 'wire', title: 'The two documents look like different APIs', severity: 'error', milestone: 6, message: (c) => `documents look unrelated: ${d(c, 'summary')}; set documents-unrelated: off in the policy to compare them anyway` });
+rule({ id: 'acknowledgement-stale', section: 11, kind: 'wire', title: "An acknowledgement's finding no longer appears", severity: 'info', milestone: 6, message: (c) => `acknowledgement for finding ${d(c, 'name')} matches nothing now (fixed, or the finding changed); remove it from ${d(c, 'file')}` });
+rule({ id: 'acknowledgement-expired', section: 11, kind: 'wire', title: 'An acknowledgement expired', severity: 'info', milestone: 6, message: (c) => `acknowledgement for ${d(c, 'rule')} (${d(c, 'name')}) expired on ${d(c, 'expires')}, so the finding counts again` });
 rule({ id: 'not-compared', section: 11, kind: 'wire', title: "Parts of the spec that weren't compared", severity: 'info', milestone: 3, message: (c) => `${d(c, 'what')} not compared` });
 
 export const RULES: readonly RuleMeta[] = R;
@@ -226,7 +252,7 @@ export function getRule(id: string): RuleMeta {
 }
 
 export function isImplemented(r: RuleMeta): boolean {
-  return r.milestone <= CURRENT_MILESTONE;
+  return r.milestone <= CURRENT_MILESTONE && !PENDING.has(r.id);
 }
 
 /** Location-specific rule ID, e.g. `query-parameter-removed`. Path locations use the base ID. */

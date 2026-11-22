@@ -14,6 +14,10 @@ description: Why this case exists, and what the expected result means.
 milestone: M3            # cases for later milestones run as "todo" until then
 options:
   profile: sdk           # optional
+  acknowledgements:      # optional: entries of an acknowledgements file (POLICY.md section 11)
+    - { finding: 0123456789ab, reason: why, expires: 2027-01-31 }
+  check-versions: true   # optional: run version-unchanged and version-bump-too-small (off otherwise)
+  as-of: 2026-11-21      # optional reference date for deprecation and sunsets (this is the default for cases)
   policy:                # optional, from M6: a policy file's contents
     rules:
       documents-unrelated: off

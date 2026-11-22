@@ -1,0 +1,10 @@
+description: "The policy classifies x-rate-limit as wire: lowering it is extension-changed-wire (warn)."
+milestone: M6
+options:
+  policy:
+    extensions:
+      x-rate-limit: wire
+findings:
+  - rule: extension-changed-wire
+    severity: warn
+    subject: 'GET /pets'

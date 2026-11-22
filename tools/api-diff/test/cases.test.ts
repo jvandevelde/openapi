@@ -12,7 +12,9 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dump, load } from 'js-yaml';
 import { compareInputs } from '../src/engine.ts';
-import { baseRuleId, CURRENT_MILESTONE, isImplemented, RULES } from '../src/rules/registry.ts';
+import { parsePolicy } from '../src/policy/policy.ts';
+import { parseAcknowledgements } from '../src/policy/acks.ts';
+import { baseRuleId, CURRENT_MILESTONE, getRule, isImplemented, RULES } from '../src/rules/registry.ts';
 import type { Profile, Severity } from '../src/types.ts';
 
 const CASES = fileURLToPath(new URL('./cases/', import.meta.url));
@@ -21,8 +23,21 @@ interface Expected {
   description: string;
   milestone: string;
   /** `policy` is read from M6; until then only cases for M6 or later use it. */
-  options?: { profile?: Profile; policy?: Record<string, unknown> };
+  options?: { profile?: Profile; policy?: Record<string, unknown>; 'as-of'?: string; 'check-versions'?: boolean; acknowledgements?: unknown[] };
   findings: { rule: string; severity: Severity; subject: string }[];
+}
+
+/**
+ * The case's policy. Version checks are off unless the case opts in with
+ * `check-versions: true`: most cases change a spec without bumping its
+ * version, and version-unchanged would appear in all of them.
+ */
+function casePolicy(expected: Expected, name: string): ReturnType<typeof parsePolicy> {
+  const policy = parsePolicy(expected.options?.policy ?? {}, `${name}/expected.yaml`);
+  if (!expected.options?.['check-versions']) {
+    for (const id of ['version-unchanged', 'version-bump-too-small']) policy.rules.set(id, { ...policy.rules.get(id), severity: 'off', options: policy.rules.get(id)?.options ?? {} });
+  }
+  return policy;
 }
 
 function input(dir: string, side: 'base' | 'revision'): string {
@@ -48,10 +63,11 @@ for (const name of names) {
     assert.ok(base, `${name}: unknown rule '${f.rule}' in expected.yaml`);
     covered.add(base);
   }
-  const todo = milestone > CURRENT_MILESTONE ? `needs ${expected.milestone}` : undefined;
+  const pending = expected.findings.map((f) => baseRuleId(f.rule)!).filter((id) => !isImplemented(getRule(id)));
+  const todo = milestone > CURRENT_MILESTONE ? `needs ${expected.milestone}` : pending.length ? `needs ${[...new Set(pending)].join(', ')}` : undefined;
 
   test(name, { todo }, async () => {
-    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire' });
+    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: casePolicy(expected, name), asOf: expected.options?.['as-of'] ?? '2026-11-21', ...(expected.options?.acknowledgements ? { acknowledgements: parseAcknowledgements(expected.options.acknowledgements, `${name}/expected.yaml`) } : {}) });
     const actual = result.findings.map((f) => ({ rule: f.rule, severity: f.severity, subject: f.subject }));
     if (process.env.UPDATE_CASES && !todo) {
       const next = { ...expected, findings: actual };

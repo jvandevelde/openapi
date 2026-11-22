@@ -46,18 +46,19 @@ Findings:
 
 ## Test cases
 
-4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`cookie-parameter-removed`](../../test/cases/cookie-parameter-removed/) | `cookie-parameter-removed` · warn · GET /pets | A removed cookie parameter. |
+| [`hint-rules-on-operation`](../../test/cases/hint-rules-on-operation/) | `query-parameter-removed` · error · GET /pets | x-api-diff rules on the operation raise parameter-removed (warn by default) to error for everything under it. |
 | [`parameter-removed`](../../test/cases/parameter-removed/) | `query-parameter-removed` · warn · GET /pets | A removed query parameter is a warning: servers are assumed to ignore it. |
 | [`parameter-removed-sdk-profile`](../../test/cases/parameter-removed-sdk-profile/) | `query-parameter-removed` · error · GET /pets | Under --profile sdk, a removed parameter is an error (it leaves the method signature). |
 | [`ref-unresolved`](../../test/cases/ref-unresolved/) | `query-parameter-removed` · warn · GET /pets | A $ref to a component that does not exist. The parameter it should provide is treated as absent, so it also counts as removed. |
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file, for the generic ID or any variant ID above (the more specific ID wins). See [POLICY.md](../../POLICY.md).
 
 Options for this rule:
 

@@ -2,7 +2,7 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M5.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference changes and docs changes are classified with direction-aware rules (118 of 127 implemented). Policy files arrive in M6.
+> **Status: milestone M6.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (130 of 132 implemented; rename detection is M8). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Audience reports (`ci`, `review`) arrive in M7.
 
 ## Requirements
 
@@ -44,6 +44,11 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--fail-on <level>` | Exit with code 1 if any finding is at or above `error` (default), `warn` or `info`; `never` always exits 0 |
 | `--state` | Print only `no-changes`, `compatible` or `breaking` |
 | `--profile <name>` | `wire` (default) or `sdk`: raises rules that break generated SDKs, such as `operation-id-changed` |
+| `--policy <file>`, `--no-policy` | The policy file: `api-diff.yaml` in the working directory by default, if present. See [POLICY.md](POLICY.md) |
+| `--base-version <v>`, `--revision-version <v>` | The versions to record and check, instead of reading them from the documents |
+| `--base-label <k=v>`, `--revision-label <k=v>` | Extra version labels, e.g. `build=8812`. Repeatable |
+| `--as-of <YYYY-MM-DD>` | Reference date for deprecation periods and sunset dates (default: today, UTC). Use it for reproducible runs |
+| `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
 | `--color`, `--no-color` | Colour is on for terminals unless `NO_COLOR` is set |
 
 Exit codes: `0` no findings at or above `--fail-on`, `1` findings at or above it, `2` usage or input error (missing file, unknown revision).
@@ -65,6 +70,10 @@ WARN   GET /pets               success response 202 added  revision.yaml:11 · r
 
 3 findings: 2 error, 1 warn, 0 info · state: breaking
 ```
+
+## Policy and in-spec hints
+
+A team sets severities, overrides for parts of the API and other settings in a policy file, `api-diff.yaml` ([POLICY.md](POLICY.md)). Spec authors can also steer `api-diff` from the spec itself with vendor extensions such as `x-api-diff: { enum: open }` or `x-stability-level: beta`: [docs/spec-authors.md](docs/spec-authors.md) lists every one.
 
 ## As a library
 

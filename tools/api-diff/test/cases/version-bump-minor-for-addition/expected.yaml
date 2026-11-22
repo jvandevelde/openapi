@@ -1,0 +1,11 @@
+description: "An added operation (wire, info) needs at least a minor bump; 1.2.0 to 1.2.1 is a patch."
+milestone: M6
+options:
+  check-versions: true
+findings:
+  - rule: operation-added
+    severity: info
+    subject: 'DELETE /pets/{id}'
+  - rule: version-bump-too-small
+    severity: warn
+    subject: 'document'

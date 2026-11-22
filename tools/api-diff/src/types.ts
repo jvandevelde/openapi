@@ -59,6 +59,10 @@ export interface Finding {
   revision?: Location;
   details: Record<string, unknown>;
   impact?: string[];
+  /** Policy exclusion sets the finding belongs to (POLICY.md section 8); reports can leave them out. */
+  exclusions?: string[];
+  /** Set when an acknowledgement covers the finding: it's reported but doesn't fail CI or count towards `state`. */
+  acknowledged?: { reason: string; owner?: string; expires: string; file: string };
 }
 
 export interface ComparedSide {
@@ -74,6 +78,10 @@ export interface ComparedSide {
   sha256?: string;
   /** Resolved commit, for git inputs. */
   commit?: string;
+  /** Where `version` came from: a policy source such as `info.version`, or `command line`. */
+  versionSource?: string;
+  /** Version labels (POLICY.md section 9); `commit` is filled in for git inputs. */
+  labels?: Record<string, string>;
 }
 
 export interface Counts {
@@ -81,6 +89,8 @@ export interface Counts {
   bySeverity: Record<Severity, number>;
   byKind: Record<Kind, number>;
   byRule: Record<string, number>;
+  /** Findings covered by an acknowledgement (included in the other counts). */
+  acknowledged: number;
 }
 
 export interface Result {

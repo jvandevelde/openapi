@@ -5,7 +5,8 @@
 import { createHash } from 'node:crypto';
 import type { DocumentSource } from '../sources/source.ts';
 import type { Location } from '../types.ts';
-import { parse, ParseError, type Parsed } from './parse.ts';
+import { detectFormat, parse, ParseError, type Parsed } from './parse.ts';
+import type { ParseCache } from './cache.ts';
 
 export interface LoadedFile {
   /** Path in the source's namespace. */
@@ -71,10 +72,12 @@ export class DocumentSet {
   readonly notices: Notice[] = [];
   root!: LoadedFile;
   readonly #rootPath: string;
+  readonly #cache: ParseCache | undefined;
 
-  constructor(source: DocumentSource, rootPath: string) {
+  constructor(source: DocumentSource, rootPath: string, cache?: ParseCache) {
     this.source = source;
     this.#rootPath = rootPath;
+    this.#cache = cache;
   }
 
   /** Loads the root file (errors are thrown) and every referenced file (errors become notices). */
@@ -126,7 +129,10 @@ export class DocumentSet {
     const display = this.source.display(path);
     let parsed: Parsed;
     try {
-      parsed = parse(text, display);
+      const format = detectFormat(display, text);
+      const cached = this.#cache?.get(text, format);
+      parsed = cached ?? parse(text, display, format);
+      if (!cached) this.#cache?.put(text, parsed);
     } catch (e) {
       if (e instanceof ParseError) {
         const where = e.line ? `${display}:${e.line}${e.column ? `:${e.column}` : ''}` : display;

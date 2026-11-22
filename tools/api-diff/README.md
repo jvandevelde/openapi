@@ -48,6 +48,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--policy <file>`, `--no-policy` | The policy file: `api-diff.yaml` in the working directory by default, if present. See [POLICY.md](POLICY.md) |
 | `--base-version <v>`, `--revision-version <v>` | The versions to record and check, instead of reading them from the documents |
 | `--base-label <k=v>`, `--revision-label <k=v>` | Extra version labels, e.g. `build=8812`. Repeatable |
+| `--cache-dir <dir>` | Cache the parsed base documents in this directory, keyed by their content. Useful in CI when the base (e.g. `main`) rarely changes: keep the directory between runs. Saves the base's parse time (about 0.5 s on an 8 MB spec) |
 | `--as-of <YYYY-MM-DD>` | Reference date for deprecation periods and sunset dates (default: today, UTC). Use it for reproducible runs |
 | `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
 | `--color`, `--no-color` | Colour is on for terminals unless `NO_COLOR` is set |

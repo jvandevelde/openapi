@@ -9,6 +9,7 @@ import { parseArgs } from 'node:util';
 import { compareInputs, countFindings, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
+import { ParseCache } from '../load/cache.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
 import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
 import { checkSupported, viewFor } from '../render/config.ts';
@@ -52,6 +53,8 @@ Options:
                          the versions to record and check (default: from the documents, see the policy's versions)
       --base-label <k=v>, --revision-label <k=v>
                          extra version labels, e.g. build=8812; repeatable
+      --cache-dir <dir>  cache the parsed base documents here, keyed by their content (for CI: keep the
+                         directory between runs)
       --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
       --acknowledgements <file>  accepted findings (default: api-diff.ack.yaml in the working directory, if present)
       --no-acknowledgements      ignore api-diff.ack.yaml
@@ -113,6 +116,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       acknowledgements: { type: 'string' },
       'no-acknowledgements': { type: 'boolean' },
       report: { type: 'string', multiple: true },
+      'cache-dir': { type: 'string' },
       'base-version': { type: 'string' },
       'revision-version': { type: 'string' },
       'base-label': { type: 'string', multiple: true },
@@ -166,6 +170,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   const acks = values['no-acknowledgements'] ? undefined : loadAcknowledgements(cwd, values.acknowledgements);
   if (acks) opts.acknowledgements = acks;
   if (asOf !== undefined) opts.asOf = asOf;
+  if (values['cache-dir'] !== undefined) opts.cache = new ParseCache(resolve(cwd, values['cache-dir']));
   if (values['base-version'] !== undefined) opts.baseVersion = values['base-version'];
   if (values['revision-version'] !== undefined) opts.revisionVersion = values['revision-version'];
   const bl = labels('base-label', values['base-label']);

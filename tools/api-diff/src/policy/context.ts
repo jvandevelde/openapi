@@ -18,6 +18,7 @@ export interface OperationInfo {
   stability: string;
   /** `x-api-diff` hints on the operation, then its path item. */
   hints: Hint[];
+  summary?: string;
 }
 
 export interface SpecContext {
@@ -56,7 +57,8 @@ function operationInfo(m: Model, op: Operation, lc: LifecycleSettings, hints: Hi
       if (h) opHints.push(h);
     }
   }
-  return { method: op.method, path: op.path, operationId: op.operationId, tags: op.tags, extensions, stability: typeof level === 'string' ? level : lc.defaultStability, hints: opHints };
+  const summary = isObject(node) && typeof node.summary === 'string' ? node.summary : undefined;
+  return { method: op.method, path: op.path, operationId: op.operationId, tags: op.tags, extensions, stability: typeof level === 'string' ? level : lc.defaultStability, hints: opHints, ...(summary ? { summary } : {}) };
 }
 
 export function buildContext(base: Model | undefined, revision: Model | undefined, lc: LifecycleSettings = DEFAULT_LIFECYCLE, hints: { base?: HintIndex; revision?: HintIndex } = {}): SpecContext {

@@ -9,7 +9,7 @@ Parameter renamed (detected)
 | **Kind** | `sdk` |
 | **Default severity** | `info` · `--profile sdk`: `error` |
 | **Rule IDs** | `parameter-renamed` (all locations), `query-parameter-renamed`, `header-parameter-renamed`, `cookie-parameter-renamed`. Path parameters use `parameter-renamed`. |
-| **Status** | Planned (M8) |
+| **Status** | Implemented (M8) |
 | **Group** | Parameters ([RULES.md section 4](../../RULES.md)) |
 
 ## What it detects
@@ -22,11 +22,30 @@ On the wire, old clients send the old name, which is also reported as removed + 
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`parameter-renamed`](../../test/cases/parameter-renamed/): The query parameter limit became max, with the same schema and position. On the wire that is removed + added (old clients send limit); for SDKs it is also parameter-renamed (error under --profile sdk).
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+      get:
+        parameters:
+-         - name: limit
++         - name: max
+            in: query
+            schema:
+```
+
+Findings:
+
+- `query-parameter-removed` · warn · GET /pets
+- `query-parameter-added-optional` · info · GET /pets
+- `query-parameter-renamed` · info · GET /pets
 
 ## Test cases
 
-_None yet._
+The example above is the only test case for this rule.
+
 
 ## Policy options
 

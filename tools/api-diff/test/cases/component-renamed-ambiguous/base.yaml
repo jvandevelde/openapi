@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  /a:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/A'
+  /b:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B'
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50
+    B:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 50

@@ -2,7 +2,8 @@
 // bodies and responses. Produces changes only; severities are decided by the
 // classify stage.
 
-import type { Ref } from '../load/documents.ts';
+import { isObject, type Ref } from '../load/documents.ts';
+import { canonicalString } from '../index/canonical.ts';
 import type { Model, Operation, Param, Requirement, Response } from '../model/model.ts';
 import { isStatusRange, isSuccessStatus, statusRange } from '../normalize/normalize.ts';
 import type { Change, Location } from '../types.ts';
@@ -205,8 +206,12 @@ function diffParams(ctx: Ctx, b: Operation, r: Operation, subject: string): void
   // Path parameters follow the template. A renamed one appears as removed + added under different keys.
   for (const [key, rp] of added) if (rp.in === 'path') added.delete(key);
 
+  const movedTo = new Map<Param, Param>();
+  const moved = (bp: Param): boolean => movedTo.has(bp);
   for (const bp of removed) {
-    const moved = [...added.values()].find((rp) => rp.in !== 'path' && rp.name.toLowerCase() === bp.name.toLowerCase());
+    const target = [...added.values()].find((rp) => rp.in !== 'path' && rp.name.toLowerCase() === bp.name.toLowerCase());
+    if (target) movedTo.set(bp, target);
+    const moved = target;
     if (moved) {
       added.delete(moved.key);
       push(ctx, { rule: 'parameter-location-changed', subject, location: bp.in, base: bLoc(ctx, bp.at), revision: rLoc(ctx, moved.at), details: { name: bp.name, from: bp.in, to: moved.in } });
@@ -214,9 +219,38 @@ function diffParams(ctx: Ctx, b: Operation, r: Operation, subject: string): void
     }
     push(ctx, { rule: 'parameter-removed', subject, location: bp.in, base: bLoc(ctx, bp.at), revision: rLoc(ctx, r.at), details: { name: bp.name } });
   }
+  // A removed and an added parameter in the same location, with the same schema and position, is
+  // also reported as a rename (sdk: the argument name changes). The wire findings above stay.
+  for (const [bp, rp] of renamedParams(ctx, b, r, removed.filter((p) => !moved(p)), [...added.values()])) {
+    push(ctx, { rule: 'parameter-renamed', subject, location: bp.in, base: bLoc(ctx, bp.at), revision: rLoc(ctx, rp.at), details: { from: bp.name, to: rp.name, name: rp.name } });
+  }
   for (const rp of added.values()) {
     push(ctx, { rule: rp.required ? 'parameter-added-required' : 'parameter-added-optional', subject, location: rp.in, base: bLoc(ctx, b.at), revision: rLoc(ctx, rp.at), details: { name: rp.name } });
   }
+}
+
+/** Position of a parameter among the operation's parameters in the same location. */
+const position = (op: Operation, p: Param): number => [...op.params.values()].filter((q) => q.in === p.in).indexOf(p);
+
+/** Pairs of removed and added parameters that look like renames: same location, schema, requiredness and position; unique matches only. */
+function renamedParams(ctx: Ctx, b: Operation, r: Operation, removed: Param[], added: Param[]): [Param, Param][] {
+  const sig = (m: Model, op: Operation, p: Param): string => {
+    const v = m.docs.value(p.at);
+    const schema = isObject(v) ? (v.schema ?? v.content ?? null) : null;
+    return [p.in, p.required, position(op, p), canonicalString(schema)].join('\u0000');
+  };
+  const bySig = (m: Model, op: Operation, ps: Param[]): Map<string, Param[]> => {
+    const out = new Map<string, Param[]>();
+    for (const p of ps) if (p.in !== 'path') out.set(sig(m, op, p), [...(out.get(sig(m, op, p)) ?? []), p]);
+    return out;
+  };
+  const rs = bySig(ctx.rev, r, added);
+  const pairs: [Param, Param][] = [];
+  for (const [k, bs] of bySig(ctx.base, b, removed)) {
+    const candidates = rs.get(k);
+    if (bs.length === 1 && candidates?.length === 1) pairs.push([bs[0]!, candidates[0]!]);
+  }
+  return pairs;
 }
 
 function diffParam(ctx: Ctx, bp: Param, rp: Param, subject: string): void {

@@ -30,7 +30,7 @@ test('--report specs', () => {
   assert.deepEqual(parseReportSpec('summary:txt:-'), { name: 'summary', format: 'txt' });
   assert.deepEqual(parseReportSpec('summary::out.txt'), { name: 'summary', file: 'out.txt' });
   assert.deepEqual(parseReportSpec('summary:txt:C:\\out\\s.txt'), { name: 'summary', format: 'txt', file: 'C:\\out\\s.txt' });
-  assert.throws(() => parseReportSpec('changelog'), (e: unknown) => e instanceof ReportError && /changelog arrives in a later milestone/.test(e.message));
+  assert.throws(() => parseReportSpec('audit'), (e: unknown) => e instanceof ReportError && /audit arrives in a later milestone/.test(e.message));
   assert.throws(() => parseReportSpec('ci:xml'), (e: unknown) => e instanceof ReportError && /report ci has no xml format; formats: txt, json/.test(e.message));
 });
 

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import type { DocumentSource } from '../sources/source.ts';
 import type { Location } from '../types.ts';
 import { detectFormat, parse, ParseError, type Parsed } from './parse.ts';
-import type { ParseCache } from './cache.ts';
+import type { ParseCacheLike } from './cache.ts';
 
 export interface LoadedFile {
   /** Path in the source's namespace. */
@@ -14,6 +14,8 @@ export interface LoadedFile {
   display: string;
   parsed: Parsed;
   sha256: string;
+  /** The file's text, for snippets in the explore report. */
+  text: string;
 }
 
 /** A node in a loaded file: the file and the JSON Pointer segments. */
@@ -72,9 +74,9 @@ export class DocumentSet {
   readonly notices: Notice[] = [];
   root!: LoadedFile;
   readonly #rootPath: string;
-  readonly #cache: ParseCache | undefined;
+  readonly #cache: ParseCacheLike | undefined;
 
-  constructor(source: DocumentSource, rootPath: string, cache?: ParseCache) {
+  constructor(source: DocumentSource, rootPath: string, cache?: ParseCacheLike) {
     this.source = source;
     this.#rootPath = rootPath;
     this.#cache = cache;
@@ -140,7 +142,7 @@ export class DocumentSet {
       }
       throw e;
     }
-    const file: LoadedFile = { path, display, parsed, sha256: createHash('sha256').update(text).digest('hex') };
+    const file: LoadedFile = { path, display, parsed, sha256: createHash('sha256').update(text).digest('hex'), text };
     this.files.set(path, file);
     return file;
   }

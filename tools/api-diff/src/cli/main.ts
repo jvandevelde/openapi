@@ -9,10 +9,12 @@ import { parseArgs } from 'node:util';
 import { compareInputs, countFindings, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
+import { history, type HistoryOptions } from '../history.ts';
+import { renderTimeline, renderTimelineHtml, timelineData } from '../render/timeline.ts';
 import { ParseCache } from '../load/cache.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
 import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
-import { checkSupported, viewFor } from '../render/config.ts';
+import { checkSupported, explorerUrl, viewFor } from '../render/config.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
@@ -27,6 +29,7 @@ Usage:
   api-diff [options] --base <rev> [--revision <rev>] <file>
   api-diff rules [<rule-id>] [--format txt|json] [--all]
   api-diff schema
+  api-diff history <start>..<end> <file> [options]   how the spec changed step by step (see below)
 
 Inputs:
   openapi.yaml          a file
@@ -39,8 +42,9 @@ Options:
   -C, --cwd <dir>        run as if started in <dir>
       --report <name>[:<format>[:<file>]]
                          a report to write; repeatable. Reports: review (the default; what changed and who
-                         it affects), ci (short, for CI logs), summary (size and risk). Formats: txt, json,
-                         html (review and summary)
+                         it affects), ci (short, for CI logs), summary (size and risk), changelog (for API
+                         consumers), sdk (for SDK maintainers), explore (interactive HTML). Formats: txt,
+                         json, html (review, summary, changelog; explore is html only)
   -f, --format <fmt>     format of the default report: txt (default), json or html
   -o, --output <file>    write the default report to a file instead of stdout
       --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
@@ -53,6 +57,8 @@ Options:
                          the versions to record and check (default: from the documents, see the policy's versions)
       --base-label <k=v>, --revision-label <k=v>
                          extra version labels, e.g. build=8812; repeatable
+      --explorer-url <url>  explore and history: link findings into a spec explorer; {pointer}, {file} and
+                         {side} are filled in (or reports.explore.explorer-url in the policy)
       --cache-dir <dir>  cache the parsed base documents here, keyed by their content (for CI: keep the
                          directory between runs)
       --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
@@ -62,6 +68,15 @@ Options:
       --color / --no-color
   -h, --help
   -v, --version
+
+History (api-diff history <start>..<end> <file>):
+  Compares each version of the file between two git revisions (first-parent commits that changed
+  it or a file it $refs), plus start → end for the net result, and marks changes reverted later.
+      --report timeline[:<format>[:<file>]]   txt (default), json or html
+      --all-commits      every commit, not only first-parent ones
+      --tags-only        only tagged commits (release to release)
+      --max-steps <n>    keep the latest n steps
+  Also: -C, --policy, --no-policy, --rule, --profile, --as-of.
 `;
 
 class UsageError extends Error {}
@@ -81,6 +96,7 @@ function oneOf<T extends string>(name: string, v: string | undefined, allowed: r
 export async function main(argv: string[], io: Io = { stdout: process.stdout, stderr: process.stderr, env: process.env }): Promise<number> {
   try {
     if (argv[0] === 'rules') return rulesCommand(argv.slice(1), io.stdout);
+    if (argv[0] === 'history') return await historyCommand(argv.slice(1), io);
     if (argv[0] === 'schema') {
       io.stdout.write(readFileSync(new URL('../../schema/result-v0.schema.json', import.meta.url), 'utf8'));
       return 0;
@@ -117,6 +133,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'no-acknowledgements': { type: 'boolean' },
       report: { type: 'string', multiple: true },
       'cache-dir': { type: 'string' },
+      'explorer-url': { type: 'string' },
       'base-version': { type: 'string' },
       'revision-version': { type: 'string' },
       'base-label': { type: 'string', multiple: true },
@@ -181,6 +198,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
   for (const spec of reports) checkSupported(spec.name, policy.reports.get(spec.name));
   if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
+  if (reports.some((r) => r.name === 'explore')) opts.snippets = true;
   const result = await compareInputs(base, revision, cwd, opts);
 
   const recount = (fs: typeof result.findings) => ({ counts: countFindings(fs), state: stateOf(fs) });
@@ -188,14 +206,64 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   for (const spec of reports) {
     if (values.state && !spec.file) continue;
     const cfg = policy.reports.get(spec.name);
-    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : 'txt');
+    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : spec.name === 'explore' ? 'html' : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
-    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn });
+    const linkTemplate = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : cfg?.explorerUrl;
+    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }
   // The ci report is the gate: its exclusions and filters apply to the exit code too.
   return shouldFail(viewFor(result, policy.reports.get('ci'), recount), failOn) ? 1 : 0;
+}
+
+async function historyCommand(argv: string[], io: Io): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      cwd: { type: 'string', short: 'C' },
+      report: { type: 'string' },
+      policy: { type: 'string' },
+      'no-policy': { type: 'boolean' },
+      rule: { type: 'string', multiple: true },
+      profile: { type: 'string' },
+      'as-of': { type: 'string' },
+      'all-commits': { type: 'boolean' },
+      'tags-only': { type: 'boolean' },
+      'max-steps': { type: 'string' },
+      'explorer-url': { type: 'string' },
+    },
+  });
+  if (positionals.length !== 2) throw new UsageError('usage: api-diff history <start>..<end> <file>');
+  const cwd = resolve(values.cwd ?? process.cwd());
+  const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
+  for (const r of values.rule ?? []) {
+    const eq = r.indexOf('=');
+    if (eq <= 0) throw new UsageError(`--rule must be <rule-id>=<severity>, got '${r}'`);
+    const id = r.slice(0, eq);
+    const setting = parseRuleSetting(id, r.slice(eq + 1), `--rule ${id}`);
+    policy.rules.set(id, { ...policy.rules.get(id), severity: setting.severity!, options: policy.rules.get(id)?.options ?? {}, from: '--rule' });
+  }
+  const [name, format = 'txt', ...rest] = (values.report ?? 'timeline').split(':');
+  if (name !== 'timeline') throw new UsageError(`history writes the timeline report; got --report ${name}`);
+  if (!['txt', 'json', 'html'].includes(format)) throw new UsageError(`the timeline report has no ${format} format; formats: txt, json, html`);
+  const file = rest.join(':');
+  const maxSteps = values['max-steps'] === undefined ? undefined : Number(values['max-steps']);
+  if (maxSteps !== undefined && !(Number.isInteger(maxSteps) && maxSteps > 0)) throw new UsageError('--max-steps must be a whole number above 0');
+  const asOf = values['as-of'];
+  if (asOf !== undefined && !isoDate(asOf)) throw new UsageError(`--as-of must be a date (YYYY-MM-DD), got '${asOf}'`);
+  const opts: HistoryOptions = { profile: oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], policy.profile ?? 'wire'), policy };
+  if (asOf !== undefined) opts.asOf = asOf;
+  if (values['all-commits']) opts.allCommits = true;
+  if (values['tags-only']) opts.tagsOnly = true;
+  if (maxSteps !== undefined) opts.maxSteps = maxSteps;
+  const links = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : policy.reports.get('explore')?.explorerUrl;
+  const h = await history(positionals[0]!, positionals[1]!, cwd, opts);
+  const text = format === 'json' ? JSON.stringify(timelineData(h), null, 2) + '\n' : format === 'html' ? renderTimelineHtml(h, links) : renderTimeline(h);
+  if (file && file !== '-') writeFileSync(resolve(cwd, file), text);
+  else io.stdout.write(text);
+  return 0;
 }
 
 function severityText(r: RuleMeta): string {

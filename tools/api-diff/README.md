@@ -2,7 +2,7 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M7.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (130 of 132 implemented; rename detection is M8). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Reports: `review` (the default), `ci` and `summary`, in text, JSON or HTML, with a ready-to-copy PR workflow. `changelog`, `sdk` and `explore` arrive in M8.
+> **Status: milestone M8.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (all 132 rules implemented, including rename detection). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Reports: `review` (the default), `ci`, `summary`, `changelog` (with migration notes for clients), `sdk` and `explore` (interactive HTML), plus a step-by-step `history` timeline and a ready-to-copy PR workflow. Audit and custom reports arrive in M9.
 
 ## Requirements
 
@@ -39,7 +39,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 |---|---|
 | `--base <rev>`, `--revision <rev>` | Read the given file at these revisions. `<rev>...` means the merge-base with the other side (`HEAD` by default) |
 | `-C, --cwd <dir>` | Run as if started in `<dir>` |
-| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. Formats `txt`, `json` and `html` (`review` and `summary`; one self-contained file); without a file it goes to stdout (one report at most). The policy's `reports` section can leave exclusion sets out of a report |
+| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. `changelog`: what changed for API consumers and what they need to do, grouped by tag and operation, in Markdown-style text you can paste into release notes. `sdk`: renamed methods, arguments and types, changes by method and type, and the SDK version bump (under `--profile sdk` severities). `explore`: every finding in one interactive HTML file, with filters, search and the base and revision source side by side. Formats `txt`, `json` and `html` (`review`, `summary`, `changelog`; `explore` is HTML only; one self-contained file); without a file it goes to stdout (one report at most). The policy's `reports` section can leave exclusion sets out of a report |
 | `-f, --format <fmt>` | Format of the default `review` report: `txt` (default), `html` or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
 | `-o, --output <file>` | Write the default report to a file |
 | `--fail-on <level>` | Exit with code 1 if any finding is at or above `error`, `warn` or `info`. The default is `never`: breaking changes are reported, not blocked, unless a team opts in |
@@ -48,6 +48,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--policy <file>`, `--no-policy` | The policy file: `api-diff.yaml` in the working directory by default, if present. See [POLICY.md](POLICY.md) |
 | `--base-version <v>`, `--revision-version <v>` | The versions to record and check, instead of reading them from the documents |
 | `--base-label <k=v>`, `--revision-label <k=v>` | Extra version labels, e.g. `build=8812`. Repeatable |
+| `--explorer-url <url>` | For `explore` and `history`: link each finding into a spec explorer. A URL template with `{pointer}` (and optionally `{file}`, `{side}`); also `reports.explore.explorer-url` in the policy |
 | `--cache-dir <dir>` | Cache the parsed base documents in this directory, keyed by their content. Useful in CI when the base (e.g. `main`) rarely changes: keep the directory between runs. Saves the base's parse time (about 0.5 s on an 8 MB spec) |
 | `--as-of <YYYY-MM-DD>` | Reference date for deprecation periods and sunset dates (default: today, UTC). Use it for reproducible runs |
 | `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
@@ -71,6 +72,15 @@ ERROR  securitySchemes/apiKey  security scheme 'apiKey' changed: name  revision.
 WARN   GET /pets               success response 202 added  revision.yaml:11 · response-success-status-added
 
 3 findings: 2 error, 1 warn, 0 info · state: breaking
+```
+
+## History
+
+`api-diff history <start>..<end> <file>` shows how a spec changed step by step between two git revisions: one step per first-parent commit that changed the file or anything it `$ref`s, the release tags between them, which changes a later commit reverted, and the net result. `--report timeline:html:history.html` writes an interactive timeline; `--tags-only`, `--max-steps <n>` and `--all-commits` change which commits count.
+
+```sh
+api-diff history v1.4.0..HEAD openapi.yaml
+api-diff history v1.4.0..v2.0.0 openapi.yaml --report timeline:html:history.html
 ```
 
 ## On pull requests

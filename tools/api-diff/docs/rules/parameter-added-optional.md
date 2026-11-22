@@ -46,8 +46,12 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`parameter-added-optional`](../../test/cases/parameter-added-optional/) | `query-parameter-added-optional` · info · GET /pets | A new optional query parameter. |
+| [`parameter-renamed`](../../test/cases/parameter-renamed/) | `query-parameter-added-optional` · info · GET /pets | The query parameter limit became max, with the same schema and position. On the wire that is removed + added (old clients send limit); for SDKs it is also parameter-renamed (error under --profile sdk). |
 
 ## Policy options
 

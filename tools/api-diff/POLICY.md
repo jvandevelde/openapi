@@ -208,6 +208,8 @@ reports:
     group-by: tag                         # severity | root-cause | tag | operation | rule | owner
     format: html                          # json | txt | html
     template: ./templates/changelog.html  # html and txt only
+  explore:
+    explorer-url: https://explorer.example.com/#{pointer}   # links findings into the spec explorer
   partner-changelog:
     extends: changelog                    # inherits everything, then overrides
     include: { extensions: { x-audience: partner } }
@@ -215,7 +217,7 @@ reports:
 
 The built-in reports (`ci`, `review`, `changelog`, `sdk`, `summary`, `audit`, `explore`) are presets with these keys, so the same keys change them.
 
-What works now (M7): for `review`, `ci` and `summary`, `exclude`, `include.kinds`, `include.min-severity` and `format` (the format used when `--report` doesn't give one). A report leaves out findings in excluded sets or outside `include`, and its counts and state are worked out from what it shows; notices and version checks are always kept. **The `ci` report's settings also decide the exit code**, since `ci` is the gate. Every key above is validated now; the reports and settings that arrive later (`changelog`, `sdk`, `audit`, `explore`, custom reports, `extends`, `template`, `include.extensions`, and grouping other than the preset's: `review` groups by root cause, `ci` by severity) are refused only when such a report is produced, so they can be configured ahead of time.
+What works now: for `review`, `ci`, `summary`, `changelog`, `sdk` and `explore` (M8), `exclude`, `include.kinds`, `include.min-severity` and `format` (the format used when `--report` doesn't give one). A report leaves out findings in excluded sets or outside `include`, and its counts and state are worked out from what it shows; notices and version checks are always kept. **The `ci` report's settings also decide the exit code**, since `ci` is the gate. Every key above is validated now; the reports and settings that arrive later (`audit`, custom reports, `extends`, `template`, `include.extensions`, and grouping other than the preset's: `review` groups by root cause, `ci` by severity, `changelog` by tag, `sdk` by operation). `explore` (and the `history` timeline) take `explorer-url`, a URL template that links each finding's base and revision places into the separate spec explorer; `{pointer}` (required), `{file}` and `{side}` are filled in, URL-encoded (`--explorer-url` on the command line beats it). `changelog` leaves out documentation-only changes unless its `include.kinds` lists `docs` are refused only when such a report is produced, so they can be configured ahead of time.
 
 ## 11. Acknowledgements file
 

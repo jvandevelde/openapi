@@ -14,7 +14,7 @@ import { applyDeprecationPeriod, diffLifecycle, removalOptions, stabilityLevels,
 import { DEFAULT_LIFECYCLE } from './policy/context.ts';
 import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
-import type { ParseCache } from './load/cache.ts';
+import type { ParseCacheLike } from './load/cache.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
 import { buildContext, componentName, type SpecContext } from './policy/context.ts';
@@ -23,7 +23,7 @@ import { componentInSet, operationInSet, setsFor, type ExclusionSet } from './po
 import { HintIndex } from './policy/hints.ts';
 import { parseHintRules } from './policy/policy.ts';
 import type { Policy } from './policy/policy.ts';
-import type { Kind } from './types.ts';
+import type { Kind, Location, OperationSummary, Snippet } from './types.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
 
@@ -37,7 +37,11 @@ export interface CompareOptions {
   baseLabels?: Record<string, string>;
   revisionLabels?: Record<string, string>;
   /** Parse cache for the base side's files (opt-in, --cache-dir). */
-  cache?: ParseCache;
+  cache?: ParseCacheLike;
+  /** Parse cache for the revision side too (history: each version is parsed once). */
+  revisionCache?: ParseCacheLike;
+  /** Add source snippets around each finding to the result (for the explore report). */
+  snippets?: boolean;
   /** Accepted findings (POLICY.md section 11). */
   acknowledgements?: Acknowledgements;
   /** Reference date for deprecation periods and sunsets, `YYYY-MM-DD`; today (UTC) by default. */
@@ -61,7 +65,7 @@ function noticeToChange(n: Notice, side: Side): Change {
   return c;
 }
 
-async function loadSide(input: OpenedInput, side: Side, cache?: ParseCache): Promise<LoadedSide> {
+async function loadSide(input: OpenedInput, side: Side, cache?: ParseCacheLike): Promise<LoadedSide> {
   const docs = new DocumentSet(input.source, input.root, cache);
   const compared: ComparedSide = { input: input.source.info.input, file: input.source.display(input.root), version: 'unknown' };
   if (input.source.info.commit) compared.commit = input.source.info.commit;
@@ -95,7 +99,7 @@ async function loadSide(input: OpenedInput, side: Side, cache?: ParseCache): Pro
 
 export async function compareOpened(base: OpenedInput, revision: OpenedInput, opts: CompareOptions = {}): Promise<Result> {
   const profile = opts.profile ?? opts.policy?.profile ?? 'wire';
-  const [b, r] = await Promise.all([loadSide(base, 'base', opts.cache), loadSide(revision, 'revision')]);
+  const [b, r] = await Promise.all([loadSide(base, 'base', opts.cache), loadSide(revision, 'revision', opts.revisionCache)]);
   let changes: Change[] = [...b.changes, ...r.changes];
   const policy = opts.policy;
   const context = b.model || r.model ? buildContext(b.model, r.model, policy?.lifecycle, { base: b.hints, revision: r.hints }) : undefined;
@@ -107,7 +111,8 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     const lc = lifecycleOptions(opts);
     const diffs = applyDeprecationPeriod([...diffOperations(b.model, r.model, pairs)], b.model, lc);
     diffs.push(...diffLifecycle(b.model, r.model, pairs, lc));
-    diffs.push(...diffSchemaEngine(b.model, r.model, pairs));
+    const renameMatch = policy?.rules.get('component-renamed')?.options.match as 'exact' | 'similar' | undefined;
+    diffs.push(...withoutRenamedRefs(diffSchemaEngine(b.model, r.model, pairs, renameMatch ? { renameMatch } : {})));
     diffs.push(...diffDocs(b.model, r.model, pairs, new Set([lc.lifecycle.stability, lc.lifecycle.deprecatedSince, lc.lifecycle.sunset])));
     const classified = classifyExtensions(diffs, policy?.extensions);
     changes.push(...collapseBulk(applyIgnore(classified, b, r, ignoredSets, context!)), ...ignoredNotices(b, r), ...ignoredSetNotices(ignoredSets, context!));
@@ -163,8 +168,51 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   const advice = !unrelated && b.model && r.model ? bumpAdvice(findings, b.compared, r.compared) : undefined;
   if (advice) result.advice = advice;
   if (policy?.file && policy.sha256) result.policy = { file: policy.file, sha256: policy.sha256 };
+  if (opts.snippets) result.snippets = snippetsFor(findings, b.model?.docs, r.model?.docs);
+  if (context) {
+    const ops: Record<string, OperationSummary> = {};
+    for (const f of findings) {
+      for (const s of [f.subject, ...(f.impact ?? [])]) {
+        const op = context.operations.get(s);
+        if (op && !ops[s]) ops[s] = { tags: op.tags, ...(op.operationId ? { operationId: op.operationId } : {}), ...(op.summary ? { summary: op.summary } : {}) };
+      }
+    }
+    if (Object.keys(ops).length) result.operations = ops;
+  }
   return result;
 
+}
+
+export const SNIPPET_CONTEXT = 4;
+
+/** A few lines around each finding's base and revision locations. */
+function snippetsFor(findings: Finding[], base: DocumentSet | undefined, rev: DocumentSet | undefined): Result['snippets'] {
+  const files = (docs: DocumentSet | undefined): Map<string, string[]> => new Map([...(docs?.files.values() ?? [])].map((f) => [f.display, f.text.split(/\r?\n/)]));
+  const [bf, rf] = [files(base), files(rev)];
+  const cut = (lines: Map<string, string[]>, l: Location | undefined): Snippet | undefined => {
+    const text = l?.line ? lines.get(l.file) : undefined;
+    if (!l?.line || !text) return undefined;
+    const start = Math.max(1, l.line - SNIPPET_CONTEXT);
+    const end = Math.min(text.length, l.line + SNIPPET_CONTEXT);
+    return { file: l.file, start, line: l.line, lines: text.slice(start - 1, end).map((s) => (s.length > 300 ? `${s.slice(0, 300)}…` : s)) };
+  };
+  const out: NonNullable<Result['snippets']> = {};
+  for (const f of findings) {
+    const s: { base?: Snippet; revision?: Snippet } = {};
+    const b = cut(bf, f.base);
+    const r = cut(rf, f.revision);
+    if (b) s.base = b;
+    if (r) s.revision = r;
+    if (b || r) out[f.id] = s;
+  }
+  return out;
+}
+
+/** A $ref that now points at a renamed component's new name is the rename itself, reported once as component-renamed. */
+function withoutRenamedRefs(changes: Change[]): Change[] {
+  const renames = new Set(changes.filter((c) => c.rule === 'component-renamed').map((c) => `${String(c.details.from)}\u0000${String(c.details.to)}`));
+  if (!renames.size) return changes;
+  return changes.filter((c) => c.rule !== 'ref-target-changed' || !renames.has(`${String(c.details.from)}\u0000${String(c.details.to)}`));
 }
 
 function lifecycleOptions(opts: CompareOptions): LifecycleOptions {

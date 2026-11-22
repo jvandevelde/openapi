@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 132 rules, with their default severities. 130 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 132 rules, with their default severities. 132 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -51,7 +51,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`parameter-became-optional`](parameter-became-optional.md) | wire | info | M3 ✅ | Parameter became optional |
 | [`parameter-location-changed`](parameter-location-changed.md) | wire | error | M3 ✅ | Parameter moved to another location |
 | [`parameter-serialization-changed`](parameter-serialization-changed.md) | wire | error | M3 ✅ | Parameter style, explode, allowReserved or content changed |
-| [`parameter-renamed`](parameter-renamed.md) | sdk | info (sdk: error) | M8 | Parameter renamed (detected) |
+| [`parameter-renamed`](parameter-renamed.md) | sdk | info (sdk: error) | M8 ✅ | Parameter renamed (detected) |
 
 ## 5. Request bodies
 
@@ -147,7 +147,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`ref-target-changed`](ref-target-changed.md) | sdk | info (sdk: error) | M5 ✅ | $ref points at a different component |
 | [`ref-inlined`](ref-inlined.md) | sdk | info (sdk: error) | M5 ✅ | $ref replaced by an inline schema |
 | [`ref-extracted`](ref-extracted.md) | sdk | info (sdk: warn) | M5 ✅ | Inline schema became a $ref |
-| [`component-renamed`](component-renamed.md) | sdk | info (sdk: error) | M8 | Component renamed (same structure) |
+| [`component-renamed`](component-renamed.md) | sdk | info (sdk: error) | M8 ✅ | Component renamed (same structure) |
 | [`schema-title-changed`](schema-title-changed.md) | sdk | info (sdk: warn) | M5 ✅ | Schema title changed |
 | [`component-added`](component-added.md) | wire | info | M5 ✅ | Unused component added |
 | [`component-removed`](component-removed.md) | wire | info | M5 ✅ | Unused component removed |

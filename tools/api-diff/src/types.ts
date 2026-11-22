@@ -78,6 +78,8 @@ export interface ComparedSide {
   sha256?: string;
   /** Resolved commit, for git inputs. */
   commit?: string;
+  /** `info.title`. */
+  title?: string;
   /** Where `version` came from: a policy source such as `info.version`, or `command line`. */
   versionSource?: string;
   /** Version labels (POLICY.md section 9); `commit` is filled in for git inputs. */
@@ -104,7 +106,26 @@ export interface Result {
   advice?: { needed: BumpLevel; actual: BumpLevel; ok: boolean; because?: string; breaking: number };
   /** The policy file used, if any, and the SHA-256 of its contents. */
   policy?: { file: string; sha256: string };
+  /** Source lines around each finding, by finding ID (only when asked for, e.g. by the explore report). */
+  snippets?: Record<string, { base?: Snippet; revision?: Snippet }>;
+  /** The operations findings mention (as subject or impact), for grouping and labels; the revision's details win. */
+  operations?: Record<string, OperationSummary>;
   findings: Finding[];
 }
 
 export type BumpLevel = 'none' | 'patch' | 'minor' | 'major';
+
+export interface Snippet {
+  file: string;
+  /** 1-based line number of `lines[0]`. */
+  start: number;
+  /** The line the finding points at. */
+  line: number;
+  lines: string[];
+}
+
+export interface OperationSummary {
+  operationId?: string;
+  tags: string[];
+  summary?: string;
+}

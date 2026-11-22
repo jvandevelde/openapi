@@ -1,0 +1,14 @@
+description: "Renamed and a limit changed. With match: similar (same type and property names and types) it is still a rename, and the limit change is reported on the new component."
+milestone: M8
+options:
+  policy:
+    rules:
+      component-renamed:
+        match: similar
+findings:
+  - rule: component-renamed
+    severity: info
+    subject: '#/components/schemas/Animal'
+  - rule: max-length-decreased-in-response
+    severity: info
+    subject: '#/components/schemas/Animal'

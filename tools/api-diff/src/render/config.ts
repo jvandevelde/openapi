@@ -10,7 +10,7 @@ import type { Finding, Kind, Result, Severity } from '../types.ts';
 import { isChange } from './common.ts';
 
 export const BUILT_IN = ['ci', 'review', 'changelog', 'sdk', 'summary', 'audit', 'explore'] as const;
-const KEYS = ['exclude', 'include', 'group-by', 'format', 'template', 'extends'] as const;
+const KEYS = ['exclude', 'include', 'group-by', 'format', 'template', 'extends', 'explorer-url'] as const;
 const INCLUDE_KEYS = ['kinds', 'min-severity', 'extensions'] as const;
 const GROUP_BY = ['severity', 'root-cause', 'tag', 'operation', 'rule', 'owner'] as const;
 
@@ -21,6 +21,8 @@ export interface ReportConfig {
   format?: 'json' | 'txt' | 'html';
   template?: string;
   extends?: string;
+  /** explore and the history timeline: link each finding into the spec explorer. `{pointer}` (required), `{file}` and `{side}` are filled in. */
+  explorerUrl?: string;
 }
 
 const RANK: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
@@ -72,6 +74,9 @@ export function parseReports(raw: Record<string, unknown>, where: string, exclus
           if (typeof val !== 'string' || val === '') throw new PolicyError(`${w}: must be a file path`);
           cfg.template = val;
           break;
+        case 'explorer-url':
+          cfg.explorerUrl = explorerUrl(val, w);
+          break;
         case 'extends':
           if (typeof val !== 'string') throw new PolicyError(`${w}: must name a report`);
           cfg.extends = val;
@@ -94,8 +99,20 @@ export function parseReports(raw: Record<string, unknown>, where: string, exclus
   return out;
 }
 
+/** Validates an explorer URL template: http(s), with a {pointer} placeholder. */
+export function explorerUrl(v: unknown, where: string): string {
+  if (typeof v !== 'string' || !/^https?:\/\//.test(v) || !v.includes('{pointer}')) throw new PolicyError(`${where}: must be an http(s) URL template containing {pointer}, e.g. https://explorer.example.com/#{pointer}`);
+  return v;
+}
+
+/** A link for one side of a finding, or undefined. Placeholders are URL-encoded. */
+export function explorerLink(template: string | undefined, side: 'base' | 'revision', loc: { file: string; pointer: string } | undefined): string | undefined {
+  if (!template || !loc) return undefined;
+  return template.replaceAll('{pointer}', encodeURIComponent(loc.pointer)).replaceAll('{file}', encodeURIComponent(loc.file)).replaceAll('{side}', side);
+}
+
 /** The grouping each preset uses; another value arrives with custom grouping in M9. */
-const PRESET_GROUP: Record<string, ReportConfig['groupBy']> = { review: 'root-cause', ci: 'severity', summary: undefined };
+const PRESET_GROUP: Record<string, ReportConfig['groupBy']> = { review: 'root-cause', ci: 'severity', summary: undefined, changelog: 'tag', sdk: 'operation', explore: undefined };
 
 /** Refuses settings this version can't apply yet, for a report that is being produced. */
 export function checkSupported(name: string, cfg: ReportConfig | undefined): void {

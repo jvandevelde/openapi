@@ -7,6 +7,10 @@ export interface TxtOptions {
   color: boolean;
   /** The --fail-on threshold in effect, for the ci report and the footer. */
   failOn?: Severity | 'never';
+  /** Include documentation-only changes (changelog: when the report's include.kinds lists docs). */
+  docs?: boolean;
+  /** explore: URL template for links into the spec explorer. */
+  explorerUrl?: string;
 }
 
 export type Paint = (code: string, s: string) => string;

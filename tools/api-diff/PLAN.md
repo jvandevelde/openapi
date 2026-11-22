@@ -73,7 +73,7 @@ Features come from each project's docs. Pros and cons are our assessment for thi
 |---|---|---|
 | Read specs from git revisions (`main:openapi.yaml`) without a checkout | openapi-changes | Accepted anywhere a file path is, with `$ref`s resolved at the same revision (see *Inputs: files and git revisions*, phase 1) |
 | Walk a spec's history and show a timeline | openapi-changes | `--history <range>` compares each consecutive pair of commits, and the `explore` report shows the timeline (backlog) |
-| Side-by-side, unified and inline diff views | openapi-changes | Options in the `explore` HTML report (phase 4) |
+| Side-by-side, unified and inline diff views | openapi-changes | Options in the `explore` HTML report, for the changed fragments only; browsing the whole spec is left to the separate spec explorer (phase 4) |
 | A one-word result for scripts | openapi-diff | `--state` prints `no-changes`, `compatible` or `breaking` (phase 1) |
 | Pluggable path matching | openapi-diff | Configurable matcher, including versioning-aware matching (backlog) |
 | A docs page per rule with cause and example | Azure openapi-diff | Generated from rule metadata: `api-diff rules <id>` (see POLICY.md section 13) |
@@ -482,7 +482,15 @@ The engine produces one **result object** (JSON with a versioned schema): findin
 | **`sdk`** | SDK maintainers | Which generated types or methods change? | sdk findings, a table of old → new type and method names, the SDK semver bump | Generated type / operationId | text, JSON | SDK release PR |
 | **`summary`** | Release or product manager | How big and how risky is this release? | Counts by kind and severity, the semver advice, the 5 most serious findings | — | text, JSON | Release checklist, chat |
 | **`audit`** | API governance | Are we following our own rules? | Everything, including acknowledged findings (who, why, expiry), expired acknowledgements, `unclassified-change`, and which policy entry set each severity | Rule | JSON, HTML | Governance reviews, dashboards (trends across releases) |
-| **`explore`** | Anyone investigating | Show me everything | All findings plus a side-by-side spec view, filters (kind, severity, tag, path), search, recursive schemas shown as `↻` | Interactive | Self-contained HTML (one file, works offline) | CI artifact linked from the `review` comment |
+| **`explore`** | Anyone investigating | Show me every change | All findings, the changed source fragment of each side, filters (kind, severity, tag, path), search, recursive schemas shown as `↻`, and links into the spec explorer. A diff view, not a spec browser | Interactive | Self-contained HTML (one file, works offline) | CI artifact linked from the `review` comment |
+
+### Spec browsing and payloads
+
+`explore` is a **diff view**, not an API reference like Scalar or Swagger UI. Browsing the whole spec and generating example payloads belong to the separate spec explorer, so the two tools don't duplicate each other ([decision record](decision-records/2026-11-22T1647-explore-is-a-diff-view.md)):
+
+- `explore` shows the findings and only the changed fragment of each side, from the source maps.
+- Each finding links into the spec explorer at its base and revision pointers, through a URL template (`explorer-url: https://…/#{pointer}`).
+- The spec explorer can read the result JSON to mark changed or breaking elements in its own views. The result JSON is the only interface between the two tools.
 
 ### Exclusions
 
@@ -704,7 +712,7 @@ Each milestone is one or a few pull requests and ends with something that runs.
 | **M5** ✅ | Schema engine | Effective `allOf` merge, pair-cached comparison for cycles, variance, union branch and discriminator matching, schema rules (section 7), usages and direction (incl. `readOnly`/`writeOnly`), root-cause aggregation, ref rules, docs rules, profiles, bulk-change collapsing (3+ operations). Example re-validation moved to the backlog | All schema cases pass, and each shared-component change appears once |
 | **M6** ✅ | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance, the `documents-unrelated` precheck | Every POLICY.md example is a passing test |
 | **M7** ✅ | PR check | Report presets, `ci`, `review` (the default) and `summary` reports (txt/json/html), multiple `--report`, versions header with bump advice, `--fail-on never` by default, opt-in `--cache-dir` base index, a copyable GitHub Actions workflow and a self-check workflow in this repo | **Runs on every PR here and is ready to copy into an API repo** |
-| **M8** | Presentation | `explore` HTML, `changelog`, `sdk`, rename detection, semver advice, explanations and fixes, history timeline | Reviewers prefer it to the tools in section 1 |
+| **M8** | Presentation | `explore` HTML (diff view with `explorer-url` links, no spec rendering), `changelog`, `sdk`, rename detection, semver advice, explanations and fixes, history timeline | Reviewers prefer it to the tools in section 1 |
 | **M9** | Governance | `audit`, custom reports and templates, `--uses` consumer reports, ownership routing | Release notes and governance reviews use it without manual editing |
 | **M10** | Distribution | esbuild bundle, release workflow (tag `api-diff-v*` → `api-diff.mjs` + `.sha256` on a GitHub release), generated rule docs, README | Another repo's CI downloads a pinned release and runs it |
 
@@ -724,9 +732,11 @@ Each decision has a full record (background, alternatives, impacts) in [decision
 4. **Name: `api-diff`.** Command `api-diff`, policy file `api-diff.yaml`, acknowledgements `api-diff.ack.yaml`, in-spec extension `x-api-diff`, release tags `api-diff-v<version>`.
 5. **Distribution: a single bundled release file** (`api-diff.mjs` plus a SHA-256 file) on GitHub releases of this repo. No package registry for now (see section 4, *Using it in other repositories*).
 
-Still open (not needed before M7):
+6. **Which reports first: `ci` and `review`** (built in M7), since they make the tool usable as a PR check.
 
-6. **Which reports first.** Proposal: `ci` and `review` (M7), since they make the tool usable as a PR check.
+Still open (not needed before M8):
+
+7. **Counter-example payloads: delegate, share or build.** The spec explorer already generates payloads. The options: delegate generation to it entirely; share a minimal-payload generator, with `api-diff` adding the finding-specific change and checking that the old schema accepts the payload and the new one rejects it; or build one here on top of the schema index. Before choosing, check the explorer's generator for cycle and union handling, deterministic output, whether it can be bundled for Node, and 3.0–3.2 support. See the [decision record](decision-records/2026-11-22T1647-explore-is-a-diff-view.md).
 
 ## 8. Further ideas (backlog)
 
@@ -736,7 +746,7 @@ Ideas aimed at large enterprise specs. None of the tools in section 1 document t
 
 | Idea | What it does | Value / effort |
 |---|---|---|
-| **★ Counter-example payloads** | For each `wire` finding, generate a small JSON value that the old schema accepts and the new one rejects (for requests) or the other way round (for responses), e.g. `{"status": "archived"}`. Shown in reports and exportable as test fixtures. Proof that the change really breaks something, instead of only a rule saying so. | high / medium |
+| **★ Counter-example payloads** | For each `wire` finding, generate a small JSON value that the old schema accepts and the new one rejects (for requests) or the other way round (for responses), e.g. `{"status": "archived"}`. Shown in reports and exportable as test fixtures. Proof that the change really breaks something, instead of only a rule saying so. **Not to be built here until the generator question in section 7 is settled:** the separate spec explorer already generates payloads, and cycles and large nested unions are the hard part either way. | high / medium |
 | **Re-validate examples** | Check every `example`/`examples` in the base against the revision schema. An old example that no longer validates is a concrete breaking change, even if no rule caught it. | high / low |
 | **Constraint maths** | Treat `minimum`/`maximum`/`multipleOf`, `minLength`/`maxLength` and `minItems`/`maxItems` as intervals, so "narrowed" vs "widened" is exact. Compare simple `pattern` regexes by converting them to automata, and fall back to "can't tell" (`warn`) for complex ones. | medium / medium |
 | **Versioning-scheme aware matching** | Match `/v1/orders` in the base with `/v2/orders` in the revision, or match media-type versions (`application/vnd.acme.v2+json`), when a new version is published alongside the old one. Configured with a path or media-type template. | medium / low |

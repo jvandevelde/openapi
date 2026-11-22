@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-22 20:28 UTC |
 | **Summary** | Owner precedence is operation, path item, tags, policy, document; reach filters narrow impact lists and keep API-wide changes; only review and audit can be regrouped; a template needs format html or txt and its report's formats become that and json; custom reports need extends; audit takes no filters. |
 | **Milestone** | M9 |

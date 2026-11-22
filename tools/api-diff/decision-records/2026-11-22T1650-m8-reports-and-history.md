@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-22 16:50 UTC |
 | **Summary** | The changelog groups by tag and operation with a separate shared-types section; the sdk report bumps by sdk-profile severities; explore embeds a few source lines per finding instead of whole specs; history links reverts by opposite rules at the same place and keeps the latest steps under --max-steps. |
 | **Milestone** | M8 |

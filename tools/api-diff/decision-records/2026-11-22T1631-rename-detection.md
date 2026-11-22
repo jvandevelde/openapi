@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-22 16:31 UTC |
 | **Summary** | A component is renamed when exactly one removed and one added component share a shape hash (or, with `match: similar`, type and property names and types); a parameter when exactly one removed and one added parameter share location, schema, requiredness and position. Ambiguous cases are left as they are. |
 | **Milestone** | M8 |

@@ -527,6 +527,16 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
       { name: 'when', default: 'manual', description: '`manual` skips the check when both inputs are the same path at two git revisions. `always` checks those too.' },
     ],
   },
+  'acknowledgement-stale': {
+    description: 'An entry in the acknowledgements file names a finding ID that no longer appears: the change was fixed, or the finding changed and got a new ID.',
+    why: 'Notice only: the file should be cleaned up so it lists only accepted findings.',
+    fix: 'Remove the entry, or acknowledge the finding under its new ID.',
+  },
+  'acknowledgement-expired': {
+    description: "An acknowledgement's `expires` date has passed (as of today, or `--as-of`), so its finding counts again and can fail CI.",
+    why: 'Notice only: it explains why a previously accepted finding is back.',
+    fix: 'Fix the change, or renew the acknowledgement with a new `expires` date and reason.',
+  },
   'not-compared': {
     description: "Notice for parts of the spec that weren't compared: webhooks, callbacks, `$ref`s to external URLs, and ignored exclusions.",
     why: 'So nothing is skipped silently.',

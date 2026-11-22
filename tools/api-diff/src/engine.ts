@@ -17,6 +17,7 @@ import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
 import { buildContext, componentName, type SpecContext } from './policy/context.ts';
+import { applyAcknowledgements, type Acknowledgements } from './policy/acks.ts';
 import { componentInSet, operationInSet, setsFor, type ExclusionSet } from './policy/exclusions.ts';
 import { HintIndex } from './policy/hints.ts';
 import { parseHintRules } from './policy/policy.ts';
@@ -34,6 +35,8 @@ export interface CompareOptions {
   revisionVersion?: string;
   baseLabels?: Record<string, string>;
   revisionLabels?: Record<string, string>;
+  /** Accepted findings (POLICY.md section 11). */
+  acknowledgements?: Acknowledgements;
   /** Reference date for deprecation periods and sunsets, `YYYY-MM-DD`; today (UTC) by default. */
   asOf?: string;
   /** Both inputs are one file at two git revisions (`documents-unrelated` skips those unless `when: always`). */
@@ -127,6 +130,13 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     const extra = checkVersions(findings, b.compared, r.compared, { unchanged: set, bump: set });
     if (extra.length) {
       findings.push(...classify(extra, { profile, ...(policy ? { policy } : {}) }));
+      findings.sort(compareFindings);
+    }
+  }
+  if (opts.acknowledgements?.entries.length) {
+    const notices = applyAcknowledgements(findings, opts.acknowledgements, opts.asOf ?? today());
+    if (notices.length) {
+      findings.push(...classify(notices, { profile, ...(policy ? { policy } : {}) }));
       findings.sort(compareFindings);
     }
   }
@@ -248,17 +258,19 @@ export async function compareInputs(base: InputSpec, revision: InputSpec, cwd: s
   }
 }
 
+/** Acknowledged findings count as changes, but not as breaking. */
 export function stateOf(findings: Finding[]): State {
   if (findings.length === 0) return 'no-changes';
-  return findings.some((f) => f.severity === 'error') ? 'breaking' : 'compatible';
+  return findings.some((f) => f.severity === 'error' && !f.acknowledged) ? 'breaking' : 'compatible';
 }
 
 export function countFindings(findings: Finding[]): Counts {
-  const c: Counts = { total: findings.length, bySeverity: { error: 0, warn: 0, info: 0 }, byKind: { wire: 0, sdk: 0, docs: 0 }, byRule: {} };
+  const c: Counts = { total: findings.length, bySeverity: { error: 0, warn: 0, info: 0 }, byKind: { wire: 0, sdk: 0, docs: 0 }, byRule: {}, acknowledged: 0 };
   for (const f of findings) {
     c.bySeverity[f.severity]++;
     c.byKind[f.kind]++;
     c.byRule[f.rule] = (c.byRule[f.rule] ?? 0) + 1;
+    if (f.acknowledged) c.acknowledged++;
   }
   return c;
 }
@@ -266,5 +278,5 @@ export function countFindings(findings: Finding[]): Counts {
 /** True if any finding is at or above `failOn`. */
 export function shouldFail(result: Result, failOn: FailOn): boolean {
   if (failOn === 'never') return false;
-  return result.findings.some((f) => severityAtLeast(f.severity, failOn));
+  return result.findings.some((f) => !f.acknowledged && severityAtLeast(f.severity, failOn));
 }

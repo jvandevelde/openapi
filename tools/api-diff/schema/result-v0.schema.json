@@ -34,7 +34,8 @@
           "required": ["wire", "sdk", "docs"],
           "additionalProperties": { "type": "integer" }
         },
-        "byRule": { "type": "object", "additionalProperties": { "type": "integer" } }
+        "byRule": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "acknowledged": { "type": "integer", "minimum": 0, "description": "Findings covered by an acknowledgement (included in the other counts)." }
       }
     },
     "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
@@ -80,7 +81,13 @@
         "revision": { "$ref": "#/$defs/location" },
         "details": { "type": "object" },
         "impact": { "type": "array", "items": { "type": "string" } },
-        "exclusions": { "description": "Policy exclusion sets the finding belongs to; reports can leave them out.", "type": "array", "items": { "type": "string" } }
+        "exclusions": { "description": "Policy exclusion sets the finding belongs to; reports can leave them out.", "type": "array", "items": { "type": "string" } },
+        "acknowledged": {
+          "description": "Set when an acknowledgement covers the finding: reported, but it doesn't fail CI or count towards state.",
+          "type": "object",
+          "required": ["reason", "expires", "file"],
+          "properties": { "reason": { "type": "string" }, "owner": { "type": "string" }, "expires": { "type": "string" }, "file": { "type": "string" } }
+        }
       }
     }
   }

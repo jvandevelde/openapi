@@ -2,7 +2,7 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M5.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference changes and docs changes are classified with direction-aware rules (118 of 127 implemented). Policy files arrive in M6.
+> **Status: milestone M6.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (130 of 132 implemented; rename detection is M8). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Audience reports (`ci`, `review`) arrive in M7.
 
 ## Requirements
 

@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { dump, load } from 'js-yaml';
 import { compareInputs } from '../src/engine.ts';
 import { parsePolicy } from '../src/policy/policy.ts';
+import { parseAcknowledgements } from '../src/policy/acks.ts';
 import { baseRuleId, CURRENT_MILESTONE, getRule, isImplemented, RULES } from '../src/rules/registry.ts';
 import type { Profile, Severity } from '../src/types.ts';
 
@@ -22,7 +23,7 @@ interface Expected {
   description: string;
   milestone: string;
   /** `policy` is read from M6; until then only cases for M6 or later use it. */
-  options?: { profile?: Profile; policy?: Record<string, unknown>; 'as-of'?: string; 'check-versions'?: boolean };
+  options?: { profile?: Profile; policy?: Record<string, unknown>; 'as-of'?: string; 'check-versions'?: boolean; acknowledgements?: unknown[] };
   findings: { rule: string; severity: Severity; subject: string }[];
 }
 
@@ -66,7 +67,7 @@ for (const name of names) {
   const todo = milestone > CURRENT_MILESTONE ? `needs ${expected.milestone}` : pending.length ? `needs ${[...new Set(pending)].join(', ')}` : undefined;
 
   test(name, { todo }, async () => {
-    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: casePolicy(expected, name), asOf: expected.options?.['as-of'] ?? '2026-11-21' });
+    const result = await compareInputs({ kind: 'fs', arg: input(dir, 'base'), path: input(dir, 'base') }, { kind: 'fs', arg: input(dir, 'revision'), path: input(dir, 'revision') }, dir, { profile: expected.options?.profile ?? 'wire', policy: casePolicy(expected, name), asOf: expected.options?.['as-of'] ?? '2026-11-21', ...(expected.options?.acknowledgements ? { acknowledgements: parseAcknowledgements(expected.options.acknowledgements, `${name}/expected.yaml`) } : {}) });
     const actual = result.findings.map((f) => ({ rule: f.rule, severity: f.severity, subject: f.subject }));
     if (process.env.UPDATE_CASES && !todo) {
       const next = { ...expected, findings: actual };

@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util';
 import { compareInputs, shouldFail, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
+import { loadAcknowledgements } from '../policy/acks.ts';
 import { renderTxt } from '../render/txt.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
@@ -45,6 +46,8 @@ Options:
       --base-label <k=v>, --revision-label <k=v>
                          extra version labels, e.g. build=8812; repeatable
       --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
+      --acknowledgements <file>  accepted findings (default: api-diff.ack.yaml in the working directory, if present)
+      --no-acknowledgements      ignore api-diff.ack.yaml
       --rule <id>=<sev>  set a rule's severity (error, warn, info, off); repeatable, beats the policy file
       --color / --no-color
   -h, --help
@@ -100,6 +103,8 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'no-policy': { type: 'boolean' },
       rule: { type: 'string', multiple: true },
       'as-of': { type: 'string' },
+      acknowledgements: { type: 'string' },
+      'no-acknowledgements': { type: 'boolean' },
       'base-version': { type: 'string' },
       'revision-version': { type: 'string' },
       'base-label': { type: 'string', multiple: true },
@@ -149,6 +154,9 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     return out;
   };
   const opts: CompareOptions = { profile, policy };
+  if (values.acknowledgements !== undefined && values['no-acknowledgements']) throw new UsageError('--acknowledgements and --no-acknowledgements cannot be used together');
+  const acks = values['no-acknowledgements'] ? undefined : loadAcknowledgements(cwd, values.acknowledgements);
+  if (acks) opts.acknowledgements = acks;
   if (asOf !== undefined) opts.asOf = asOf;
   if (values['base-version'] !== undefined) opts.baseVersion = values['base-version'];
   if (values['revision-version'] !== undefined) opts.revisionVersion = values['revision-version'];

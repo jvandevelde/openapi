@@ -216,13 +216,19 @@ The built-in reports (`ci`, `review`, `changelog`, `sdk`, `summary`, `audit`, `e
 ## 11. Acknowledgements file
 
 ```yaml
-- finding: c7f3e1a2                       # stable finding ID from any report
+- finding: c7f3e1a2b4d6                   # stable finding ID from any report
   reason: "Only the mobile app sends 'archived', and it's already updated."
   owner: "@orders-team"
   expires: 2027-01-31                     # after this date the finding counts again
 ```
 
-`finding`, `reason` and `expires` are required. An acknowledgement whose finding no longer appears is reported as stale (`info`), so the file can be cleaned up.
+`finding`, `reason` and `expires` are required; unknown keys, a malformed ID (12 hex characters, the `id` of a finding in any report) or the same finding twice are errors.
+
+- **Effect:** an acknowledged finding is still reported with its severity, marked `acknowledged` in JSON and "acknowledged until …" in text, but it doesn't fail CI (`--fail-on`) and doesn't make the `state` `breaking`. `counts.acknowledged` says how many there are.
+- **Expiry:** `expires` is the last day it applies, checked against today (UTC) or `--as-of`. After that the finding counts again, and `acknowledgement-expired` (`info`) says why it's back.
+- **Stale:** an acknowledgement whose finding no longer appears (fixed, or changed so it has a new ID) is `acknowledgement-stale` (`info`), so the file can be cleaned up.
+- **Version checks are unaffected:** an acknowledged breaking change still needs a major version bump.
+- The file is `api-diff.ack.yaml` in the working directory if present, `--acknowledgements <file>` to choose another, or `--no-acknowledgements` to ignore it.
 
 ## 12. In-spec hints
 

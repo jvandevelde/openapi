@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { load } from 'js-yaml';
 import { main, type Io } from '../../src/cli/main.ts';
 import { compareInputs } from '../../src/engine.ts';
+import { parseAcknowledgements } from '../../src/policy/acks.ts';
 import { parsePolicy, PolicyError } from '../../src/policy/policy.ts';
 
 const cases = fileURLToPath(new URL('../cases/', import.meta.url));
@@ -55,12 +56,17 @@ test('variant rule IDs and rule options are accepted', () => {
   assert.deepEqual(p.rules.get('operation-removed')?.options, { unless: { 'deprecated-for-days': 30 } });
 });
 
-test('every YAML example in POLICY.md sections 1-10 is a valid policy', () => {
+test('every YAML example in POLICY.md is a valid policy or acknowledgements file', () => {
   const md = readFileSync(POLICY_MD, 'utf8');
-  const blocks = [...md.matchAll(/```yaml\n([\s\S]*?)```/g)].map((m) => m[1]!);
-  const policies = blocks.map((b) => load(b)).filter((d) => d && !Array.isArray(d)); // section 11 is the acknowledgements file
-  assert.ok(policies.length >= 8);
+  const blocks = [...md.matchAll(/```yaml\n([\s\S]*?)```/g)].map((m) => load(m[1]!));
+  const acks = blocks.filter((d) => Array.isArray(d)); // section 11
+  const policies = blocks.filter((d) => d && !Array.isArray(d));
+  assert.equal(acks.length, 1);
+  assert.equal(policies.length, 8);
   for (const d of policies) parsePolicy(d, 'POLICY.md');
+  for (const d of acks) parseAcknowledgements(d, 'POLICY.md');
+  // The behaviour each example shows is tested in policy, overrides, lifecycle,
+  // exclusions, versions, hints and acks tests; reports (section 10) are M7.
 });
 
 test('a policy severity beats the default and says where it came from', async () => {

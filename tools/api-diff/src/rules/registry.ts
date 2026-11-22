@@ -238,6 +238,8 @@ rule({ id: 'spec-invalid', section: 11, kind: 'wire', title: 'Document failed to
 rule({ id: 'ref-unresolved', section: 11, kind: 'wire', title: '$ref points nowhere', severity: 'error', milestone: 3, message: (c) => `$ref '${d(c, 'ref')}' can't be resolved${c.details.reason ? `: ${d(c, 'reason')}` : ''}` });
 rule({ id: 'cycle-not-productive', section: 11, kind: 'wire', title: 'Cycle with no property or items step', severity: 'error', milestone: 4, message: (c) => `schema cycle ${(c.details.cycle as string[]).join(' → ')} has no property or items step, so it describes no valid value` });
 rule({ id: 'documents-unrelated', section: 11, kind: 'wire', title: 'The two documents look like different APIs', severity: 'error', milestone: 6, message: (c) => `documents look unrelated: ${d(c, 'summary')}; set documents-unrelated: off in the policy to compare them anyway` });
+rule({ id: 'acknowledgement-stale', section: 11, kind: 'wire', title: "An acknowledgement's finding no longer appears", severity: 'info', milestone: 6, message: (c) => `acknowledgement for finding ${d(c, 'name')} matches nothing now (fixed, or the finding changed); remove it from ${d(c, 'file')}` });
+rule({ id: 'acknowledgement-expired', section: 11, kind: 'wire', title: 'An acknowledgement expired', severity: 'info', milestone: 6, message: (c) => `acknowledgement for ${d(c, 'rule')} (${d(c, 'name')}) expired on ${d(c, 'expires')}, so the finding counts again` });
 rule({ id: 'not-compared', section: 11, kind: 'wire', title: "Parts of the spec that weren't compared", severity: 'info', milestone: 3, message: (c) => `${d(c, 'what')} not compared` });
 
 export const RULES: readonly RuleMeta[] = R;

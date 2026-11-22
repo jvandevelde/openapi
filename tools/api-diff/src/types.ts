@@ -61,6 +61,8 @@ export interface Finding {
   impact?: string[];
   /** Policy exclusion sets the finding belongs to (POLICY.md section 8); reports can leave them out. */
   exclusions?: string[];
+  /** Set when an acknowledgement covers the finding: it's reported but doesn't fail CI or count towards `state`. */
+  acknowledged?: { reason: string; owner?: string; expires: string; file: string };
 }
 
 export interface ComparedSide {
@@ -87,6 +89,8 @@ export interface Counts {
   bySeverity: Record<Severity, number>;
   byKind: Record<Kind, number>;
   byRule: Record<string, number>;
+  /** Findings covered by an acknowledgement (included in the other counts). */
+  acknowledged: number;
 }
 
 export interface Result {

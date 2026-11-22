@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-21 23:17 UTC |
 | **Summary** | Under semver, an `error` finding needs a major bump, other `wire`/`sdk` findings a minor bump and `docs` findings a patch bump, one level lower below 1.0.0; notices never count; `calver` only checks that the version changed. |
 | **Milestone** | M6 |

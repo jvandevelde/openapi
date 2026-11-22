@@ -14,7 +14,7 @@ import { applyDeprecationPeriod, diffLifecycle, removalOptions, stabilityLevels,
 import { DEFAULT_LIFECYCLE } from './policy/context.ts';
 import { SchemaIndex } from './index/schema-index.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
-import type { ParseCache } from './load/cache.ts';
+import type { ParseCacheLike } from './load/cache.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
 import { open, type InputSpec, type OpenedInput } from './sources/input.ts';
 import { buildContext, componentName, type SpecContext } from './policy/context.ts';
@@ -37,7 +37,9 @@ export interface CompareOptions {
   baseLabels?: Record<string, string>;
   revisionLabels?: Record<string, string>;
   /** Parse cache for the base side's files (opt-in, --cache-dir). */
-  cache?: ParseCache;
+  cache?: ParseCacheLike;
+  /** Parse cache for the revision side too (history: each version is parsed once). */
+  revisionCache?: ParseCacheLike;
   /** Add source snippets around each finding to the result (for the explore report). */
   snippets?: boolean;
   /** Accepted findings (POLICY.md section 11). */
@@ -63,7 +65,7 @@ function noticeToChange(n: Notice, side: Side): Change {
   return c;
 }
 
-async function loadSide(input: OpenedInput, side: Side, cache?: ParseCache): Promise<LoadedSide> {
+async function loadSide(input: OpenedInput, side: Side, cache?: ParseCacheLike): Promise<LoadedSide> {
   const docs = new DocumentSet(input.source, input.root, cache);
   const compared: ComparedSide = { input: input.source.info.input, file: input.source.display(input.root), version: 'unknown' };
   if (input.source.info.commit) compared.commit = input.source.info.commit;
@@ -97,7 +99,7 @@ async function loadSide(input: OpenedInput, side: Side, cache?: ParseCache): Pro
 
 export async function compareOpened(base: OpenedInput, revision: OpenedInput, opts: CompareOptions = {}): Promise<Result> {
   const profile = opts.profile ?? opts.policy?.profile ?? 'wire';
-  const [b, r] = await Promise.all([loadSide(base, 'base', opts.cache), loadSide(revision, 'revision')]);
+  const [b, r] = await Promise.all([loadSide(base, 'base', opts.cache), loadSide(revision, 'revision', opts.revisionCache)]);
   let changes: Change[] = [...b.changes, ...r.changes];
   const policy = opts.policy;
   const context = b.model || r.model ? buildContext(b.model, r.model, policy?.lifecycle, { base: b.hints, revision: r.hints }) : undefined;

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import type { DocumentSource } from '../sources/source.ts';
 import type { Location } from '../types.ts';
 import { detectFormat, parse, ParseError, type Parsed } from './parse.ts';
-import type { ParseCache } from './cache.ts';
+import type { ParseCacheLike } from './cache.ts';
 
 export interface LoadedFile {
   /** Path in the source's namespace. */
@@ -74,9 +74,9 @@ export class DocumentSet {
   readonly notices: Notice[] = [];
   root!: LoadedFile;
   readonly #rootPath: string;
-  readonly #cache: ParseCache | undefined;
+  readonly #cache: ParseCacheLike | undefined;
 
-  constructor(source: DocumentSource, rootPath: string, cache?: ParseCache) {
+  constructor(source: DocumentSource, rootPath: string, cache?: ParseCacheLike) {
     this.source = source;
     this.#rootPath = rootPath;
     this.#cache = cache;

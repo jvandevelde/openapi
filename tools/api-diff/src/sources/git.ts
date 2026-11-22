@@ -10,7 +10,7 @@ import { SourceError, type DocumentSource } from './source.ts';
 
 const exec = promisify(execFile);
 
-async function git(cwd: string, args: string[]): Promise<string> {
+export async function git(cwd: string, args: string[]): Promise<string> {
   try {
     const { stdout } = await exec('git', args, { cwd, maxBuffer: 64 * 1024 * 1024 });
     return stdout.trim();
@@ -54,7 +54,7 @@ export async function locate(cwd: string, file: string): Promise<GitTarget> {
   return { toplevel, path: relative(toplevel, abs).split(sep).join('/') };
 }
 
-function checkRev(rev: string): void {
+export function checkRev(rev: string): void {
   if (rev.startsWith('-')) throw new SourceError(`invalid revision '${rev}'`);
 }
 

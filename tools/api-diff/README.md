@@ -2,7 +2,7 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M7.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (all 132 rules implemented, including rename detection). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Reports: `review` (the default), `ci` and `summary`, in text, JSON or HTML, with a ready-to-copy PR workflow. `changelog`, `sdk` and `explore` arrive in M8.
+> **Status: milestone M8.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (all 132 rules implemented, including rename detection). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Reports: `review` (the default), `ci`, `summary`, `changelog` (with migration notes for clients), `sdk` and `explore` (interactive HTML), plus a step-by-step `history` timeline and a ready-to-copy PR workflow. Audit and custom reports arrive in M9.
 
 ## Requirements
 
@@ -71,6 +71,15 @@ ERROR  securitySchemes/apiKey  security scheme 'apiKey' changed: name  revision.
 WARN   GET /pets               success response 202 added  revision.yaml:11 · response-success-status-added
 
 3 findings: 2 error, 1 warn, 0 info · state: breaking
+```
+
+## History
+
+`api-diff history <start>..<end> <file>` shows how a spec changed step by step between two git revisions: one step per first-parent commit that changed the file or anything it `$ref`s, the release tags between them, which changes a later commit reverted, and the net result. `--report timeline:html:history.html` writes an interactive timeline; `--tags-only`, `--max-steps <n>` and `--all-commits` change which commits count.
+
+```sh
+api-diff history v1.4.0..HEAD openapi.yaml
+api-diff history v1.4.0..v2.0.0 openapi.yaml --report timeline:html:history.html
 ```
 
 ## On pull requests

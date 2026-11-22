@@ -22,7 +22,41 @@ interface Entry {
   positions: [object, Offsets][];
 }
 
-export class ParseCache {
+/** What DocumentSet needs from a parse cache. */
+export interface ParseCacheLike {
+  get(text: string, format: Parsed['format']): Parsed | undefined;
+  put(text: string, parsed: Parsed): void;
+}
+
+/**
+ * An in-memory cache of the last few parsed files, for history: each version
+ * is the revision of one step and the base of the next, so it's parsed once.
+ */
+export class MemoryParseCache implements ParseCacheLike {
+  readonly #entries = new Map<string, Parsed>();
+  readonly #max: number;
+  constructor(max = 64) {
+    this.#max = max;
+  }
+  #key(text: string, format: string): string {
+    return `${format}\u0000${createHash('sha256').update(text).digest('hex')}`;
+  }
+  get(text: string, format: Parsed['format']): Parsed | undefined {
+    const k = this.#key(text, format);
+    const hit = this.#entries.get(k);
+    if (hit) {
+      this.#entries.delete(k);
+      this.#entries.set(k, hit); // most recently used last
+    }
+    return hit;
+  }
+  put(text: string, parsed: Parsed): void {
+    this.#entries.set(this.#key(text, parsed.format), parsed);
+    while (this.#entries.size > this.#max) this.#entries.delete(this.#entries.keys().next().value!);
+  }
+}
+
+export class ParseCache implements ParseCacheLike {
   readonly dir: string;
   hits = 0;
   misses = 0;

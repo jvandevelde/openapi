@@ -9,6 +9,8 @@ import { parseArgs } from 'node:util';
 import { compareInputs, countFindings, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
+import { history, type HistoryOptions } from '../history.ts';
+import { renderTimeline, renderTimelineHtml, timelineData } from '../render/timeline.ts';
 import { ParseCache } from '../load/cache.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
 import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
@@ -27,6 +29,7 @@ Usage:
   api-diff [options] --base <rev> [--revision <rev>] <file>
   api-diff rules [<rule-id>] [--format txt|json] [--all]
   api-diff schema
+  api-diff history <start>..<end> <file> [options]   how the spec changed step by step (see below)
 
 Inputs:
   openapi.yaml          a file
@@ -63,6 +66,15 @@ Options:
       --color / --no-color
   -h, --help
   -v, --version
+
+History (api-diff history <start>..<end> <file>):
+  Compares each version of the file between two git revisions (first-parent commits that changed
+  it or a file it $refs), plus start → end for the net result, and marks changes reverted later.
+      --report timeline[:<format>[:<file>]]   txt (default), json or html
+      --all-commits      every commit, not only first-parent ones
+      --tags-only        only tagged commits (release to release)
+      --max-steps <n>    keep the latest n steps
+  Also: -C, --policy, --no-policy, --rule, --profile, --as-of.
 `;
 
 class UsageError extends Error {}
@@ -82,6 +94,7 @@ function oneOf<T extends string>(name: string, v: string | undefined, allowed: r
 export async function main(argv: string[], io: Io = { stdout: process.stdout, stderr: process.stderr, env: process.env }): Promise<number> {
   try {
     if (argv[0] === 'rules') return rulesCommand(argv.slice(1), io.stdout);
+    if (argv[0] === 'history') return await historyCommand(argv.slice(1), io);
     if (argv[0] === 'schema') {
       io.stdout.write(readFileSync(new URL('../../schema/result-v0.schema.json', import.meta.url), 'utf8'));
       return 0;
@@ -198,6 +211,53 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   }
   // The ci report is the gate: its exclusions and filters apply to the exit code too.
   return shouldFail(viewFor(result, policy.reports.get('ci'), recount), failOn) ? 1 : 0;
+}
+
+async function historyCommand(argv: string[], io: Io): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      cwd: { type: 'string', short: 'C' },
+      report: { type: 'string' },
+      policy: { type: 'string' },
+      'no-policy': { type: 'boolean' },
+      rule: { type: 'string', multiple: true },
+      profile: { type: 'string' },
+      'as-of': { type: 'string' },
+      'all-commits': { type: 'boolean' },
+      'tags-only': { type: 'boolean' },
+      'max-steps': { type: 'string' },
+    },
+  });
+  if (positionals.length !== 2) throw new UsageError('usage: api-diff history <start>..<end> <file>');
+  const cwd = resolve(values.cwd ?? process.cwd());
+  const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
+  for (const r of values.rule ?? []) {
+    const eq = r.indexOf('=');
+    if (eq <= 0) throw new UsageError(`--rule must be <rule-id>=<severity>, got '${r}'`);
+    const id = r.slice(0, eq);
+    const setting = parseRuleSetting(id, r.slice(eq + 1), `--rule ${id}`);
+    policy.rules.set(id, { ...policy.rules.get(id), severity: setting.severity!, options: policy.rules.get(id)?.options ?? {}, from: '--rule' });
+  }
+  const [name, format = 'txt', ...rest] = (values.report ?? 'timeline').split(':');
+  if (name !== 'timeline') throw new UsageError(`history writes the timeline report; got --report ${name}`);
+  if (!['txt', 'json', 'html'].includes(format)) throw new UsageError(`the timeline report has no ${format} format; formats: txt, json, html`);
+  const file = rest.join(':');
+  const maxSteps = values['max-steps'] === undefined ? undefined : Number(values['max-steps']);
+  if (maxSteps !== undefined && !(Number.isInteger(maxSteps) && maxSteps > 0)) throw new UsageError('--max-steps must be a whole number above 0');
+  const asOf = values['as-of'];
+  if (asOf !== undefined && !isoDate(asOf)) throw new UsageError(`--as-of must be a date (YYYY-MM-DD), got '${asOf}'`);
+  const opts: HistoryOptions = { profile: oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], policy.profile ?? 'wire'), policy };
+  if (asOf !== undefined) opts.asOf = asOf;
+  if (values['all-commits']) opts.allCommits = true;
+  if (values['tags-only']) opts.tagsOnly = true;
+  if (maxSteps !== undefined) opts.maxSteps = maxSteps;
+  const h = await history(positionals[0]!, positionals[1]!, cwd, opts);
+  const text = format === 'json' ? JSON.stringify(timelineData(h), null, 2) + '\n' : format === 'html' ? renderTimelineHtml(h) : renderTimeline(h);
+  if (file && file !== '-') writeFileSync(resolve(cwd, file), text);
+  else io.stdout.write(text);
+  return 0;
 }
 
 function severityText(r: RuleMeta): string {

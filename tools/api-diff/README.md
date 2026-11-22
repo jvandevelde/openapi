@@ -39,9 +39,10 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 |---|---|
 | `--base <rev>`, `--revision <rev>` | Read the given file at these revisions. `<rev>...` means the merge-base with the other side (`HEAD` by default) |
 | `-C, --cwd <dir>` | Run as if started in `<dir>` |
-| `-f, --format <fmt>` | `txt` (default) or `json` ([schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
-| `-o, --output <file>` | Write the report to a file |
-| `--fail-on <level>` | Exit with code 1 if any finding is at or above `error` (default), `warn` or `info`; `never` always exits 0 |
+| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. Formats `txt` and `json`; without a file it goes to stdout (one report at most) |
+| `-f, --format <fmt>` | Format of the default `review` report: `txt` (default) or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
+| `-o, --output <file>` | Write the default report to a file |
+| `--fail-on <level>` | Exit with code 1 if any finding is at or above `error`, `warn` or `info`. The default is `never`: breaking changes are reported, not blocked, unless a team opts in |
 | `--state` | Print only `no-changes`, `compatible` or `breaking` |
 | `--profile <name>` | `wire` (default) or `sdk`: raises rules that break generated SDKs, such as `operation-id-changed` |
 | `--policy <file>`, `--no-policy` | The policy file: `api-diff.yaml` in the working directory by default, if present. See [POLICY.md](POLICY.md) |
@@ -51,7 +52,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
 | `--color`, `--no-color` | Colour is on for terminals unless `NO_COLOR` is set |
 
-Exit codes: `0` no findings at or above `--fail-on`, `1` findings at or above it, `2` usage or input error (missing file, unknown revision).
+Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` findings at or above it, `2` usage or input error (missing file, unknown revision, invalid policy).
 
 `api-diff rules` lists the implemented rules with their default severities (`--all` includes planned ones, `--format json` for scripts). `api-diff rules <id>` explains one rule. The full reference, one page per rule, is in [docs/rules/](docs/rules/README.md).
 

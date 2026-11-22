@@ -96,7 +96,7 @@ async function run(...argv: string[]): Promise<{ code: number; out: string; err:
 }
 
 test('--rule documents-unrelated=off runs the full diff', async () => {
-  const on = await run('-C', UNRELATED, '--no-policy', '--state', 'base.yaml', 'revision.yaml');
+  const on = await run('-C', UNRELATED, '--no-policy', '--fail-on', 'error', '--state', 'base.yaml', 'revision.yaml');
   assert.equal(on.code, 1);
   const off = await run('-C', UNRELATED, '--no-policy', '--rule', 'documents-unrelated=off', '-f', 'json', 'base.yaml', 'revision.yaml');
   assert.ok(JSON.parse(off.out).findings.length > 1);

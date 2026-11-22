@@ -100,5 +100,11 @@ export interface Result {
   compared: { base: ComparedSide; revision: ComparedSide };
   state: State;
   counts: Counts;
+  /** Semver advice, when both versions are semver: the bump the findings need and the bump the versions show. */
+  advice?: { needed: BumpLevel; actual: BumpLevel; ok: boolean; because?: string; breaking: number };
+  /** The policy file used, if any, and the SHA-256 of its contents. */
+  policy?: { file: string; sha256: string };
   findings: Finding[];
 }
+
+export type BumpLevel = 'none' | 'patch' | 'minor' | 'major';

@@ -8,7 +8,7 @@ import { collapseBulk } from './diff/bulk.ts';
 import { diffDocs } from './diff/docs.ts';
 import { diffSchemaEngine } from './diff/schema-engine.ts';
 import { checkUnrelated, unrelatedOptions } from './diff/unrelated.ts';
-import { checkVersions, DEFAULT_VERSIONS, recordVersions, schemeOption } from './diff/versions.ts';
+import { bumpAdvice, checkVersions, DEFAULT_VERSIONS, recordVersions, schemeOption } from './diff/versions.ts';
 import { compareFindings } from './classify/classify.ts';
 import { applyDeprecationPeriod, diffLifecycle, removalOptions, stabilityLevels, today, type LifecycleOptions } from './diff/lifecycle.ts';
 import { DEFAULT_LIFECYCLE } from './policy/context.ts';
@@ -148,7 +148,7 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
       if (names.length) f.exclusions = names;
     }
   }
-  return {
+  const result: Result = {
     schemaVersion: 0,
     tool: { name: 'api-diff', version: VERSION },
     profile,
@@ -157,6 +157,11 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     counts: countFindings(findings),
     findings,
   };
+  const advice = !unrelated && b.model && r.model ? bumpAdvice(findings, b.compared, r.compared) : undefined;
+  if (advice) result.advice = advice;
+  if (policy?.file && policy.sha256) result.policy = { file: policy.file, sha256: policy.sha256 };
+  return result;
+
 }
 
 function lifecycleOptions(opts: CompareOptions): LifecycleOptions {

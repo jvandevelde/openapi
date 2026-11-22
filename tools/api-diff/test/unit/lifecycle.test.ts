@@ -60,8 +60,8 @@ async function run(...argv: string[]): Promise<{ code: number; out: string; err:
 
 test('--as-of sets the reference date', async () => {
   const dir = fileURLToPath(new URL('../cases/operation-removed-deprecated-too-short/', import.meta.url));
-  assert.equal((await run('-C', dir, '--no-policy', '--as-of', '2026-11-21', 'base.yaml', 'revision.yaml')).code, 1);
-  assert.equal((await run('-C', dir, '--no-policy', '--as-of', '2027-01-01', 'base.yaml', 'revision.yaml')).code, 0);
+  assert.equal((await run('-C', dir, '--no-policy', '--fail-on', 'error', '--as-of', '2026-11-21', 'base.yaml', 'revision.yaml')).code, 1);
+  assert.equal((await run('-C', dir, '--no-policy', '--fail-on', 'error', '--as-of', '2027-01-01', 'base.yaml', 'revision.yaml')).code, 0);
   const r = await run('-C', dir, '--as-of', '21/11/2026', 'base.yaml', 'revision.yaml');
   assert.equal(r.code, 2);
   assert.match(r.err, /--as-of must be a date \(YYYY-MM-DD\)/);

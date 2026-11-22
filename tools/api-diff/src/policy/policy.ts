@@ -5,6 +5,7 @@
 // exclusions, ignore, versions, reports) are checked for their top-level
 // shape and kept as given in `raw`, until their step validates them fully.
 
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { load } from 'js-yaml';
@@ -33,6 +34,8 @@ export interface RuleSetting {
 export interface Policy {
   /** File the policy came from, for messages and severity provenance. */
   file?: string;
+  /** SHA-256 of the policy file's contents, when loaded from a file. */
+  sha256?: string;
   profile?: Profile;
   failOn?: FailOn;
   minSeverity?: Severity;
@@ -81,12 +84,15 @@ export function loadPolicyFile(cwd: string, explicit?: string): Policy {
     return emptyPolicy();
   }
   let data: unknown;
+  const text = readFileSync(path, 'utf8');
   try {
-    data = load(readFileSync(path, 'utf8'));
+    data = load(text);
   } catch (e) {
     throw new PolicyError(`${explicit ?? DEFAULT_POLICY_FILE}: ${(e as Error).message.split('\n')[0]}`);
   }
-  return parsePolicy(data ?? {}, explicit ?? DEFAULT_POLICY_FILE);
+  const policy = parsePolicy(data ?? {}, explicit ?? DEFAULT_POLICY_FILE);
+  policy.sha256 = createHash('sha256').update(text).digest('hex');
+  return policy;
 }
 
 /** Validates a parsed policy document. `file` is used in error messages. */

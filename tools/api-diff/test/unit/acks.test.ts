@@ -60,12 +60,12 @@ test('the CLI reads api-diff.ack.yaml; acknowledged findings don\'t fail CI', as
   try {
     cpSync(CASE, dir, { recursive: true });
     writeFileSync(join(dir, 'api-diff.ack.yaml'), `- finding: ${ID}\n  reason: Only the retired admin console called it.\n  owner: "@pets-team"\n  expires: 2027-01-31\n`);
-    const r = await run('-C', dir, '--as-of', '2026-11-21', 'base.yaml', 'revision.yaml');
+    const r = await run('-C', dir, '--fail-on', 'error', '--as-of', '2026-11-21', 'base.yaml', 'revision.yaml');
     assert.equal(r.code, 0);
-    assert.match(r.out, /acknowledged until 2027-01-31 by @pets-team: Only the retired admin console called it\. \(doesn't fail CI\)/);
-    assert.match(r.out, /\(1 acknowledged\) · state: compatible/);
-    assert.equal((await run('-C', dir, '--no-acknowledgements', 'base.yaml', 'revision.yaml')).code, 1);
-    assert.equal((await run('-C', dir, '--as-of', '2027-02-01', 'base.yaml', 'revision.yaml')).code, 1);
+    assert.match(r.out, /acknowledged until 2027-01-31 by @pets-team: Only the retired admin console called it\./);
+    assert.match(r.out, /\(1 acknowledged\) · state: compatible · fails CI at error and above/);
+    assert.equal((await run('-C', dir, '--fail-on', 'error', '--no-acknowledgements', 'base.yaml', 'revision.yaml')).code, 1);
+    assert.equal((await run('-C', dir, '--fail-on', 'error', '--as-of', '2027-02-01', 'base.yaml', 'revision.yaml')).code, 1);
     writeFileSync(join(dir, 'api-diff.ack.yaml'), `- finding: ${ID}\n  reason: x\n`);
     const bad = await run('-C', dir, 'base.yaml', 'revision.yaml');
     assert.equal(bad.code, 2);

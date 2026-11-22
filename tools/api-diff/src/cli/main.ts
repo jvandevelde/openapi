@@ -1,6 +1,7 @@
 // Command-line interface.
 //
-// Exit codes: 0 ok, 1 findings at or above --fail-on, 2 usage or input error.
+// Exit codes: 0 ok, 1 findings at or above --fail-on (never by default, so
+// only when a team opts in), 2 usage or input error.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -9,7 +10,7 @@ import { compareInputs, shouldFail, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
-import { renderTxt } from '../render/txt.ts';
+import { parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
@@ -34,9 +35,13 @@ Inputs:
 
 Options:
   -C, --cwd <dir>        run as if started in <dir>
-  -f, --format <fmt>     txt (default) or json
-  -o, --output <file>    write the report to a file instead of stdout
-      --fail-on <level>  exit 1 if any finding is at or above: error (default), warn, info, never
+      --report <name>[:<format>[:<file>]]
+                         a report to write; repeatable. Reports: review (the default; what changed and who
+                         it affects), ci (short, for CI logs), summary (size and risk). Formats: txt, json
+  -f, --format <fmt>     format of the default report: txt (default) or json
+  -o, --output <file>    write the default report to a file instead of stdout
+      --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
+                         report without failing)
       --state            print only the state: no-changes, compatible or breaking
       --profile <name>   wire (default) or sdk
       --policy <file>    policy file (default: api-diff.yaml in the working directory, if present)
@@ -77,7 +82,7 @@ export async function main(argv: string[], io: Io = { stdout: process.stdout, st
     }
     return await diffCommand(argv, io);
   } catch (e) {
-    if (e instanceof UsageError || e instanceof SourceError || e instanceof PolicyError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+    if (e instanceof UsageError || e instanceof SourceError || e instanceof PolicyError || e instanceof ReportError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
       io.stderr.write(`api-diff: ${(e as Error).message}\n`);
       if (e instanceof UsageError || !(e instanceof SourceError || e instanceof PolicyError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
       return 2;
@@ -105,6 +110,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'as-of': { type: 'string' },
       acknowledgements: { type: 'string' },
       'no-acknowledgements': { type: 'boolean' },
+      report: { type: 'string', multiple: true },
       'base-version': { type: 'string' },
       'revision-version': { type: 'string' },
       'base-label': { type: 'string', multiple: true },
@@ -134,7 +140,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     const setting = parseRuleSetting(id, r.slice(eq + 1), `--rule ${id}`);
     policy.rules.set(id, { ...policy.rules.get(id), severity: setting.severity!, options: policy.rules.get(id)?.options ?? {}, from: '--rule' });
   }
-  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], policy.failOn ?? 'error');
+  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], policy.failOn ?? 'never');
   const profile = oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], policy.profile ?? 'wire');
   if (positionals.length === 0 && values.base === undefined) {
     io.stdout.write(HELP);
@@ -164,17 +170,19 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   const rl = labels('revision-label', values['revision-label']);
   if (bl) opts.baseLabels = bl;
   if (rl) opts.revisionLabels = rl;
+  if (values.report?.length && (values.format !== undefined || values.output !== undefined)) throw new UsageError('--format and --output set the default report; with --report, give the format and file in it (e.g. --report review:json:review.json)');
+  const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', format, ...(values.output ? { file: values.output } : {}) }];
+  if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
   const result = await compareInputs(base, revision, cwd, opts);
 
-  let text: string;
-  if (values.state) text = `${result.state}\n`;
-  else if (format === 'json') text = JSON.stringify(result, null, 2) + '\n';
-  else {
-    const color = values['no-color'] ? false : values.color ? true : !values.output && !!io.stdout.isTTY && !io.env.NO_COLOR;
-    text = renderTxt(result, { color });
+  if (values.state) io.stdout.write(`${result.state}\n`);
+  for (const spec of reports) {
+    if (values.state && !spec.file) continue;
+    const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
+    const text = renderReport(spec, result, { color, failOn });
+    if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
+    else io.stdout.write(text);
   }
-  if (values.output) writeFileSync(resolve(cwd, values.output), text);
-  else io.stdout.write(text);
   return shouldFail(result, failOn) ? 1 : 0;
 }
 

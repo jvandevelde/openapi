@@ -30,7 +30,7 @@ Acknowledgements live in a separate file (`api-diff.ack.yaml` or `--acknowledgem
 ```yaml
 profile: wire            # or sdk: raises the sdk-kind rules (see RULES.md)
 defaults:
-  fail-on: error         # error | warn | info | never; exit code 1 at or above this
+  fail-on: error         # error | warn | info | never (default); exit code 1 at or above this
   min-severity: info     # findings below this are dropped from every report
 ```
 

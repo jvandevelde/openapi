@@ -125,8 +125,8 @@ function withCase(name: string, policy: string | undefined, fn: (dir: string) =>
 
 test('the CLI reads api-diff.yaml from the working directory', () =>
   withCase('operation-removed', 'rules:\n  operation-removed: warn\n', async (dir) => {
-    assert.equal((await run('-C', dir, 'base.yaml', 'revision.yaml')).code, 0);
-    assert.equal((await run('-C', dir, '--no-policy', 'base.yaml', 'revision.yaml')).code, 1);
+    assert.equal((await run('-C', dir, '--fail-on', 'error', 'base.yaml', 'revision.yaml')).code, 0);
+    assert.equal((await run('-C', dir, '--no-policy', '--fail-on', 'error', 'base.yaml', 'revision.yaml')).code, 1);
   }));
 
 test('defaults.fail-on is used unless --fail-on is given', () =>
@@ -137,7 +137,7 @@ test('defaults.fail-on is used unless --fail-on is given', () =>
 
 test('--rule beats the policy file', () =>
   withCase('operation-removed', 'rules:\n  operation-removed: warn\n', async (dir) => {
-    const r = await run('-C', dir, '--rule', 'operation-removed=error', '-f', 'json', 'base.yaml', 'revision.yaml');
+    const r = await run('-C', dir, '--fail-on', 'error', '--rule', 'operation-removed=error', '-f', 'json', 'base.yaml', 'revision.yaml');
     assert.equal(r.code, 1);
     assert.equal(JSON.parse(r.out).findings[0].severitySource, '--rule: rules.operation-removed');
   }));

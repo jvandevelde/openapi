@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-21 04:05 UTC |
 | **Summary** | Build the `ci` and `review` reports before the other reports. |
 | **Milestone** | M7 |

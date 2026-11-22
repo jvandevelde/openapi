@@ -39,8 +39,8 @@ Options:
   -C, --cwd <dir>        run as if started in <dir>
       --report <name>[:<format>[:<file>]]
                          a report to write; repeatable. Reports: review (the default; what changed and who
-                         it affects), ci (short, for CI logs), summary (size and risk). Formats: txt, json,
-                         html (review and summary)
+                         it affects), ci (short, for CI logs), summary (size and risk), changelog (for API
+                         consumers). Formats: txt, json, html (all but ci)
   -f, --format <fmt>     format of the default report: txt (default), json or html
   -o, --output <file>    write the default report to a file instead of stdout
       --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
@@ -190,7 +190,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     const cfg = policy.reports.get(spec.name);
     const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
-    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn });
+    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs') });
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }

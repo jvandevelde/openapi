@@ -40,6 +40,8 @@ export function fieldOf(path: unknown): string {
 }
 
 const shortSchema = (subject: string): string => subject.replace(/^#\/components\/schemas\//, '');
+/** `query parameter 'limit'` → the query parameter `limit`; `request body (application/json)` → the request body. */
+const usageText = (u: string): string => `the ${u.replace(/ \([^)]*\)$/, '').replace(/'([^']+)'/g, '`$1`')}`;
 
 const was = (x: Helpers): string => (x.d('from') === 'none' || x.d('from') === '' ? 'there was no limit before' : `was ${x.d('from')}`);
 const narrowedLimit: Note = (f, dir, x) => (dir === 'request' ? `Send ${x.field} within the new limit: ${code(lastKeyword(f))} is now ${x.d('to')} (${was(x)}).` : undefined);
@@ -161,7 +163,7 @@ const NOTES: Record<string, Note> = {
   'schema-title-changed': (_f, _d, x) => `Some SDK generators name types after titles, so the type may be renamed from ${code(x.d('from'))} to ${code(x.d('to'))}.`,
 
   // Lifecycle
-  'deprecated-added': (f, _d, x) => `Plan to stop using ${x.d('what') || 'this'}${x.d('name') ? ` ${code(x.d('name'))}` : f.subject.startsWith('#') ? ` ${code(shortSchema(f.subject))}` : ''}; it's deprecated.`,
+  'deprecated-added': (f, _d, x) => `Plan to stop using ${x.d('what') === 'operation' ? code(f.subject) : `${x.d('what') || 'this'}${x.d('name') ? ` ${code(x.d('name'))}` : f.subject.startsWith('#') ? ` ${code(shortSchema(f.subject))}` : ''}`}; it's deprecated.`,
   'sunset-moved-earlier': (f, _d, x) => `Move off ${code(f.subject)} by ${x.d('to')} (the sunset date was ${x.d('from')}).`,
   'stability-decreased': (f, _d, x) => `${code(f.subject)} is now ${x.d('to')} (was ${x.d('from')}); expect changes with less notice.`,
 
@@ -182,7 +184,7 @@ export function clientNote(f: Finding): string | undefined {
       const v = f.details[k];
       return (Array.isArray(v) ? v : v === undefined ? [] : [v]).map((s) => code(show(s))).join(', ');
     },
-    field: field ? code(field) : f.subject.startsWith('#') ? code(shortSchema(f.subject)) : 'the value',
+    field: field ? code(field) : typeof f.details.usage === 'string' ? usageText(f.details.usage) : f.subject.startsWith('#') ? code(shortSchema(f.subject)) : 'the value',
     loc: String(f.rule.match(/^(query|header|cookie)-/)?.[1] ?? 'path'),
   };
   return note(f, dir, x);

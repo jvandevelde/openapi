@@ -50,6 +50,15 @@
         "breaking": { "type": "integer", "minimum": 0 }
       }
     },
+    "operations": {
+      "description": "The operations findings mention, by subject (e.g. GET /pets), for grouping and labels.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["tags"],
+        "properties": { "operationId": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "summary": { "type": "string" } }
+      }
+    },
     "policy": {
       "description": "The policy file used, and the SHA-256 of its contents.",
       "type": "object",
@@ -69,6 +78,7 @@
         "version": { "type": "string", "description": "info.version, or 'unknown'." },
         "sha256": { "type": "string" },
         "commit": { "type": "string", "description": "Resolved commit SHA for git inputs." },
+        "title": { "type": "string", "description": "info.title." },
         "versionSource": { "type": "string", "description": "Where version came from, e.g. info.version, x-api-version or command line." },
         "labels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Version labels from the policy or the command line; commit for git inputs." }
       }

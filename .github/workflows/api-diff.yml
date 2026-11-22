@@ -93,7 +93,8 @@ jobs:
             --report "review:txt:$PWD/out/review.txt" \
             --report "review:html:$PWD/out/review.html" \
             --report "review:json:$PWD/out/result.json" \
-            --report "summary:json:$PWD/out/summary.json"
+            --report "summary:json:$PWD/out/summary.json" \
+            --report "changelog:html:$PWD/out/changelog.html"
       - uses: actions/upload-artifact@v4
         if: steps.diff.outputs.skip != 'true'
         with:

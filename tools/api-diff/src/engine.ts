@@ -23,7 +23,7 @@ import { componentInSet, operationInSet, setsFor, type ExclusionSet } from './po
 import { HintIndex } from './policy/hints.ts';
 import { parseHintRules } from './policy/policy.ts';
 import type { Policy } from './policy/policy.ts';
-import type { Kind } from './types.ts';
+import type { Kind, OperationSummary } from './types.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
 
@@ -164,6 +164,16 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   const advice = !unrelated && b.model && r.model ? bumpAdvice(findings, b.compared, r.compared) : undefined;
   if (advice) result.advice = advice;
   if (policy?.file && policy.sha256) result.policy = { file: policy.file, sha256: policy.sha256 };
+  if (context) {
+    const ops: Record<string, OperationSummary> = {};
+    for (const f of findings) {
+      for (const s of [f.subject, ...(f.impact ?? [])]) {
+        const op = context.operations.get(s);
+        if (op && !ops[s]) ops[s] = { tags: op.tags, ...(op.operationId ? { operationId: op.operationId } : {}), ...(op.summary ? { summary: op.summary } : {}) };
+      }
+    }
+    if (Object.keys(ops).length) result.operations = ops;
+  }
   return result;
 
 }

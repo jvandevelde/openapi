@@ -69,6 +69,8 @@ export function recordVersions(side: ComparedSide, doc: unknown, settings: Versi
       }
     }
   }
+  const title = readSource(doc, 'info.title');
+  if (title !== undefined) side.title = title;
   const labels: Record<string, string> = {};
   if (side.commit) labels.commit = side.commit;
   for (const [name, src] of settings.labels) {

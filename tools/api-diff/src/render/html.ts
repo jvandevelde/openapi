@@ -6,6 +6,7 @@ import type { Finding, Result, Severity } from '../types.ts';
 import { adviceLine, isChange, isNotice, isVersion, where } from './common.ts';
 import { docsSummary, groupFindings, type Group } from './review.ts';
 import { summaryData } from './summary.ts';
+import { changelogData, type ChangelogEntry } from './changelog.ts';
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 
@@ -119,4 +120,37 @@ export function renderSummaryHtml(r: Result): string {
     countsLine(r),
   ];
   return page('api-diff summary', body.join('\n'));
+}
+
+const KIND_LABEL: Record<ChangelogEntry['kind'], string> = { added: 'Added', changed: 'Changed', deprecated: 'Deprecated', removed: 'Removed' };
+
+function changelogEntry(e: ChangelogEntry): string {
+  const tag = e.breaking ? '<span class="sev error">breaking</span>' : `<span class="sev info">${KIND_LABEL[e.kind].toLowerCase()}</span>`;
+  return `<li>${tag}<div><strong>${KIND_LABEL[e.kind]}:</strong> ${esc(e.text)}${e.note ? `<div>${inlineCode(e.note)}</div>` : ''}</div></li>`;
+}
+
+/** Escapes, then turns `code` spans into <code>. */
+const inlineCode = (s: string): string => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+
+export function renderChangelogHtml(r: Result, opts: { docs?: boolean } = {}): string {
+  const d = changelogData(r, opts);
+  const title = `${d.title ?? 'API'} ${d.from} → ${d.to}`;
+  const parts = [`<h1>${esc(title)}</h1>`];
+  if (!d.tags.length && !d.components.length) return page(`${title}: changelog`, `${parts[0]}\n<p>No changes for API clients.</p>`);
+  parts.push(`<p>${d.breaking ? `<strong>${d.breaking} breaking change${d.breaking === 1 ? '' : 's'}.</strong> Clients may need updating; each change below says what to do.` : 'No breaking changes.'}</p>`);
+  for (const t of d.tags) {
+    parts.push(`<h2>${esc(t.tag)}</h2>`);
+    for (const op of t.operations) {
+      const head = op.operation === 'API-wide' ? '' : `<summary><span class="subject"><code>${esc(op.operation)}</code></span>${op.summary ? `<span class="muted">${esc(op.summary)}</span>` : ''}</summary>`;
+      parts.push(op.operation === 'API-wide' ? `<ul class="findings">${op.entries.map(changelogEntry).join('\n')}</ul>` : `<details open>${head}<ul class="findings">${op.entries.map(changelogEntry).join('\n')}</ul></details>`);
+    }
+  }
+  if (d.components.length) {
+    parts.push('<h2>Shared types</h2>');
+    for (const c of d.components) {
+      const used = c.operations.length ? `<span class="muted">used by ${esc(c.operations.join(', '))}</span>` : '';
+      parts.push(`<details open><summary><span class="subject"><code>${esc(c.component)}</code></span>${used}</summary><ul class="findings">${c.entries.map(changelogEntry).join('\n')}</ul></details>`);
+    }
+  }
+  return page(`${title}: changelog`, parts.join('\n'));
 }

@@ -12,13 +12,14 @@ import { renderCi } from './ci.ts';
 import type { TxtOptions } from './common.ts';
 import { renderReview } from './review.ts';
 import { renderSummary, summaryData } from './summary.ts';
-import { renderReviewHtml, renderSummaryHtml } from './html.ts';
+import { renderChangelogHtml, renderReviewHtml, renderSummaryHtml } from './html.ts';
+import { changelogData, renderChangelog } from './changelog.ts';
 
-export const REPORTS = ['review', 'ci', 'summary'] as const;
+export const REPORTS = ['review', 'ci', 'summary', 'changelog'] as const;
 export type ReportName = (typeof REPORTS)[number];
 export type Format = 'txt' | 'json' | 'html';
 
-export const FORMATS: Record<ReportName, Format[]> = { review: ['txt', 'json', 'html'], ci: ['txt', 'json'], summary: ['txt', 'json', 'html'] };
+export const FORMATS: Record<ReportName, Format[]> = { review: ['txt', 'json', 'html'], ci: ['txt', 'json'], summary: ['txt', 'json', 'html'], changelog: ['txt', 'json', 'html'] };
 
 export interface ReportSpec {
   name: ReportName;
@@ -34,7 +35,7 @@ export class ReportError extends Error {}
 export function parseReportSpec(arg: string): ReportSpec {
   const [name, format, ...rest] = arg.split(':');
   if (!(REPORTS as readonly string[]).includes(name!)) {
-    const later = ['changelog', 'sdk', 'audit', 'explore'].includes(name!) ? ` (${name} arrives in a later milestone)` : ' (custom reports from the policy arrive in M9)';
+    const later = ['sdk', 'audit', 'explore'].includes(name!) ? ` (${name} arrives in a later milestone)` : ' (custom reports from the policy arrive in M9)';
     throw new ReportError(`unknown report '${name}'${later}; reports: ${REPORTS.join(', ')}`);
   }
   const n = name as ReportName;
@@ -51,8 +52,8 @@ export function checkFormat(name: ReportName, format: string): Format {
 }
 
 export function renderReport(spec: { name: ReportName; format: Format }, r: Result, opts: TxtOptions): string {
-  if (spec.format === 'json') return JSON.stringify(spec.name === 'summary' ? summaryData(r) : r, null, 2) + '\n';
-  if (spec.format === 'html') return spec.name === 'summary' ? renderSummaryHtml(r) : renderReviewHtml(r);
+  if (spec.format === 'json') return JSON.stringify(spec.name === 'summary' ? summaryData(r) : spec.name === 'changelog' ? changelogData(r, opts) : r, null, 2) + '\n';
+  if (spec.format === 'html') return spec.name === 'summary' ? renderSummaryHtml(r) : spec.name === 'changelog' ? renderChangelogHtml(r, opts) : renderReviewHtml(r);
   switch (spec.name) {
     case 'review':
       return renderReview(r, opts);
@@ -60,5 +61,7 @@ export function renderReport(spec: { name: ReportName; format: Format }, r: Resu
       return renderCi(r, opts);
     case 'summary':
       return renderSummary(r, opts);
+    case 'changelog':
+      return renderChangelog(r, opts);
   }
 }

@@ -97,6 +97,8 @@ export class SchemaEngine {
   readonly #raw = new Map<string, Raw>();
   /** Inline operation schemas → their operation's subject. */
   readonly #inlineOwner = new Map<string, string>();
+  /** Usage label of inline schemas, e.g. `query parameter 'limit'`. */
+  readonly #inlineLabel = new Map<string, string>();
   /** Named nodes (base side) reached by some usage walk. */
   readonly #visited = new Set<string>();
   /** Unclassified differences per schema node: node id → pointers. */
@@ -115,11 +117,11 @@ export class SchemaEngine {
     for (const [bo, ro] of pairs) {
       for (const u of ro.schemas.values()) {
         const n = this.#r.index.get(u.at);
-        if (n && !n.named) this.#inlineOwner.set(`r:${n.id}`, opSubject(ro));
+        if (n && !n.named) this.#inlineOwner.set(`r:${n.id}`, opSubject(ro)), this.#inlineLabel.set(`r:${n.id}`, u.label);
       }
       for (const u of bo.schemas.values()) {
         const n = this.#b.index.get(u.at);
-        if (n && !n.named) this.#inlineOwner.set(`b:${n.id}`, opSubject(ro));
+        if (n && !n.named) this.#inlineOwner.set(`b:${n.id}`, opSubject(ro)), this.#inlineLabel.set(`b:${n.id}`, u.label);
       }
     }
     for (const [bo, ro] of pairs) {
@@ -217,6 +219,8 @@ export class SchemaEngine {
     const c: Change = { rule, subject: this.#subject(b, r), details: { ...details } };
     if (dir) c.direction = dir;
     const p = r ?? b!;
+    const usage = this.#inlineLabel.get(`${r ? 'r' : 'b'}:${p.node.id}`);
+    if (usage && !p.node.named) c.details.usage = usage;
     c.details.path = '/' + [...p.path, ...(r ? rKw : bKw)].map((s) => s.replace(/~/g, '~0').replace(/\//g, '~1')).join('/');
     if (c.details.path === '/') c.details.path = '';
     if (b) c.base = this.#loc('b', b, bKw);

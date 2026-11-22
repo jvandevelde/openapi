@@ -29,6 +29,7 @@ import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Si
 import { VERSION } from './version.ts';
 import { isChange } from './render/common.ts';
 import type { Places } from './render/config.ts';
+import { renderTemplate } from './render/template.ts';
 
 /** The spec context and owners of each result, for report views (include.extensions, include.owners, --uses). Not part of the JSON. */
 const PLACES = new WeakMap<Result, Places>();
@@ -164,6 +165,16 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     if (notices.length) {
       findings.push(...classify(notices, { profile, ...(policy ? { policy } : {}) }));
       findings.sort(compareFindings);
+    }
+  }
+  // The policy's wording for messages and client notes (rules.<id>.message / note), most specific rule ID first.
+  if (policy?.rules.size) {
+    for (const f of findings) {
+      const s = [policy.rules.get(f.rule), policy.rules.get(f.baseRule)];
+      const message = s.find((x) => x?.message)?.message;
+      const note = s.find((x) => x?.note)?.note;
+      if (note) f.note = renderTemplate(note, f, 'txt');
+      if (message) f.message = renderTemplate(message, f, 'txt');
     }
   }
   const tagged = policy?.exclusions.size && context ? [...policy.exclusions.values()].filter((s) => !policy.ignore.includes(s.name)) : [];

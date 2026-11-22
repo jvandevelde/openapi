@@ -25,12 +25,12 @@ async function run(...argv: string[]): Promise<{ code: number; out: string; err:
 }
 
 test('--report specs', () => {
-  assert.deepEqual(parseReportSpec('ci'), { name: 'ci' }); // format from the policy, else txt
-  assert.deepEqual(parseReportSpec('review:json:out/r.json'), { name: 'review', format: 'json', file: 'out/r.json' });
-  assert.deepEqual(parseReportSpec('summary:txt:-'), { name: 'summary', format: 'txt' });
-  assert.deepEqual(parseReportSpec('summary::out.txt'), { name: 'summary', file: 'out.txt' });
-  assert.deepEqual(parseReportSpec('summary:txt:C:\\out\\s.txt'), { name: 'summary', format: 'txt', file: 'C:\\out\\s.txt' });
-  assert.deepEqual(parseReportSpec('audit:html:a.html'), { name: 'audit', format: 'html', file: 'a.html' });
+  assert.deepEqual(parseReportSpec('ci'), { name: 'ci', base: 'ci' }); // format from the policy, else txt
+  assert.deepEqual(parseReportSpec('review:json:out/r.json'), { name: 'review', base: 'review', format: 'json', file: 'out/r.json' });
+  assert.deepEqual(parseReportSpec('summary:txt:-'), { name: 'summary', base: 'summary', format: 'txt' });
+  assert.deepEqual(parseReportSpec('summary::out.txt'), { name: 'summary', base: 'summary', file: 'out.txt' });
+  assert.deepEqual(parseReportSpec('summary:txt:C:\\out\\s.txt'), { name: 'summary', base: 'summary', format: 'txt', file: 'C:\\out\\s.txt' });
+  assert.deepEqual(parseReportSpec('audit:html:a.html'), { name: 'audit', base: 'audit', format: 'html', file: 'a.html' });
   assert.throws(() => parseReportSpec('audti'), (e: unknown) => e instanceof ReportError && /unknown report 'audti'/.test(e.message));
   assert.throws(() => parseReportSpec('ci:xml'), (e: unknown) => e instanceof ReportError && /report ci has no xml format; formats: txt, json/.test(e.message));
 });
@@ -148,7 +148,9 @@ test('report settings are validated', () => {
   bad({ reports: { mine: { extends: 'reviw' } } }, /mine\.extends: 'reviw' is not a report \(did you mean review\?\)/);
   bad({ reports: { a: { extends: 'b' }, b: { extends: 'a' } } }, /extend each other in a loop \(a → b → a\)/);
   bad({ reports: { review: { extends: 'ci' } } }, /built-in reports can't extend others/);
-  parsePolicy({ exclusions: { internal: { paths: ['/internal/**'] } }, reports: { changelog: { exclude: ['internal'], template: './t.html', 'group-by': 'tag' }, partner: { extends: 'changelog' } } });
+  bad({ reports: { mine: { format: 'txt' } } }, /reports\.mine: a custom report needs extends/);
+  bad({ reports: { changelog: { template: './t.html' } } }, /changelog\.template: set format: html or txt as well/);
+  parsePolicy({ exclusions: { internal: { paths: ['/internal/**'] } }, reports: { changelog: { exclude: ['internal'], template: './t.html', format: 'html', 'group-by': 'tag' }, partner: { extends: 'changelog' } } });
 });
 
 const recount = (fs: Result['findings']) => ({ counts: countFindings(fs), state: stateOf(fs) });
@@ -175,10 +177,10 @@ test('the ci report settings apply to the exit code; unsupported settings are re
     const s = await run('-C', dir, '--report', 'summary', 'base.yaml', 'revision.yaml');
     assert.equal(JSON.parse(s.out).report, 'summary');
     assert.equal(s.code, 1);
-    policy('reports: { review: { template: ./t.html } }\n');
+    policy('reports: { review: { template: ./t.html, format: html } }\n');
     const t = await run('-C', dir, 'base.yaml', 'revision.yaml');
     assert.equal(t.code, 2);
-    assert.match(t.err, /reports\.review\.template: report templates arrive in M9/);
+    assert.match(t.err, /reports\.review\.template: can't read \.\/t\.html/);
     assert.equal((await run('-C', dir, '--report', 'ci', 'base.yaml', 'revision.yaml')).code, 0); // review's settings don't matter here
   } finally {
     rmSync(dir, { recursive: true, force: true });

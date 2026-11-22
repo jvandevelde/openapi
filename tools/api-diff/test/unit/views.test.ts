@@ -61,7 +61,7 @@ test('include.extensions and include.owners keep changes that reach matching ope
   const reports = parseReports({ partner: { extends: 'changelog', include: { extensions: { 'x-audience': 'partner' } } }, admin: { extends: 'review', include: { owners: '@admin' } } }, 'reports', [], suggest);
   assert.deepEqual(summary(viewFor(r, reports.get('partner'), recount, { places })), ['property-removed-in-response #/components/schemas/Order [GET /orders]', 'server-url-changed document']);
   assert.deepEqual(summary(viewFor(r, reports.get('admin'), recount, { places })), ['property-removed-in-response #/components/schemas/Order [GET /admin/{id}]', 'server-url-changed document']);
-  const orders = viewFor(r, parseReports({ o: { include: { owners: ['@orders'] } } }, 'reports', [], suggest).get('o'), recount, { places });
+  const orders = viewFor(r, parseReports({ o: { extends: 'review', include: { owners: ['@orders'] } } }, 'reports', [], suggest).get('o'), recount, { places });
   assert.deepEqual(summary(orders), ['operation-removed GET /orders/{id}', 'property-removed-in-response #/components/schemas/Order [GET /orders]', 'server-url-changed document']);
 });
 

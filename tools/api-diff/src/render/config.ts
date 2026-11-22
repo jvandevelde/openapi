@@ -94,6 +94,8 @@ export function parseReports(raw: Record<string, unknown>, where: string, exclus
   for (const [name, cfg] of out) {
     if (cfg.extends !== undefined && !(BUILT_IN as readonly string[]).includes(cfg.extends) && !out.has(cfg.extends)) throw new PolicyError(`${where}.${name}.extends: '${cfg.extends}' is not a report${suggest(cfg.extends, [...BUILT_IN, ...out.keys()])}`);
     if ((BUILT_IN as readonly string[]).includes(name) && cfg.extends !== undefined) throw new PolicyError(`${where}.${name}.extends: built-in reports can't extend others; make a custom report instead`);
+    if (!(BUILT_IN as readonly string[]).includes(name) && cfg.extends === undefined) throw new PolicyError(`${where}.${name}: a custom report needs extends: the report it starts from (${BUILT_IN.join(', ')}, or another custom report)`);
+    if (cfg.template !== undefined && cfg.format !== 'html' && cfg.format !== 'txt') throw new PolicyError(`${where}.${name}.template: set format: html or txt as well, the format the template writes`);
     const seen = new Set([name]);
     for (let c = cfg; c.extends !== undefined; c = out.get(c.extends) ?? {}) {
       if (seen.has(c.extends)) throw new PolicyError(`${where}.${name}.extends: reports extend each other in a loop (${[...seen, c.extends].join(' → ')})`);
@@ -101,6 +103,33 @@ export function parseReports(raw: Record<string, unknown>, where: string, exclus
     }
   }
   return out;
+}
+
+/**
+ * A report's effective settings: a custom report starts from the report it
+ * extends (and that one's settings), then overrides them key by key;
+ * `include` is merged key by key too. Returns the built-in report it is
+ * based on.
+ */
+export function resolveReport(name: string, reports: Map<string, ReportConfig>): { base: (typeof BUILT_IN)[number]; cfg: ReportConfig | undefined } {
+  const chain: ReportConfig[] = [];
+  let at = name;
+  while (!(BUILT_IN as readonly string[]).includes(at)) {
+    const c = reports.get(at);
+    if (!c?.extends) throw new PolicyError(`report '${name}' is not a built-in report or a custom report in the policy`);
+    chain.unshift(c);
+    at = c.extends;
+  }
+  const own = reports.get(at);
+  if (own) chain.unshift(own);
+  if (!chain.length) return { base: at as (typeof BUILT_IN)[number], cfg: undefined };
+  const cfg = chain.reduce<ReportConfig>((acc, c) => {
+    const out: ReportConfig = { ...acc, ...c };
+    if (acc.include || c.include) out.include = { ...acc.include, ...c.include };
+    return out;
+  }, {});
+  delete cfg.extends;
+  return { base: at as (typeof BUILT_IN)[number], cfg };
 }
 
 /** Validates an explorer URL template: http(s), with a {pointer} placeholder. */
@@ -123,7 +152,7 @@ const REGROUPABLE = new Set(['review', 'audit']);
 export function checkSupported(name: string, cfg: ReportConfig | undefined, label = name): void {
   if (!cfg) return;
   const where = `policy reports.${label}`;
-  if (cfg.template) throw new PolicyError(`${where}.template: report templates arrive in M9`);
+  if (cfg.template && name === 'explore') throw new PolicyError(`${where}.template: the explore report is an interactive page and can't use a template`);
   if (cfg.groupBy !== undefined && cfg.groupBy !== PRESET_GROUP[name] && !REGROUPABLE.has(name)) throw new PolicyError(`${where}.group-by: the ${name} report always groups by ${PRESET_GROUP[name] ?? 'nothing'}; review and audit can be grouped by ${GROUP_BY.join(', ')}`);
   if (name === 'audit' && (cfg.exclude?.length || cfg.include)) throw new PolicyError(`${where}: the audit report always shows everything, so it takes no exclude or include`);
 }

@@ -13,8 +13,9 @@ import { history, type HistoryOptions } from '../history.ts';
 import { renderTimeline, renderTimelineHtml, timelineData } from '../render/timeline.ts';
 import { ParseCache } from '../load/cache.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
-import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
-import { checkSupported, explorerUrl, resolveUses, viewFor, type ViewOptions } from '../render/config.ts';
+import { checkFormat, parseReportSpec, renderReport, ReportError, type Format, type ReportSpec } from '../render/reports.ts';
+import { checkTemplate, SHAPES, TemplateError } from '../render/template.ts';
+import { BUILT_IN, checkSupported, explorerUrl, resolveReport, resolveUses, viewFor, type ViewOptions } from '../render/config.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
@@ -199,10 +200,35 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   if (bl) opts.baseLabels = bl;
   if (rl) opts.revisionLabels = rl;
   if (values.report?.length && (values.format !== undefined || values.output !== undefined)) throw new UsageError('--format and --output set the default report; with --report, give the format and file in it (e.g. --report review:json:review.json)');
-  const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
-  for (const spec of reports) checkSupported(spec.name, policy.reports.get(spec.name));
+  // Custom reports from the policy: the built-in report each is based on, and its settings (merged along extends).
+  const resolved = new Map<string, ReturnType<typeof resolveReport>>();
+  for (const name of [...BUILT_IN, ...policy.reports.keys()]) resolved.set(name, resolveReport(name, policy.reports));
+  const custom = new Map([...resolved].filter(([n]) => !(BUILT_IN as readonly string[]).includes(n)).map(([n, r]) => [n, { base: r.base, ...(r.cfg?.template ? { template: r.cfg.format as Format } : {}) }]));
+  const reports: ReportSpec[] = values.report?.length ? values.report.map((a) => parseReportSpec(a, custom)) : [{ name: 'review', base: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
+  // Templates are read and checked before comparing, so a typo fails fast.
+  const templates = new Map<string, string>();
+  for (const spec of reports) {
+    const cfg = resolved.get(spec.name)!.cfg;
+    checkSupported(spec.base, cfg, spec.name);
+    if (cfg?.template && !templates.has(spec.name)) {
+      const path = resolve(policy.dir ?? cwd, cfg.template);
+      let text: string;
+      try {
+        text = readFileSync(path, 'utf8');
+      } catch {
+        throw new PolicyError(`policy reports.${spec.name}.template: can't read ${cfg.template}`);
+      }
+      try {
+        checkTemplate(text, SHAPES[spec.base]!, `template ${cfg.template}`);
+      } catch (e) {
+        if (e instanceof TemplateError) throw new PolicyError(e.message);
+        throw e;
+      }
+      templates.set(spec.name, text);
+    }
+  }
   if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
-  if (reports.some((r) => r.name === 'explore')) opts.snippets = true;
+  if (reports.some((r) => r.base === 'explore')) opts.snippets = true;
   let usesText: string | undefined;
   if (values.uses !== undefined) {
     try {
@@ -229,16 +255,17 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   for (const s of policy.ignore) (hiddenBy[s] ??= []).push('every report (ignore: not compared)');
   for (const spec of reports) {
     if (values.state && !spec.file) continue;
-    const cfg = policy.reports.get(spec.name);
-    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : spec.name === 'explore' ? 'html' : 'txt');
+    const cfg = resolved.get(spec.name)!.cfg;
+    const template = templates.get(spec.name);
+    const fmt = spec.format ?? (template ? (cfg!.format as Format) : cfg?.format ? checkFormat(spec.base, cfg.format, spec.name) : spec.base === 'explore' ? 'html' : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
     const linkTemplate = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : cfg?.explorerUrl;
-    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount, view), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(cfg?.groupBy ? { groupBy: cfg.groupBy } : {}), hiddenBy, ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
+    const text = renderReport({ name: spec.base, format: fmt }, viewFor(result, cfg, recount, view), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(cfg?.groupBy ? { groupBy: cfg.groupBy } : {}), hiddenBy, ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) }, fmt === 'json' ? undefined : template);
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }
   // The ci report is the gate: its exclusions and filters (and --uses) apply to the exit code too.
-  return shouldFail(viewFor(result, policy.reports.get('ci'), recount, view), failOn) ? 1 : 0;
+  return shouldFail(viewFor(result, resolved.get('ci')!.cfg, recount, view), failOn) ? 1 : 0;
 }
 
 async function historyCommand(argv: string[], io: Io): Promise<number> {

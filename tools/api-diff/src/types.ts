@@ -61,6 +61,8 @@ export interface Finding {
   impact?: string[];
   /** Policy exclusion sets the finding belongs to (POLICY.md section 8); reports can leave them out. */
   exclusions?: string[];
+  /** The policy's migration note for clients (rules.<id>.note), used instead of the built-in one. */
+  note?: string;
   /** Teams that own the finding (POLICY.md section 14): its operation's or component's owners, plus those of the operations it affects. */
   owners?: string[];
   /** Set when an acknowledgement covers the finding: it's reported but doesn't fail CI or count towards `state`. */

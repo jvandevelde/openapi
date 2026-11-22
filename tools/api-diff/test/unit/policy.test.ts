@@ -33,7 +33,7 @@ test('unknown keys and rule IDs are errors with a suggestion', () => {
   fails({ rules: { 'enum-value-aded': 'warn' } }, /rules\.enum-value-aded: unknown rule \(did you mean enum-value-added\?\)/);
   fails({ defaults: { 'fail-onn': 'warn' } }, /did you mean fail-on\?/);
   fails({ rules: { 'enum-value-added': { severity: 'warn', 'honor-open-hint': false } } }, /unknown option \(did you mean honour-open-hint\?\)/);
-  fails({ rules: { 'operation-added': { strict: true } } }, /operation-added takes only severity, fix and explanation/);
+  fails({ rules: { 'operation-added': { strict: true } } }, /operation-added takes only severity, fix, explanation, message, note/);
 });
 
 test('values are checked', () => {

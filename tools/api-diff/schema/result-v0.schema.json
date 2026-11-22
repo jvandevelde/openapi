@@ -128,6 +128,7 @@
         "revision": { "$ref": "#/$defs/location" },
         "details": { "type": "object" },
         "impact": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": "string", "description": "The policy's migration note for clients (rules.<id>.note), used instead of the built-in one." },
         "owners": { "description": "Teams that own the finding: its operation's or component's owners, plus those of the operations it affects.", "type": "array", "items": { "type": "string" } },
         "exclusions": { "description": "Policy exclusion sets the finding belongs to; reports can leave them out.", "type": "array", "items": { "type": "string" } },
         "acknowledged": {

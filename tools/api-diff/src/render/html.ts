@@ -6,6 +6,7 @@ import type { Finding, Result, Severity } from '../types.ts';
 import { adviceLine, isChange, isNotice, isVersion, usesLine, where } from './common.ts';
 import { docsSummary, GROUP_NOUN, groupFindings, ownersText, type Group, type GroupBy } from './review.ts';
 import { summaryData } from './summary.ts';
+import { auditData, type AuditOptions } from './audit.ts';
 import { changelogData, usesHeadline, type ChangelogEntry } from './changelog.ts';
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
@@ -157,4 +158,34 @@ export function renderChangelogHtml(r: Result, opts: { docs?: boolean } = {}): s
     }
   }
   return page(`${title}: changelog`, parts.join('\n'));
+}
+
+/** The audit report: everything, with acknowledgements, severity sources, exclusion sets and owners. */
+export function renderAuditHtml(r: Result, opts: AuditOptions = {}): string {
+  const d = auditData(r, opts);
+  const byId = new Map(r.findings.map((f) => [f.id, f]));
+  const parts = [header(r, 'API governance audit')];
+  const table = (head: string[], rows: string[][]): string => `<table class="grid"><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('\n')}</table>`;
+  const a = d.acknowledgements;
+  if (a.active.length) parts.push(`<h2>Acknowledged <span class="muted">(${a.active.length})</span></h2>`, table(['Finding', 'Severity', 'Owner', 'Until', 'Reason'], a.active.map((x) => [`<strong>${esc(x.subject)}</strong> <code>${esc(x.rule)}</code> <code>${esc(x.finding)}</code>`, sev(x.severity), esc(x.owner ?? '—'), esc(x.expires), esc(x.reason)])));
+  const problems = [...a.expired, ...a.notOwner, ...a.stale].map((id) => byId.get(id)!);
+  if (problems.length) parts.push(`<h2>Acknowledgement problems <span class="muted">(${problems.length})</span></h2><ul class="findings">${problems.map((f) => findingItem(f, true)).join('\n')}</ul>`);
+  if (d.unclassified.length) parts.push(`<h2>Not classified by any rule <span class="muted">(${d.unclassified.length})</span></h2><ul class="findings">${d.unclassified.map((id) => findingItem(byId.get(id)!, true)).join('\n')}</ul>`);
+  if (d.severitySources.length) parts.push('<h2>Where severities came from</h2>', table(['Source', 'Findings'], d.severitySources.map((s) => [esc(s.source), String(s.count)])));
+  if (d.exclusions.length) parts.push('<h2>Exclusion sets</h2>', table(['Set', 'Findings', 'Left out of'], d.exclusions.map((e) => [`<code>${esc(e.set)}</code>`, String(e.findings), esc(e.hiddenBy.join(', ') || 'no report')])));
+  if (d.notCompared.length) parts.push(`<h2>Not compared</h2><ul class="findings">${d.notCompared.map((id) => findingItem(byId.get(id)!, false, false)).join('\n')}</ul>`);
+  if (d.owners.length) parts.push('<h2>By owner</h2>', table(['Owner', 'Findings', 'error', 'warn', 'info'], d.owners.map((o) => [esc(o.owner), String(o.findings), String(o.error), String(o.warn), String(o.info)])));
+  if (d.groups.length) {
+    parts.push(`<h2>Findings by ${esc(d.groupBy === 'root-cause' ? 'root cause' : d.groupBy)} <span class="muted">(${d.groups.length})</span></h2>`);
+    for (const g of d.groups) {
+      const items = g.findings.map((id) => {
+        const f = byId.get(id)!;
+        const meta = [`severity ← ${f.severitySource}`, f.owners?.length ? `owners ${f.owners.join(', ')}` : '', f.exclusions?.length ? `in ${f.exclusions.join(', ')}` : ''].filter(Boolean).join(' · ');
+        return findingItem(f, true).replace(/<\/div><\/li>$/, `<div class="where">${esc(meta)}</div></div></li>`);
+      });
+      parts.push(`<details${g.severity === 'info' ? '' : ' open'}><summary>${sev(g.severity)}<span class="subject">${esc(g.key)}</span><span class="muted">×${g.count}</span></summary><ul class="findings">${items.join('\n')}</ul></details>`);
+    }
+  }
+  parts.push(countsLine(r));
+  return page('api-diff audit', parts.join('\n'));
 }

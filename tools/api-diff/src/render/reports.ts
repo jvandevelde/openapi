@@ -16,12 +16,14 @@ import { renderChangelogHtml, renderReviewHtml, renderSummaryHtml } from './html
 import { changelogData, renderChangelog } from './changelog.ts';
 import { renderSdk, sdkData } from './sdk.ts';
 import { renderExplore } from './explore.ts';
+import { auditData, renderAudit, type AuditOptions } from './audit.ts';
+import { renderAuditHtml } from './html.ts';
 
-export const REPORTS = ['review', 'ci', 'summary', 'changelog', 'sdk', 'explore'] as const;
+export const REPORTS = ['review', 'ci', 'summary', 'changelog', 'sdk', 'explore', 'audit'] as const;
 export type ReportName = (typeof REPORTS)[number];
 export type Format = 'txt' | 'json' | 'html';
 
-export const FORMATS: Record<ReportName, Format[]> = { review: ['txt', 'json', 'html'], ci: ['txt', 'json'], summary: ['txt', 'json', 'html'], changelog: ['txt', 'json', 'html'], sdk: ['txt', 'json'], explore: ['html'] };
+export const FORMATS: Record<ReportName, Format[]> = { review: ['txt', 'json', 'html'], ci: ['txt', 'json'], summary: ['txt', 'json', 'html'], changelog: ['txt', 'json', 'html'], sdk: ['txt', 'json'], explore: ['html'], audit: ['txt', 'json', 'html'] };
 
 export interface ReportSpec {
   name: ReportName;
@@ -37,8 +39,7 @@ export class ReportError extends Error {}
 export function parseReportSpec(arg: string): ReportSpec {
   const [name, format, ...rest] = arg.split(':');
   if (!(REPORTS as readonly string[]).includes(name!)) {
-    const later = ['audit'].includes(name!) ? ` (${name} arrives in a later milestone)` : ' (custom reports from the policy arrive in M9)';
-    throw new ReportError(`unknown report '${name}'${later}; reports: ${REPORTS.join(', ')}`);
+    throw new ReportError(`unknown report '${name}'; reports: ${REPORTS.join(', ')}`);
   }
   const n = name as ReportName;
   const spec: ReportSpec = { name: n };
@@ -53,7 +54,8 @@ export function checkFormat(name: ReportName, format: string): Format {
   return format as Format;
 }
 
-export function renderReport(spec: { name: ReportName; format: Format }, r: Result, opts: TxtOptions): string {
+export function renderReport(spec: { name: ReportName; format: Format }, r: Result, opts: TxtOptions & AuditOptions): string {
+  if (spec.name === 'audit') return spec.format === 'json' ? JSON.stringify(auditData(r, opts), null, 2) + '\n' : spec.format === 'html' ? renderAuditHtml(r, opts) : renderAudit(r, opts);
   if (spec.format === 'json') return JSON.stringify(spec.name === 'summary' ? summaryData(r) : spec.name === 'changelog' ? changelogData(r, opts) : spec.name === 'sdk' ? sdkData(r) : r, null, 2) + '\n';
   if (spec.name === 'explore') return renderExplore(r, opts.explorerUrl);
   if (spec.format === 'html') return spec.name === 'summary' ? renderSummaryHtml(r) : spec.name === 'changelog' ? renderChangelogHtml(r, opts) : renderReviewHtml(r, opts.groupBy);

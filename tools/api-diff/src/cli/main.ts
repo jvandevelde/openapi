@@ -43,8 +43,9 @@ Options:
       --report <name>[:<format>[:<file>]]
                          a report to write; repeatable. Reports: review (the default; what changed and who
                          it affects), ci (short, for CI logs), summary (size and risk), changelog (for API
-                         consumers), sdk (for SDK maintainers), explore (interactive HTML). Formats: txt,
-                         json, html (review, summary, changelog; explore is html only)
+                         consumers), sdk (for SDK maintainers), explore (interactive HTML), audit (governance: everything,
+                         with acknowledgements, severity sources, exclusions and owners). Formats: txt,
+                         json, html (review, summary, changelog, audit; explore is html only)
   -f, --format <fmt>     format of the default report: txt (default), json or html
   -o, --output <file>    write the default report to a file instead of stdout
       --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
@@ -222,13 +223,17 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
 
   const recount = (fs: typeof result.findings) => ({ counts: countFindings(fs), state: stateOf(fs) });
   if (values.state) io.stdout.write(`${result.state}\n`);
+  // For the audit report: which reports leave out each exclusion set.
+  const hiddenBy: Record<string, string[]> = {};
+  for (const [name, cfg] of policy.reports) for (const s of cfg.exclude ?? []) (hiddenBy[s] ??= []).push(name);
+  for (const s of policy.ignore) (hiddenBy[s] ??= []).push('every report (ignore: not compared)');
   for (const spec of reports) {
     if (values.state && !spec.file) continue;
     const cfg = policy.reports.get(spec.name);
     const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : spec.name === 'explore' ? 'html' : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
     const linkTemplate = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : cfg?.explorerUrl;
-    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount, view), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(cfg?.groupBy ? { groupBy: cfg.groupBy } : {}), ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
+    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount, view), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(cfg?.groupBy ? { groupBy: cfg.groupBy } : {}), hiddenBy, ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }

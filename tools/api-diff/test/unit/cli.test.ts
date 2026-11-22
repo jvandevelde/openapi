@@ -18,15 +18,17 @@ async function run(...argv: string[]): Promise<{ code: number; out: string; err:
 
 const inCase = (name: string): string[] => ['-C', `${cases}${name}`, 'base.yaml', 'revision.yaml'];
 
-test('exit 1 when a finding reaches --fail-on (default error)', async () => {
+test('reports without failing by default; exit 1 when a finding reaches --fail-on', async () => {
   const r = await run(...inCase('operation-removed'));
-  assert.equal(r.code, 1);
-  assert.match(r.out, /ERROR\s+DELETE \/pets\/\{id\}\s+operation removed/);
-  assert.match(r.out, /state: breaking/);
+  assert.equal(r.code, 0);
+  assert.match(r.out, /ERROR\s+DELETE \/pets\/\{id\}/);
+  assert.match(r.out, /^       -  operation removed/m);
+  assert.match(r.out, /state: breaking · not failing CI \(--fail-on never\)/);
+  assert.equal((await run(...inCase('operation-removed'), '--fail-on', 'error')).code, 1);
 });
 
 test('--fail-on controls the threshold', async () => {
-  assert.equal((await run(...inCase('parameter-removed'))).code, 0);
+  assert.equal((await run(...inCase('parameter-removed'), '--fail-on', 'error')).code, 0);
   assert.equal((await run(...inCase('parameter-removed'), '--fail-on', 'warn')).code, 1);
   assert.equal((await run(...inCase('operation-removed'), '--fail-on', 'never')).code, 0);
 });
@@ -54,8 +56,8 @@ test('finding IDs are stable across runs', async () => {
 });
 
 test('--profile sdk raises sdk rules', async () => {
-  assert.equal((await run(...inCase('operation-id-changed'))).code, 0);
-  assert.equal((await run(...inCase('operation-id-changed'), '--profile', 'sdk')).code, 1);
+  assert.equal((await run(...inCase('operation-id-changed'), '--fail-on', 'error')).code, 0);
+  assert.equal((await run(...inCase('operation-id-changed'), '--fail-on', 'error', '--profile', 'sdk')).code, 1);
 });
 
 test('usage and input errors exit 2', async () => {

@@ -84,7 +84,7 @@ export function recordVersions(side: ComparedSide, doc: unknown, settings: Versi
 /** Findings that are about the tool or the inputs, not the API: they never need a version bump. */
 const NOTICES = new Set(['spec-invalid', 'ref-unresolved', 'cycle-not-productive', 'not-compared', 'documents-unrelated', 'version-unchanged', 'version-bump-too-small', 'acknowledgement-stale', 'acknowledgement-expired']);
 
-type Level = 'none' | 'patch' | 'minor' | 'major';
+export type Level = 'none' | 'patch' | 'minor' | 'major';
 const RANK: Record<Level, number> = { none: 0, patch: 1, minor: 2, major: 3 };
 
 export interface Semver {
@@ -117,6 +117,30 @@ export function neededBump(findings: Finding[], base: Semver): { level: Level; b
   }
   if (base.major === 0 && level !== 'none') level = level === 'major' ? 'minor' : 'patch';
   return { level, because };
+}
+
+export interface BumpAdvice {
+  /** The bump the findings need. */
+  needed: Level;
+  /** The bump the versions show. */
+  actual: Level;
+  ok: boolean;
+  /** The finding that sets `needed`, e.g. `operation-removed at DELETE /pets`. */
+  because?: string;
+  /** How many findings need a major bump (breaking changes). */
+  breaking: number;
+}
+
+/** Semver advice for the result, when both versions are semver; acknowledgements don't change it. */
+export function bumpAdvice(findings: Finding[], base: ComparedSide, rev: ComparedSide): BumpAdvice | undefined {
+  const [a, b] = [parseSemver(base.version), parseSemver(rev.version)];
+  if (!a || !b) return undefined;
+  const changed = findings.filter((f) => !NOTICES.has(f.baseRule));
+  const need = neededBump(changed, a);
+  const actual = bumpOf(a, b);
+  const advice: BumpAdvice = { needed: need.level, actual, ok: RANK[actual] >= RANK[need.level], breaking: changed.filter((f) => f.severity === 'error').length };
+  if (need.because) advice.because = need.because;
+  return advice;
 }
 
 /** version-unchanged / version-bump-too-small, or a not-compared notice when the versions can't be checked. */

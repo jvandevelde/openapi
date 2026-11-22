@@ -2,7 +2,7 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M6.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (130 of 132 implemented; rename detection is M8). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Audience reports (`ci`, `review`) arrive in M7.
+> **Status: milestone M7.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (130 of 132 implemented; rename detection is M8). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Reports: `review` (the default), `ci` and `summary`, in text, JSON or HTML, with a ready-to-copy PR workflow. `changelog`, `sdk` and `explore` arrive in M8.
 
 ## Requirements
 
@@ -39,19 +39,21 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 |---|---|
 | `--base <rev>`, `--revision <rev>` | Read the given file at these revisions. `<rev>...` means the merge-base with the other side (`HEAD` by default) |
 | `-C, --cwd <dir>` | Run as if started in `<dir>` |
-| `-f, --format <fmt>` | `txt` (default) or `json` ([schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
-| `-o, --output <file>` | Write the report to a file |
-| `--fail-on <level>` | Exit with code 1 if any finding is at or above `error` (default), `warn` or `info`; `never` always exits 0 |
+| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. Formats `txt`, `json` and `html` (`review` and `summary`; one self-contained file); without a file it goes to stdout (one report at most). The policy's `reports` section can leave exclusion sets out of a report |
+| `-f, --format <fmt>` | Format of the default `review` report: `txt` (default), `html` or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
+| `-o, --output <file>` | Write the default report to a file |
+| `--fail-on <level>` | Exit with code 1 if any finding is at or above `error`, `warn` or `info`. The default is `never`: breaking changes are reported, not blocked, unless a team opts in |
 | `--state` | Print only `no-changes`, `compatible` or `breaking` |
 | `--profile <name>` | `wire` (default) or `sdk`: raises rules that break generated SDKs, such as `operation-id-changed` |
 | `--policy <file>`, `--no-policy` | The policy file: `api-diff.yaml` in the working directory by default, if present. See [POLICY.md](POLICY.md) |
 | `--base-version <v>`, `--revision-version <v>` | The versions to record and check, instead of reading them from the documents |
 | `--base-label <k=v>`, `--revision-label <k=v>` | Extra version labels, e.g. `build=8812`. Repeatable |
+| `--cache-dir <dir>` | Cache the parsed base documents in this directory, keyed by their content. Useful in CI when the base (e.g. `main`) rarely changes: keep the directory between runs. Saves the base's parse time (about 0.5 s on an 8 MB spec) |
 | `--as-of <YYYY-MM-DD>` | Reference date for deprecation periods and sunset dates (default: today, UTC). Use it for reproducible runs |
 | `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
 | `--color`, `--no-color` | Colour is on for terminals unless `NO_COLOR` is set |
 
-Exit codes: `0` no findings at or above `--fail-on`, `1` findings at or above it, `2` usage or input error (missing file, unknown revision).
+Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` findings at or above it, `2` usage or input error (missing file, unknown revision, invalid policy).
 
 `api-diff rules` lists the implemented rules with their default severities (`--all` includes planned ones, `--format json` for scripts). `api-diff rules <id>` explains one rule. The full reference, one page per rule, is in [docs/rules/](docs/rules/README.md).
 
@@ -70,6 +72,10 @@ WARN   GET /pets               success response 202 added  revision.yaml:11 · r
 
 3 findings: 2 error, 1 warn, 0 info · state: breaking
 ```
+
+## On pull requests
+
+[docs/ci.md](docs/ci.md) has a ready-to-copy GitHub Actions workflow: it compares the spec with the base branch, posts the `review` report as a PR comment (updated on each push) and keeps the HTML and JSON reports as artifacts. It reports changes without failing the build unless you opt in. This repository runs the same workflow on [`examples/petstore`](examples/petstore/openapi.yaml) for every PR.
 
 ## Policy and in-spec hints
 

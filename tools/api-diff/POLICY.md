@@ -30,7 +30,7 @@ Acknowledgements live in a separate file (`api-diff.ack.yaml` or `--acknowledgem
 ```yaml
 profile: wire            # or sdk: raises the sdk-kind rules (see RULES.md)
 defaults:
-  fail-on: error         # error | warn | info | never; exit code 1 at or above this
+  fail-on: error         # error | warn | info | never (default); exit code 1 at or above this
   min-severity: info     # findings below this are dropped from every report
 ```
 
@@ -196,6 +196,8 @@ The recorded versions are checked against the findings:
 ## 10. Reports
 
 ```yaml
+exclusions:
+  internal: { paths: ["/internal/**"] }   # section 8
 reports:
   changelog:
     exclude: [internal]                   # exclusion set names
@@ -212,6 +214,8 @@ reports:
 ```
 
 The built-in reports (`ci`, `review`, `changelog`, `sdk`, `summary`, `audit`, `explore`) are presets with these keys, so the same keys change them.
+
+What works now (M7): for `review`, `ci` and `summary`, `exclude`, `include.kinds`, `include.min-severity` and `format` (the format used when `--report` doesn't give one). A report leaves out findings in excluded sets or outside `include`, and its counts and state are worked out from what it shows; notices and version checks are always kept. **The `ci` report's settings also decide the exit code**, since `ci` is the gate. Every key above is validated now; the reports and settings that arrive later (`changelog`, `sdk`, `audit`, `explore`, custom reports, `extends`, `template`, `include.extensions`, and grouping other than the preset's: `review` groups by root cause, `ci` by severity) are refused only when such a report is produced, so they can be configured ahead of time.
 
 ## 11. Acknowledgements file
 

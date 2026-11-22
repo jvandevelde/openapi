@@ -20,3 +20,6 @@ build/
 .idea/
 .vscode/
 *.log
+
+# api-diff reports written by the self-check
+tools/api-diff/out/

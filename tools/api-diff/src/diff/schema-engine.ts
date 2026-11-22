@@ -221,6 +221,7 @@ export class SchemaEngine {
     const p = r ?? b!;
     const usage = this.#inlineLabel.get(`${r ? 'r' : 'b'}:${p.node.id}`);
     if (usage && !p.node.named) c.details.usage = usage;
+    if (p.node.recursive) c.details.recursive = true;
     c.details.path = '/' + [...p.path, ...(r ? rKw : bKw)].map((s) => s.replace(/~/g, '~0').replace(/\//g, '~1')).join('/');
     if (c.details.path === '/') c.details.path = '';
     if (b) c.base = this.#loc('b', b, bKw);

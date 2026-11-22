@@ -50,6 +50,14 @@
         "breaking": { "type": "integer", "minimum": 0 }
       }
     },
+    "snippets": {
+      "description": "Source lines around each finding, by finding ID; only when asked for (the explore report).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": { "base": { "$ref": "#/$defs/snippet" }, "revision": { "$ref": "#/$defs/snippet" } }
+      }
+    },
     "operations": {
       "description": "The operations findings mention, by subject (e.g. GET /pets), for grouping and labels.",
       "type": "object",
@@ -68,6 +76,11 @@
     "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
   },
   "$defs": {
+    "snippet": {
+      "type": "object",
+      "required": ["file", "start", "line", "lines"],
+      "properties": { "file": { "type": "string" }, "start": { "type": "integer" }, "line": { "type": "integer" }, "lines": { "type": "array", "items": { "type": "string" } } }
+    },
     "side": {
       "type": "object",
       "required": ["input", "file", "version"],

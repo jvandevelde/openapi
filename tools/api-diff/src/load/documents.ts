@@ -14,6 +14,8 @@ export interface LoadedFile {
   display: string;
   parsed: Parsed;
   sha256: string;
+  /** The file's text, for snippets in the explore report. */
+  text: string;
 }
 
 /** A node in a loaded file: the file and the JSON Pointer segments. */
@@ -140,7 +142,7 @@ export class DocumentSet {
       }
       throw e;
     }
-    const file: LoadedFile = { path, display, parsed, sha256: createHash('sha256').update(text).digest('hex') };
+    const file: LoadedFile = { path, display, parsed, sha256: createHash('sha256').update(text).digest('hex'), text };
     this.files.set(path, file);
     return file;
   }

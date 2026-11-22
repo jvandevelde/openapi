@@ -95,7 +95,7 @@ export function parseReports(raw: Record<string, unknown>, where: string, exclus
 }
 
 /** The grouping each preset uses; another value arrives with custom grouping in M9. */
-const PRESET_GROUP: Record<string, ReportConfig['groupBy']> = { review: 'root-cause', ci: 'severity', summary: undefined, changelog: 'tag', sdk: 'operation' };
+const PRESET_GROUP: Record<string, ReportConfig['groupBy']> = { review: 'root-cause', ci: 'severity', summary: undefined, changelog: 'tag', sdk: 'operation', explore: undefined };
 
 /** Refuses settings this version can't apply yet, for a report that is being produced. */
 export function checkSupported(name: string, cfg: ReportConfig | undefined): void {

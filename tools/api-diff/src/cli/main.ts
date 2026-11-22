@@ -40,8 +40,8 @@ Options:
       --report <name>[:<format>[:<file>]]
                          a report to write; repeatable. Reports: review (the default; what changed and who
                          it affects), ci (short, for CI logs), summary (size and risk), changelog (for API
-                         consumers), sdk (for SDK maintainers). Formats: txt, json, html (review, summary,
-                         changelog)
+                         consumers), sdk (for SDK maintainers), explore (interactive HTML). Formats: txt,
+                         json, html (review, summary, changelog; explore is html only)
   -f, --format <fmt>     format of the default report: txt (default), json or html
   -o, --output <file>    write the default report to a file instead of stdout
       --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
@@ -182,6 +182,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
   for (const spec of reports) checkSupported(spec.name, policy.reports.get(spec.name));
   if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
+  if (reports.some((r) => r.name === 'explore')) opts.snippets = true;
   const result = await compareInputs(base, revision, cwd, opts);
 
   const recount = (fs: typeof result.findings) => ({ counts: countFindings(fs), state: stateOf(fs) });
@@ -189,7 +190,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   for (const spec of reports) {
     if (values.state && !spec.file) continue;
     const cfg = policy.reports.get(spec.name);
-    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : 'txt');
+    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : spec.name === 'explore' ? 'html' : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
     const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs') });
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);

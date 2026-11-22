@@ -53,7 +53,8 @@ jobs:
             --report review:html:api-diff-out/review.html \
             --report review:json:api-diff-out/result.json \
             --report summary:json:api-diff-out/summary.json \
-            --report changelog:html:api-diff-out/changelog.html
+            --report changelog:html:api-diff-out/changelog.html \
+            --report explore:html:api-diff-out/explore.html
       - uses: actions/upload-artifact@v4
         with:
           name: api-diff-reports
@@ -68,7 +69,7 @@ jobs:
 What each part does:
 
 - **`--base "origin/$BASE..."`** compares with the commit where the PR's branch left the base branch, so the report shows only this PR's changes. `fetch-depth: 0` makes sure that commit is present; on a shallow clone `api-diff` says how to fix it.
-- **`--report ci`** prints a short list to the job log. `review` (text, HTML and JSON), `summary` (JSON) and `changelog` (HTML, for release notes) go to files that are kept as the `api-diff-reports` artifact.
+- **`--report ci`** prints a short list to the job log. `review` (text, HTML and JSON), `summary` (JSON), `changelog` (HTML, for release notes) and `explore` (interactive HTML with every finding and the source side by side) go to files that are kept as the `api-diff-reports` artifact.
 - **The comment step** posts `review.txt` inside a code block, with a hidden marker so the next push edits the same comment. It only creates a comment when the spec changed, and always updates an existing one. Each spec gets its own comment (`--key`), so a repository with several specs can run the step once per spec.
 - **Fork PRs**: GitHub gives them a read-only token, so the comment step warns instead of failing, and the report is still in the job log and artifacts.
 - **`--cache-dir`** (optional) keeps the base's parsed documents between runs; it saves about half a second on an 8 MB spec.

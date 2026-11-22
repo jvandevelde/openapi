@@ -1,0 +1,14 @@
+description: "The acknowledgement expired on 2026-11-01 (as of 2026-11-21): acknowledgement-expired (info) explains why the removal counts again and fails CI."
+milestone: M6
+options:
+  acknowledgements:
+    - finding: 6862f893c35a
+      reason: Only the retired admin console called it.
+      expires: 2026-11-01
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: DELETE /pets/{id}
+  - rule: acknowledgement-expired
+    severity: info
+    subject: DELETE /pets/{id}

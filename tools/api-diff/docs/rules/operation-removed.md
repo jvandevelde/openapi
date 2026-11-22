@@ -43,19 +43,27 @@ Findings:
 
 ## Test cases
 
-5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+13 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
+| [`acknowledged-finding`](../../test/cases/acknowledged-finding/) | `operation-removed` · error · DELETE /pets/{id} | The removal is acknowledged until 2027-01-31: it is still reported with its severity, but doesn't fail CI or make the state breaking (see test/unit/acks.test.ts). |
+| [`acknowledgement-expired`](../../test/cases/acknowledgement-expired/) | `operation-removed` · error · DELETE /pets/{id} | The acknowledgement expired on 2026-11-01 (as of 2026-11-21): acknowledgement-expired (info) explains why the removal counts again and fails CI. |
+| [`acknowledgement-stale`](../../test/cases/acknowledgement-stale/) | `operation-removed` · error · DELETE /pets/{id} | An acknowledgement names a finding ID that doesn't appear (the change was fixed or reworded): acknowledgement-stale (info) says to remove it. The real removal is not covered. |
 | [`documents-unrelated-off`](../../test/cases/documents-unrelated-off/) | `operation-removed` · error · DELETE /pets/{petId}<br>`operation-removed` · error · GET /owners<br>`operation-removed` · error · GET /owners/{ownerId}<br>`operation-removed` · error · GET /pets<br>`operation-removed` · error · GET /pets/{petId}<br>`operation-removed` · error · POST /pets | The same unrelated pair with documents-unrelated turned off in the policy: the full diff runs, e.g. for an intentional rewrite. |
 | [`documents-unrelated-too-small`](../../test/cases/documents-unrelated-too-small/) | `operation-removed` · error · GET /pets<br>`operation-removed` · error · POST /pets | Two unrelated documents with two operations each: below min-size (5), so the check is skipped and the diff runs. |
 | [`documents-unrelated-version-prefixes`](../../test/cases/documents-unrelated-version-prefixes/) | `operation-removed` · error · GET /billing/v1/invoices<br>`operation-removed` · error · GET /billing/v1/invoices/{invoiceId}<br>`operation-removed` · error · GET /orders/2024-01-01/orders<br>`operation-removed` · error · GET /users/v1/me<br>`operation-removed` · error · POST /orders/2024-01-01/orders | Several different prefixes, each with its own version segment (v1 → v2, 2024-01-01 → 2025-06-01), no operationIds or schemas and a new title. Version segments are dropped anywhere in the path, so the operations still match and the documents count as related; the diff reports the moved operations as usual. |
 | [`operation-path-changed-without-id`](../../test/cases/operation-path-changed-without-id/) | `operation-removed` · error · GET /pets/{id} | Without a matching operationId, a moved operation is removed + added. |
 | [`operation-removed`](../../test/cases/operation-removed/) | `operation-removed` · error · DELETE /pets/{id} | Removing an operation is an error. |
+| [`operation-removed-deprecated-too-short`](../../test/cases/operation-removed-deprecated-too-short/) | `operation-removed` · error · DELETE /pets/{id} | Deprecated on 2026-10-01, removed 51 days later: short of the 90-day period, so it is still operation-removed (error), and the message says by how much. |
+| [`operation-removed-undated-deprecation-blocked`](../../test/cases/operation-removed-undated-deprecation-blocked/) | `operation-removed` · error · DELETE /pets/{id} | Deprecated without a date, with undated-deprecation: block: the period cannot be checked, so the removal is an error. |
+| [`version-bump-0x`](../../test/cases/version-bump-0x/) | `operation-removed` · error · DELETE /pets/{id} | Below 1.0.0, needs shift down one level: a breaking change needs a minor bump (0.3 to 0.4), so a patch bump is too small. |
+| [`version-bump-major`](../../test/cases/version-bump-major/) | `operation-removed` · error · DELETE /pets/{id} | A breaking removal with a major bump (1.2.0 to 2.0.0): no version finding. |
+| [`version-bump-too-small`](../../test/cases/version-bump-too-small/) | `operation-removed` · error · DELETE /pets/{id} | An operation was removed (error, breaking) but the version only went 1.2.0 to 1.3.0: a major bump is needed. |
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. See [POLICY.md](../../POLICY.md).
 
 Options for this rule:
 
@@ -63,6 +71,7 @@ Options for this rule:
 |---|---|---|
 | `unless.deprecated-for-days` | `90` | Allow removal (as `operation-removed-after-deprecation`) once the operation has been deprecated this long. Can be set per stability level. |
 | `unless.past-sunset` | `true` | Allow removal once the operation's sunset date has passed. |
+| `unless.undated-deprecation` | `allow` | For an operation marked `deprecated` without a deprecation date: `allow` counts it as long enough, `block` keeps the removal an error. |
 
 ```yaml
 rules:

@@ -1,0 +1,22 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      x-rate-limit: 100
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+components:
+  schemas:
+    Status:
+      type: string
+      enum: [a, b]
+      x-enum-varnames: [Available, Sold]

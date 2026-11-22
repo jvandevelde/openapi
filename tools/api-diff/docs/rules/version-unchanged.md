@@ -9,12 +9,12 @@ Spec changed but the version didn't
 | **Kind** | `wire` |
 | **Default severity** | `warn` |
 | **Rule IDs** | `version-unchanged` |
-| **Status** | Planned (M6) |
+| **Status** | Implemented (M6) |
 | **Group** | Lifecycle and versions ([RULES.md section 9](../../RULES.md)) |
 
 ## What it detects
 
-The spec changed but the recorded version didn't.
+The spec changed (any finding except notices such as `spec-invalid` or `not-compared`) but the recorded version didn't. The version comes from the policy's `versions` section (`info.version` by default) or `--base-version` / `--revision-version`.
 
 ## Why this default
 
@@ -22,21 +22,44 @@ Consumers cannot tell versions apart.
 
 ## Example
 
-_No example yet: one is added with the rule's test case when the rule is implemented._
+From test case [`version-unchanged`](../../test/cases/version-unchanged/): An operation was added but info.version stayed 1.0.0: version-unchanged (warn).
+
+`openapi.yaml`, base → revision:
+
+```diff
+  …
+          '200':
+            description: ok
++   /pets/{id}:
++     delete:
++       responses:
++         '200':
++           description: ok
+```
+
+Findings:
+
+- `operation-added` · info · DELETE /pets/{id}
+- `version-unchanged` · warn · document
 
 ## Test cases
 
-_None yet._
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`version-from-extension`](../../test/cases/version-from-extension/) | `version-unchanged` · warn · document | The policy reads the version from x-api-version before info.version: x-api-version stayed 2.1.0, so version-unchanged even though info.version moved. |
+| [`version-unchanged`](../../test/cases/version-unchanged/) | `version-unchanged` · warn · document | An operation was added but info.version stayed 1.0.0: version-unchanged (warn). |
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. See [POLICY.md](../../POLICY.md).
 
 Options for this rule:
 
 | Option | Default | Description |
 |---|---|---|
-| `scheme` | `semver` | `semver`, `calver` or `none` (turns this rule off). |
+| `scheme` | `semver` | `semver`, `calver` or `none` (turns off both version rules). |
 
 ```yaml
 rules:

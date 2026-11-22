@@ -1,0 +1,13 @@
+description: "The policy's internal set (/internal/** and x-internal: true) is ignored: the removed parameter and changed schema of /internal/metrics, the removed x-internal operation and the changed x-internal component are not compared. One not-compared notice lists the set."
+milestone: M6
+options:
+  policy:
+    exclusions:
+      internal:
+        paths: [/internal/**]
+        extensions: [x-internal]
+    ignore: [internal]
+findings:
+  - rule: not-compared
+    severity: info
+    subject: 'document'

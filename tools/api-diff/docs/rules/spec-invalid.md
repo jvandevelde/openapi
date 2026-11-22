@@ -58,17 +58,18 @@ Findings:
 
 ## Test cases
 
-3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`path-template-clash`](../../test/cases/path-template-clash/) | `spec-invalid` · error · base document<br>`spec-invalid` · error · revision document | Two templates that differ only in parameter names are the same path, which is invalid. The same template is kept whatever the key order. |
 | [`spec-invalid-swagger`](../../test/cases/spec-invalid-swagger/) | `spec-invalid` · error · revision document | Swagger 2.0 is not supported. |
 | [`spec-invalid-yaml`](../../test/cases/spec-invalid-yaml/) | `spec-invalid` · error · revision document | A revision that is not valid YAML. |
+| [`stability-level-invalid`](../../test/cases/stability-level-invalid/) | `spec-invalid` · error · GET /pets | A stability level that is not in the stability-decreased levels (a typo here) is spec-invalid, at the extension. |
 
 ## Policy options
 
-Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. The policy file arrives in M6; see [POLICY.md](../../POLICY.md).
+Every rule takes `severity` (`error`, `warn`, `info` or `off`), `fix` and `explanation` in the policy file. See [POLICY.md](../../POLICY.md).
 
 ```yaml
 rules:

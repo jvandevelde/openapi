@@ -7,6 +7,10 @@ import { dump } from 'js-yaml';
 import { compareOpened } from '../../src/engine.ts';
 import { parse } from '../../src/load/parse.ts';
 import { MemorySource } from '../../src/sources/memory.ts';
+import { ParseCache } from '../../src/load/cache.ts';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const targetMb = Number(process.argv[2] ?? 8);
 
@@ -65,3 +69,13 @@ const result = await time('compare (load both, diff, classify)', () =>
   compareOpened({ source: new MemorySource({ 'base.yaml': base }), root: 'base.yaml' }, { source: new MemorySource({ 'rev.yaml': rev }), root: 'rev.yaml' }),
 );
 console.log(`${result.counts.total} findings, ${(process.memoryUsage().rss / 1e6).toFixed(0)} MB RSS`);
+
+// The opt-in parse cache for the base (--cache-dir): a cold run writes it, a warm run reads it.
+const cacheDir = mkdtempSync(join(tmpdir(), 'api-diff-bench-cache-'));
+try {
+  for (const label of ['compare, base cache cold (writes it)', 'compare, base cache warm']) {
+    await time(label, () => compareOpened({ source: new MemorySource({ 'base.yaml': base }), root: 'base.yaml' }, { source: new MemorySource({ 'rev.yaml': rev }), root: 'rev.yaml' }, { cache: new ParseCache(cacheDir) }));
+  }
+} finally {
+  rmSync(cacheDir, { recursive: true, force: true });
+}

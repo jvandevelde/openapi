@@ -1,0 +1,8 @@
+description: >-
+  Deprecated on 2026-10-01, removed 51 days later: short of the 90-day period, so it is still operation-removed (error),
+  and the message says by how much.
+milestone: M6
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: DELETE /pets/{id}

@@ -94,7 +94,7 @@ test('a change deep inside a cycle is reported once, for the schema that changed
     dump(doc({ A: { type: 'object', properties: { b: ref('B') } }, B: { type: 'object', properties: { c: ref('C') } }, C: { type: 'object', properties: { a: ref('A'), note: { type: 'string', ...(fmt ? { format: fmt } : {}) } } } }));
   const r = await compareOpened({ source: new MemorySource({ 'a.yaml': mk() }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': mk('uuid') }), root: 'b.yaml' });
   assert.deepEqual(
-    r.findings.map((f) => [f.rule, f.subject, f.details.changed, f.impact]),
+    r.findings.filter((f) => !f.baseRule.startsWith('version-')).map((f) => [f.rule, f.subject, f.details.changed, f.impact]),
     [['format-added-in-response', '#/components/schemas/C', undefined, ['GET /a']]],
   );
 });

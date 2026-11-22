@@ -1,0 +1,6 @@
+description: "The enum is marked open with x-api-diff, so clients must accept unknown values and adding one is info, not warn."
+milestone: M6
+findings:
+  - rule: enum-value-added-in-response
+    severity: info
+    subject: '#/components/schemas/Pet'

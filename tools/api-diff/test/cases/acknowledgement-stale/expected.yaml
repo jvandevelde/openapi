@@ -1,0 +1,14 @@
+description: "An acknowledgement names a finding ID that doesn't appear (the change was fixed or reworded): acknowledgement-stale (info) says to remove it. The real removal is not covered."
+milestone: M6
+options:
+  acknowledgements:
+    - finding: 0123456789ab
+      reason: An old exception.
+      expires: 2027-01-31
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: DELETE /pets/{id}
+  - rule: acknowledgement-stale
+    severity: info
+    subject: acknowledgement-stale/expected.yaml

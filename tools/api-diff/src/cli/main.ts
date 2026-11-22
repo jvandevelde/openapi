@@ -1,12 +1,18 @@
 // Command-line interface.
 //
-// Exit codes: 0 ok, 1 findings at or above --fail-on, 2 usage or input error.
+// Exit codes: 0 ok, 1 findings at or above --fail-on (never by default, so
+// only when a team opts in), 2 usage or input error.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { compareInputs, shouldFail } from '../engine.ts';
-import { renderTxt } from '../render/txt.ts';
+import { compareInputs, countFindings, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
+import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
+import { isoDate } from '../diff/lifecycle.ts';
+import { ParseCache } from '../load/cache.ts';
+import { loadAcknowledgements } from '../policy/acks.ts';
+import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
+import { checkSupported, viewFor } from '../render/config.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
@@ -31,11 +37,28 @@ Inputs:
 
 Options:
   -C, --cwd <dir>        run as if started in <dir>
-  -f, --format <fmt>     txt (default) or json
-  -o, --output <file>    write the report to a file instead of stdout
-      --fail-on <level>  exit 1 if any finding is at or above: error (default), warn, info, never
+      --report <name>[:<format>[:<file>]]
+                         a report to write; repeatable. Reports: review (the default; what changed and who
+                         it affects), ci (short, for CI logs), summary (size and risk). Formats: txt, json,
+                         html (review and summary)
+  -f, --format <fmt>     format of the default report: txt (default), json or html
+  -o, --output <file>    write the default report to a file instead of stdout
+      --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
+                         report without failing)
       --state            print only the state: no-changes, compatible or breaking
       --profile <name>   wire (default) or sdk
+      --policy <file>    policy file (default: api-diff.yaml in the working directory, if present)
+      --no-policy        ignore api-diff.yaml
+      --base-version <v>, --revision-version <v>
+                         the versions to record and check (default: from the documents, see the policy's versions)
+      --base-label <k=v>, --revision-label <k=v>
+                         extra version labels, e.g. build=8812; repeatable
+      --cache-dir <dir>  cache the parsed base documents here, keyed by their content (for CI: keep the
+                         directory between runs)
+      --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
+      --acknowledgements <file>  accepted findings (default: api-diff.ack.yaml in the working directory, if present)
+      --no-acknowledgements      ignore api-diff.ack.yaml
+      --rule <id>=<sev>  set a rule's severity (error, warn, info, off); repeatable, beats the policy file
       --color / --no-color
   -h, --help
   -v, --version
@@ -64,9 +87,9 @@ export async function main(argv: string[], io: Io = { stdout: process.stdout, st
     }
     return await diffCommand(argv, io);
   } catch (e) {
-    if (e instanceof UsageError || e instanceof SourceError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+    if (e instanceof UsageError || e instanceof SourceError || e instanceof PolicyError || e instanceof ReportError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
       io.stderr.write(`api-diff: ${(e as Error).message}\n`);
-      if (e instanceof UsageError || !(e instanceof SourceError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
+      if (e instanceof UsageError || !(e instanceof SourceError || e instanceof PolicyError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
       return 2;
     }
     throw e;
@@ -86,6 +109,18 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       'fail-on': { type: 'string' },
       state: { type: 'boolean' },
       profile: { type: 'string' },
+      policy: { type: 'string' },
+      'no-policy': { type: 'boolean' },
+      rule: { type: 'string', multiple: true },
+      'as-of': { type: 'string' },
+      acknowledgements: { type: 'string' },
+      'no-acknowledgements': { type: 'boolean' },
+      report: { type: 'string', multiple: true },
+      'cache-dir': { type: 'string' },
+      'base-version': { type: 'string' },
+      'revision-version': { type: 'string' },
+      'base-label': { type: 'string', multiple: true },
+      'revision-label': { type: 'string', multiple: true },
       color: { type: 'boolean' },
       'no-color': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
@@ -100,27 +135,67 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     io.stdout.write(`${VERSION}\n`);
     return 0;
   }
-  const format = oneOf('format', values.format, ['txt', 'json'] as const, 'txt');
-  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], 'error');
-  const profile = oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], 'wire');
+  const format = oneOf('format', values.format, ['txt', 'json', 'html'] as const, 'txt');
   const cwd = resolve(values.cwd ?? process.cwd());
+  if (values.policy !== undefined && values['no-policy']) throw new UsageError('--policy and --no-policy cannot be used together');
+  const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
+  for (const r of values.rule ?? []) {
+    const eq = r.indexOf('=');
+    if (eq <= 0) throw new UsageError(`--rule must be <rule-id>=<severity>, got '${r}'`);
+    const id = r.slice(0, eq);
+    const setting = parseRuleSetting(id, r.slice(eq + 1), `--rule ${id}`);
+    policy.rules.set(id, { ...policy.rules.get(id), severity: setting.severity!, options: policy.rules.get(id)?.options ?? {}, from: '--rule' });
+  }
+  const failOn = oneOf<FailOn>('fail-on', values['fail-on'], ['error', 'warn', 'info', 'never'], policy.failOn ?? 'never');
+  const profile = oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], policy.profile ?? 'wire');
   if (positionals.length === 0 && values.base === undefined) {
     io.stdout.write(HELP);
     return 2;
   }
   const [base, revision] = inputsFromArgs(positionals, { base: values.base, revision: values.revision }, cwd);
-  const result = await compareInputs(base, revision, cwd, { profile });
+  const asOf = values['as-of'];
+  if (asOf !== undefined && !isoDate(asOf)) throw new UsageError(`--as-of must be a date (YYYY-MM-DD), got '${asOf}'`);
+  const labels = (name: string, list: string[] | undefined): Record<string, string> | undefined => {
+    if (!list?.length) return undefined;
+    const out: Record<string, string> = {};
+    for (const l of list) {
+      const eq = l.indexOf('=');
+      if (eq <= 0) throw new UsageError(`--${name} must be <name>=<value>, got '${l}'`);
+      out[l.slice(0, eq)] = l.slice(eq + 1);
+    }
+    return out;
+  };
+  const opts: CompareOptions = { profile, policy };
+  if (values.acknowledgements !== undefined && values['no-acknowledgements']) throw new UsageError('--acknowledgements and --no-acknowledgements cannot be used together');
+  const acks = values['no-acknowledgements'] ? undefined : loadAcknowledgements(cwd, values.acknowledgements);
+  if (acks) opts.acknowledgements = acks;
+  if (asOf !== undefined) opts.asOf = asOf;
+  if (values['cache-dir'] !== undefined) opts.cache = new ParseCache(resolve(cwd, values['cache-dir']));
+  if (values['base-version'] !== undefined) opts.baseVersion = values['base-version'];
+  if (values['revision-version'] !== undefined) opts.revisionVersion = values['revision-version'];
+  const bl = labels('base-label', values['base-label']);
+  const rl = labels('revision-label', values['revision-label']);
+  if (bl) opts.baseLabels = bl;
+  if (rl) opts.revisionLabels = rl;
+  if (values.report?.length && (values.format !== undefined || values.output !== undefined)) throw new UsageError('--format and --output set the default report; with --report, give the format and file in it (e.g. --report review:json:review.json)');
+  const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
+  for (const spec of reports) checkSupported(spec.name, policy.reports.get(spec.name));
+  if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
+  const result = await compareInputs(base, revision, cwd, opts);
 
-  let text: string;
-  if (values.state) text = `${result.state}\n`;
-  else if (format === 'json') text = JSON.stringify(result, null, 2) + '\n';
-  else {
-    const color = values['no-color'] ? false : values.color ? true : !values.output && !!io.stdout.isTTY && !io.env.NO_COLOR;
-    text = renderTxt(result, { color });
+  const recount = (fs: typeof result.findings) => ({ counts: countFindings(fs), state: stateOf(fs) });
+  if (values.state) io.stdout.write(`${result.state}\n`);
+  for (const spec of reports) {
+    if (values.state && !spec.file) continue;
+    const cfg = policy.reports.get(spec.name);
+    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : 'txt');
+    const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
+    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn });
+    if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
+    else io.stdout.write(text);
   }
-  if (values.output) writeFileSync(resolve(cwd, values.output), text);
-  else io.stdout.write(text);
-  return shouldFail(result, failOn) ? 1 : 0;
+  // The ci report is the gate: its exclusions and filters apply to the exit code too.
+  return shouldFail(viewFor(result, policy.reports.get('ci'), recount), failOn) ? 1 : 0;
 }
 
 function severityText(r: RuleMeta): string {

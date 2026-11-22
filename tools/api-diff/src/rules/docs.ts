@@ -59,6 +59,7 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
     options: [
       { name: 'unless.deprecated-for-days', default: '90', description: 'Allow removal (as `operation-removed-after-deprecation`) once the operation has been deprecated this long. Can be set per stability level.' },
       { name: 'unless.past-sunset', default: 'true', description: "Allow removal once the operation's sunset date has passed." },
+      { name: 'unless.undated-deprecation', default: 'allow', description: 'For an operation marked `deprecated` without a deprecation date: `allow` counts it as long enough, `block` keeps the removal an error.' },
     ],
   },
   'operation-removed-after-deprecation': {
@@ -463,17 +464,17 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
   'component-unused': { description: 'A component changed, but no operation uses it.', why: 'The change affects no operation (it may be used by other specs or code generators).', fix: 'Nothing to fix; consider removing unused components.' },
 
   // 9. Lifecycle and versions
-  'deprecated-added': { description: 'An operation, parameter, property or schema was marked `deprecated`.', why: 'Nothing breaks yet; it starts the deprecation period.', fix: 'Nothing to fix; announce it.' },
+  'deprecated-added': { description: 'An operation, parameter, property or schema was marked `deprecated: true`.', why: 'Nothing breaks yet; it starts the deprecation period.', fix: 'Nothing to fix; announce it.' },
   'deprecated-removed': { description: 'A deprecation was withdrawn.', why: 'Nothing breaks.', fix: 'Nothing to fix.' },
   'sunset-moved-earlier': { description: 'A sunset date (from the configured extension, `x-sunset` by default) moved earlier.', why: 'Clients planning around the old date have less time.', fix: 'Keep the original sunset date.' },
   'stability-decreased': { description: 'A stability level went down, e.g. `stable` → `beta` (from the configured extension, `x-stability-level` by default).', why: 'Clients relying on stability guarantees lose them.', fix: 'Keep the stability level.', options: [{ name: 'levels', default: '[draft, alpha, beta, stable]', description: 'Order of stability levels, lowest first.' }] },
   'version-bump-too-small': {
-    description: 'The recorded version changed less than the findings require, e.g. a minor bump with breaking changes.',
+    description: 'Under `semver`, the version went up by less than the findings need: any `error` finding needs a major bump, any other `wire` or `sdk` finding a minor bump, and `docs`-only changes a patch bump. Below 1.0.0 each need is one level lower (a breaking change needs a minor bump). Uses the final severities, after the policy. Not checked under `calver`; a version that isn\'t semver gives a `not-compared` notice instead.',
     why: 'Consumers relying on semantic versioning upgrade without expecting breakage.',
     fix: 'Bump the major version, or avoid the breaking change.',
-    options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` or `none` (turns this rule off).' }],
+    options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` (this rule doesn\'t apply) or `none` (turns off both version rules).' }],
   },
-  'version-unchanged': { description: "The spec changed but the recorded version didn't.", why: 'Consumers cannot tell versions apart.', fix: 'Bump the version.', options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` or `none` (turns this rule off).' }] },
+  'version-unchanged': { description: "The spec changed (any finding except notices such as `spec-invalid` or `not-compared`) but the recorded version didn't. The version comes from the policy's `versions` section (`info.version` by default) or `--base-version` / `--revision-version`.", why: 'Consumers cannot tell versions apart.', fix: 'Bump the version.', options: [{ name: 'scheme', default: 'semver', description: '`semver`, `calver` or `none` (turns off both version rules).' }] },
 
   // 10. Docs
   'description-changed': { description: 'A `description` changed.', why: 'Documentation only.', fix: 'Nothing to fix.' },
@@ -485,6 +486,16 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
   'tag-removed': { description: 'A tag was removed from the top-level `tags` list.', why: 'Documentation only (operation tags are `operation-tags-changed`).', fix: 'Nothing to fix.' },
   'tag-description-changed': { description: "A tag's description changed.", why: 'Documentation only.', fix: 'Nothing to fix.' },
   'info-changed': { description: '`info` changed: contact, license or terms of service.', why: 'Documentation only.', fix: 'Nothing to fix.' },
+  'extension-changed-sdk': {
+    description: "An `x-` extension that the policy's `extensions` section classifies as `sdk` changed, e.g. `x-enum-varnames` or `x-go-type`, which code generators read.",
+    why: 'Generated SDK code changes (renamed constants, different types) even though the JSON on the wire is the same. `info` by default, `warn` under `--profile sdk`.',
+    fix: 'Keep the extension value, or treat the change as an SDK release with notes.',
+  },
+  'extension-changed-wire': {
+    description: "An `x-` extension that the policy's `extensions` section classifies as `wire` changed: one that changes what servers or gateways accept or send.",
+    why: "The extension affects behaviour on the wire, but api-diff can't tell how, so it might break clients.",
+    fix: 'Check what the extension controls; keep the old value if clients depend on it.',
+  },
   'extension-changed': { description: 'An `x-` extension the policy does not classify as `wire` or `sdk` changed.', why: 'Treated as documentation unless the policy says otherwise.', fix: 'Classify extensions that affect clients or SDKs in the policy `extensions` section.' },
 
   // 11. Notices
@@ -511,10 +522,20 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
       { name: 'min-overlap', default: '0.1', description: 'The documents count as related if any signal reaches this share (shared items divided by the size of the smaller document).' },
       { name: 'signals', default: '[operations, operation-ids, schemas]', description: 'Which overlaps to measure. One signal at or above `min-overlap` is enough. A signal that is empty on either side is skipped.' },
       { name: 'min-size', default: '5', description: 'Skip the check when the smaller document has fewer operations and fewer schemas than this, since a tiny overlap means little there. An empty base is always skipped.' },
-      { name: 'ignore-path-segments', default: "['^v\\d+([a-z]+\\d*)?$', '^\\d{4}-\\d{2}-\\d{2}$']", description: 'Regular expressions for path segments dropped before comparing paths, anywhere in the path (by default `v1`, `v2beta1`, `2024-01-01`). Works with any number of different prefixes.' },
+      { name: 'ignore-path-segments', default: "['^v\\d+((alpha|beta|rc)\\d*)?$', '^\\d{4}-\\d{2}-\\d{2}$']", description: 'Regular expressions for path segments dropped before comparing paths, anywhere in the path (by default `v1`, `v2beta1`, `v3rc2`, `2024-01-01`). Works with any number of different prefixes.' },
       { name: 'strip-prefixes', default: '[]', description: 'Extra path prefixes removed before comparing, e.g. `[/api, /internal]`.' },
       { name: 'when', default: 'manual', description: '`manual` skips the check when both inputs are the same path at two git revisions. `always` checks those too.' },
     ],
+  },
+  'acknowledgement-stale': {
+    description: 'An entry in the acknowledgements file names a finding ID that no longer appears: the change was fixed, or the finding changed and got a new ID.',
+    why: 'Notice only: the file should be cleaned up so it lists only accepted findings.',
+    fix: 'Remove the entry, or acknowledge the finding under its new ID.',
+  },
+  'acknowledgement-expired': {
+    description: "An acknowledgement's `expires` date has passed (as of today, or `--as-of`), so its finding counts again and can fail CI.",
+    why: 'Notice only: it explains why a previously accepted finding is back.',
+    fix: 'Fix the change, or renew the acknowledgement with a new `expires` date and reason.',
   },
   'not-compared': {
     description: "Notice for parts of the spec that weren't compared: webhooks, callbacks, `$ref`s to external URLs, and ignored exclusions.",

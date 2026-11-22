@@ -1,0 +1,12 @@
+# Example policy for the self-check. See tools/api-diff/POLICY.md.
+version: 1
+exclusions:
+  internal:
+    tags: [internal]
+    extensions: [x-internal]
+overrides:
+  - match: { stability: [draft, alpha] }
+    severity: info              # anything goes before beta
+reports:
+  review:
+    exclude: [internal]         # PR comments leave internal operations out

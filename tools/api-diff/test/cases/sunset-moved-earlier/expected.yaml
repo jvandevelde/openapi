@@ -1,0 +1,6 @@
+description: 'The sunset date moved from 2027-06-01 to 2027-03-01: clients have less time, so warn.'
+milestone: M6
+findings:
+  - rule: sunset-moved-earlier
+    severity: warn
+    subject: GET /pets/{id}

@@ -1,0 +1,12 @@
+description: 'An operation, a query parameter and a schema property are marked deprecated: one info finding each.'
+milestone: M6
+findings:
+  - rule: deprecated-added
+    severity: info
+    subject: '#/components/schemas/Pet'
+  - rule: deprecated-added
+    severity: info
+    subject: GET /pets
+  - rule: deprecated-added
+    severity: info
+    subject: GET /pets/{id}

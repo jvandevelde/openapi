@@ -207,6 +207,13 @@ All `docs` kind, default `info`, phase 2. They appear in the **diff** view and i
 
 [`description-changed`](docs/rules/description-changed.md), [`summary-changed`](docs/rules/summary-changed.md), [`title-changed`](docs/rules/title-changed.md) (outside schemas; schema titles are in section 8), [`example-changed`](docs/rules/example-changed.md), [`external-docs-changed`](docs/rules/external-docs-changed.md), [`tag-added`](docs/rules/tag-added.md), [`tag-removed`](docs/rules/tag-removed.md), [`tag-description-changed`](docs/rules/tag-description-changed.md), [`info-changed`](docs/rules/info-changed.md) (contact, license, terms), [`extension-changed`](docs/rules/extension-changed.md) (any `x-` extension the policy doesn't classify as `wire` or `sdk`).
 
+Extensions the policy's `extensions` section classifies (POLICY.md section 6) have their own rules, outside the docs kind:
+
+| Rule | Meaning | Kind | Default | Phase |
+|---|---|---|---|---|
+| [`extension-changed-sdk`](docs/rules/extension-changed-sdk.md) | An extension classified `sdk` changed, e.g. `x-enum-varnames` | sdk | info · **sdk: warn** | 3 |
+| [`extension-changed-wire`](docs/rules/extension-changed-wire.md) | An extension classified `wire` changed | wire | warn | 3 |
+
 ## 11. Spec and engine notices
 
 | Rule | Meaning | Default | Phase |
@@ -215,6 +222,8 @@ All `docs` kind, default `info`, phase 2. They appear in the **diff** view and i
 | [`ref-unresolved`](docs/rules/ref-unresolved.md) | A `$ref` points nowhere | error | 1 |
 | [`cycle-not-productive`](docs/rules/cycle-not-productive.md) | A cycle with no property or `items` step, e.g. `A: allOf [$ref A]` | error | 2 |
 | [`documents-unrelated`](docs/rules/documents-unrelated.md) | The two documents share almost no operations, `operationId`s or schema names, and the title or server hosts differ, so they look like different APIs (usually a wrong path). Measured per signal as shared items ÷ the smaller document's count. The diff stops and this is the only finding; set it to `off` for an intentional rewrite | error | 3 |
+| [`acknowledgement-stale`](docs/rules/acknowledgement-stale.md) | An entry in the acknowledgements file names a finding that no longer appears; clean it up | info | 3 |
+| [`acknowledgement-expired`](docs/rules/acknowledgement-expired.md) | An acknowledgement's `expires` date passed, so its finding counts again | info | 3 |
 | [`not-compared`](docs/rules/not-compared.md) | Parts of the spec that weren't compared: webhooks, callbacks, `ignore`d exclusions | info | 1 |
 
 ## Counts
@@ -224,7 +233,7 @@ All `docs` kind, default `info`, phase 2. They appear in the **diff** view and i
 | 1. Core fallbacks | 4 |
 | 2–6. Operations, security, parameters, request bodies, responses | 41 (parameter rules count once, not once per location) |
 | 7. Schemas (each one is a request/response pair) | 52 |
-| 8–11. References, lifecycle, docs, notices | 29 |
+| 8–11. References, lifecycle, docs, notices | 33 |
 | **Total** | **about 125** (about 180 counting both directions of each pair) |
 
 Phase 1 builds sections 2–6 and the notices. Phase 2 builds the schema, reference and docs rules.

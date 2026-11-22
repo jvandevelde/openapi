@@ -1,0 +1,6 @@
+description: 'Deprecated without x-deprecated-since. By default (undated-deprecation: allow) the deprecation counts as long enough.'
+milestone: M6
+findings:
+  - rule: operation-removed-after-deprecation
+    severity: info
+    subject: DELETE /pets/{id}

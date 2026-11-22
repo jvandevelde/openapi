@@ -1,0 +1,6 @@
+description: "x-api-diff rules on the operation raise parameter-removed (warn by default) to error for everything under it."
+milestone: M6
+findings:
+  - rule: query-parameter-removed
+    severity: error
+    subject: 'GET /pets'

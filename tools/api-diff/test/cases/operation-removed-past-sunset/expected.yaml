@@ -1,0 +1,8 @@
+description: >-
+  The operation had a sunset date of 2026-11-01, which has passed (as of 2026-11-21): removal is info even without
+  deprecated.
+milestone: M6
+findings:
+  - rule: operation-removed-after-deprecation
+    severity: info
+    subject: DELETE /pets/{id}

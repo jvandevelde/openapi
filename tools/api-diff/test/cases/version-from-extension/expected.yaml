@@ -1,0 +1,15 @@
+description: "The policy reads the version from x-api-version before info.version: x-api-version stayed 2.1.0, so version-unchanged even though info.version moved."
+milestone: M6
+options:
+  check-versions: true
+  policy:
+    versions:
+      primary:
+        from: [x-api-version, info.version]
+findings:
+  - rule: operation-added
+    severity: info
+    subject: 'DELETE /pets/{id}'
+  - rule: version-unchanged
+    severity: warn
+    subject: 'document'

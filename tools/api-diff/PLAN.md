@@ -1,6 +1,6 @@
 # api-diff: plan
 
-Status: **M0–M5 done** (operation, schema, reference and docs changes are classified; see [README.md](README.md)). Next: M6 (policy). The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
+Status: **M0–M7 done** (operation, schema, reference, lifecycle, version and docs changes are classified; the policy file, acknowledgements and in-spec hints are supported; the `review`, `ci` and `summary` reports and a PR workflow are in place; see [README.md](README.md)). Next: M8 (presentation). The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
 
 `api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Several tools already do parts of this (section 1). We're building our own so that we decide what counts as breaking and how results are shown, and so the tool is built around the problems those tools leave open (section 3): shared and recursive schemas, request vs response direction, wire vs SDK compatibility, and reports for different readers.
 
@@ -267,7 +267,7 @@ Measured on a generated 8 MB OpenAPI 3.1 spec (3,650 paths and schemas, about 24
 
 So TypeScript is fast enough, as long as we **don't use the `yaml` package for loading** (it's about 10× slower, because it builds a full CST that keeps comments). Use `JSON.parse` + `jsonc-parser` for JSON and `js-yaml` for YAML, and get positions from offsets. Load base and revision in parallel. The costs that grow with the work are allOf merging and `$ref` impact fan-out, so memoise results per component instead of re-walking for each operation. Target: under 1 s end to end for two 8 MB specs.
 
-**Measured with the implementation (M3)**, `node test/bench/bench.ts 8` on Node 22: parsing one 8 MB YAML spec with positions takes about 0.45–0.56 s and one JSON spec about 0.47 s; comparing two 8 MB YAML specs end to end takes about 1.8 s, mostly parsing. js-yaml 5 replaced the `listener` option with an event parser, which we now use (decision record *Get YAML positions from js-yaml 5 parser events*). Parsing the two sides in worker threads (later) would bring this close to the 1 s target. **With the schema index (M4):** building the index takes about 0.3–0.4 s per 5 MB side, so comparing two 8 MB YAML specs takes about 3.5–4 s. Parsing in workers and caching the base index (backlog) are the next steps if this matters.
+**Measured with the implementation (M3)**, `node test/bench/bench.ts 8` on Node 22: parsing one 8 MB YAML spec with positions takes about 0.45–0.56 s and one JSON spec about 0.47 s; comparing two 8 MB YAML specs end to end takes about 1.8 s, mostly parsing. js-yaml 5 replaced the `listener` option with an event parser, which we now use (decision record *Get YAML positions from js-yaml 5 parser events*). Parsing the two sides in worker threads (later) would bring this close to the 1 s target. **With the schema index (M4):** building the index takes about 0.3–0.4 s per 5 MB side, so comparing two 8 MB YAML specs takes about 3.5–4 s. Parsing in workers and caching the base index (backlog) are the next steps if this matters. **With the parse cache (M7, `--cache-dir`):** the base's parsed documents and positions are stored with `v8.serialize`, keyed by content. On the 8 MB benchmark a warm cache saves about 0.5 s (4.0 s → 3.5 s) and writing it costs about 0.4 s once. Parsing is only part of the base's cost; the model and the schema index (about 0.5 s per 5 MB side) are rebuilt every run, so caching the schema index itself is the larger, later step.
 
 ### Shared components used in both requests and responses
 
@@ -400,7 +400,7 @@ The hashes also give exact "changed / total" counts for components and operation
 
 ```jsonc
 {
-  "id": "c7f3e1a2",                         // stable hash of kind + locations
+  "id": "c7f3e1a2b4d6",                     // stable hash of kind + locations
   "kind": "schema.enum.value-removed",
   "subject": { "component": "#/components/schemas/Status" },
   "base":     { "pointer": "/components/schemas/Status/enum/2", "file": "base.yaml", "line": 88, "value": "archived" },
@@ -462,7 +462,7 @@ Every finding in the output also shows **where its severity came from** (e.g. `w
 
 ```yaml
 # acknowledgements.yaml
-- finding: c7f3e1a2
+- finding: c7f3e1a2b4d6
   reason: "Only the mobile app sends 'archived', and it's already updated."
   owner: "@orders-team"
   expires: 2027-01-31
@@ -476,8 +476,8 @@ The engine produces one **result object** (JSON with a versioned schema): findin
 
 | Report | Reader | The question it answers | Includes | Grouped by | Formats | Where it goes |
 |---|---|---|---|---|---|---|
-| **`ci`** | The pipeline | Pass or fail? | Findings at or above `--fail-on`, excluding acknowledged ones | Severity | exit code, text, JSON | CI step log, JSON kept as a build artifact |
-| **`review`** | PR author and reviewers | What does this PR break, and how do I fix or accept it? | wire + sdk findings with fixes, a collapsed list of docs changes, acknowledged findings marked as such | Root cause (component or operation), worst first | text, HTML | PR comment (text), linked HTML artifact |
+| **`ci`** | The pipeline | What breaks, briefly? (and pass or fail, if the team gates on it) | Findings at or above `--fail-on` (or `warn` when nothing gates), excluding acknowledged ones | Severity | exit code, text, JSON | CI step log, JSON kept as a build artifact |
+| **`review`** | PR author and reviewers | What does this PR change, and who does it affect? | wire + sdk findings with their affected operations, a collapsed list of docs changes, acknowledged findings marked as such; no fix advice (breaking changes are often intended) | Root cause (component or operation), worst first | text, HTML | PR comment (text), linked HTML artifact |
 | **`changelog`** | API consumers | What changed for me in this release, and what do I need to do? | Plain-language entries: new, changed, deprecated (with sunset dates), removed, and migration notes. Configured exclusions applied (see *Exclusions*), no acknowledgement details, no docs-only changes unless asked | Tag, then operation | HTML, text | Release notes, developer portal |
 | **`sdk`** | SDK maintainers | Which generated types or methods change? | sdk findings, a table of old → new type and method names, the SDK semver bump | Generated type / operationId | text, JSON | SDK release PR |
 | **`summary`** | Release or product manager | How big and how risky is this release? | Counts by kind and severity, the semver advice, the 5 most serious findings | — | text, JSON | Release checklist, chat |
@@ -628,7 +628,8 @@ Only three: **`json`**, **`txt`** and **`html`**. Every report supports `json`, 
 
 - **Exclusions for each audience.** Each report applies only the exclusion sets you configure (see *Exclusions*), and `changelog` never shows acknowledgement reasons or owners.
 - **Each report stays the right size.** GitHub comments are limited to 65,536 characters, so `review` shows the most serious findings in full, collapses the rest and links to the `explore` HTML artifact for the remainder. It never just cuts off.
-- **Comments are updated, not added.** `review` writes a hidden marker so CI edits its own earlier comment, and shows "fixed since last push" and "new since last push".
+- **Comments are updated, not added.** The example workflow puts a hidden marker in the `review` comment so CI edits its own earlier comment instead of adding a new one each push.
+- **Reporting, not gating, by default.** `--fail-on` defaults to `never`: breaking changes are reported and highlighted, and a team opts in to failing CI (decision record *The PR check reports changes and doesn't fail by default*).
 - **Consumer impact reports.** `changelog --uses ops.txt` (a list of operations, from an SDK or from access logs) keeps only the changes that reach those operations, through the usage graph. Each consumer sees "3 changes affect you" instead of the whole release.
 - **Plain language comes from data, not code.** Each `kind` has message templates per audience (`review` is technical: "enum value removed in request at `Order.status`", `changelog` is consumer-facing: "`status` no longer accepts `archived`"). Teams can edit the templates without touching the engine.
 
@@ -709,8 +710,8 @@ Each milestone is one or a few pull requests and ends with something that runs.
 | **M3** ✅ | Operation-level diff | Model, diff and rules for paths, operations, security, parameters, request bodies, responses; txt and json output; `--fail-on`, `--state` | **First usable version:** M1 cases pass, and it can gate a PR on operation-level changes |
 | **M4** ✅ | Schema index | Graph, iterative Tarjan, productive-cycle check, shape/full hashes, skipping unchanged subtrees, `unclassified-change` | Recursive cases load and hash, and no input causes a stack overflow |
 | **M5** ✅ | Schema engine | Effective `allOf` merge, pair-cached comparison for cycles, variance, union branch and discriminator matching, schema rules (section 7), usages and direction (incl. `readOnly`/`writeOnly`), root-cause aggregation, ref rules, docs rules, profiles, bulk-change collapsing (3+ operations). Example re-validation moved to the backlog | All schema cases pass, and each shared-component change appears once |
-| **M6** | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance, the `documents-unrelated` precheck | Every POLICY.md example is a passing test |
-| **M7** | PR check | Report presets, `ci`, `review` and `summary` reports (txt/json/html), multiple `--report`, versions header, cached base index | **Used as a required PR check on a real API repo** |
+| **M6** ✅ | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance, the `documents-unrelated` precheck | Every POLICY.md example is a passing test |
+| **M7** ✅ | PR check | Report presets, `ci`, `review` (the default) and `summary` reports (txt/json/html), multiple `--report`, versions header with bump advice, `--fail-on never` by default, opt-in `--cache-dir` base index, a copyable GitHub Actions workflow and a self-check workflow in this repo | **Runs on every PR here and is ready to copy into an API repo** |
 | **M8** | Presentation | `explore` HTML (diff view with `explorer-url` links, no spec rendering), `changelog`, `sdk`, rename detection, semver advice, explanations and fixes, history timeline | Reviewers prefer it to the tools in section 1 |
 | **M9** | Governance | `audit`, custom reports and templates, `--uses` consumer reports, ownership routing | Release notes and governance reviews use it without manual editing |
 | **M10** | Distribution | esbuild bundle, release workflow (tag `api-diff-v*` → `api-diff.mjs` + `.sha256` on a GitHub release), generated rule docs, README | Another repo's CI downloads a pinned release and runs it |
@@ -731,9 +732,10 @@ Each decision has a full record (background, alternatives, impacts) in [decision
 4. **Name: `api-diff`.** Command `api-diff`, policy file `api-diff.yaml`, acknowledgements `api-diff.ack.yaml`, in-spec extension `x-api-diff`, release tags `api-diff-v<version>`.
 5. **Distribution: a single bundled release file** (`api-diff.mjs` plus a SHA-256 file) on GitHub releases of this repo. No package registry for now (see section 4, *Using it in other repositories*).
 
-Still open (not needed before M7):
+6. **Which reports first: `ci` and `review`** (built in M7), since they make the tool usable as a PR check.
 
-6. **Which reports first.** Proposal: `ci` and `review` (M7), since they make the tool usable as a PR check.
+Still open (not needed before M8):
+
 7. **Counter-example payloads: delegate, share or build.** The spec explorer already generates payloads. The options: delegate generation to it entirely; share a minimal-payload generator, with `api-diff` adding the finding-specific change and checking that the old schema accepts the payload and the new one rejects it; or build one here on top of the schema index. Before choosing, check the explorer's generator for cycle and union handling, deterministic output, whether it can be bundled for Node, and 3.0–3.2 support. See the [decision record](decision-records/2026-11-22T1647-explore-is-a-diff-view.md).
 
 ## 8. Further ideas (backlog)

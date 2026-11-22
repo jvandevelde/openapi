@@ -3,10 +3,12 @@
 // already-built value tree in step and records, for each object or array, the
 // offset of each key or item. A lookup walks the value tree by pointer.
 
-type Offsets = Map<string, number> | number[];
+export type Offsets = Map<string, number> | number[];
 
 export class PositionIndex {
   readonly #offsets = new WeakMap<object, Offsets>();
+  /** Containers with offsets, in the order they were recorded, for the parse cache. */
+  readonly #containers: object[] = [];
   readonly #lineStarts: number[];
   readonly root: unknown;
 
@@ -18,7 +20,20 @@ export class PositionIndex {
 
   /** @internal used by PositionBuilder */
   set(container: object, offsets: Offsets): void {
+    if (!this.#offsets.has(container)) this.#containers.push(container);
     this.#offsets.set(container, offsets);
+  }
+
+  /** Every container and its offsets. Serialized with the value (v8.serialize keeps object identity), it restores the index. */
+  entries(): [object, Offsets][] {
+    return this.#containers.map((c) => [c, this.#offsets.get(c)!]);
+  }
+
+  /** Rebuilds an index from `entries()` whose containers are objects inside `root`. */
+  static restore(root: unknown, source: string, entries: [object, Offsets][]): PositionIndex {
+    const index = new PositionIndex(root, source);
+    for (const [c, o] of entries) index.set(c, o);
+    return index;
   }
 
   /** Offset of the node at `segments`, or of its nearest ancestor that has one. */

@@ -2,7 +2,9 @@
 
 Status: **draft**. This is the full reference for the policy file. The rules themselves are listed in [RULES.md](RULES.md), and the design is in [PLAN.md](PLAN.md).
 
-The policy file is YAML or JSON, `api-diff.yaml` by default (or `--policy <file>`). Every key is optional: an empty file means "built-in defaults".
+The policy file is YAML or JSON, `api-diff.yaml` in the working directory by default (or `--policy <file>`; `--no-policy` ignores it). Every key is optional: an empty file means "built-in defaults".
+
+Command-line options beat the file: `--profile` and `--fail-on` replace `profile` and `defaults.fail-on`, and `--rule <rule-id>=<severity>` (repeatable) sets a rule's severity, e.g. `--rule documents-unrelated=off` for a one-off run.
 
 ## 1. Top-level keys
 
@@ -28,7 +30,7 @@ Acknowledgements live in a separate file (`api-diff.ack.yaml` or `--acknowledgem
 ```yaml
 profile: wire            # or sdk: raises the sdk-kind rules (see RULES.md)
 defaults:
-  fail-on: error         # error | warn | info | never; exit code 1 at or above this
+  fail-on: error         # error | warn | info | never (default); exit code 1 at or above this
   min-severity: info     # findings below this are dropped from every report
 ```
 
@@ -49,14 +51,19 @@ rules:
   enum-value-added-in-response: error    # only data clients receive
 ```
 
+Every finding records where its severity came from (`severitySource` in JSON), e.g. `policy api-diff.yaml: rules.query-parameter-removed`, `--rule: rules.operation-removed`, `profile sdk` or `default`.
+
 ## 4. Rule-specific options
 
 Only these rules take options beyond those in section 3. Every other rule takes `severity`, `fix` and `explanation` only.
+
+`response-header-removed` and `property-removed` have a severity that depends on the change (a required header; a closed object). Their `severity` applies to the other findings, and `required-severity` / `closed-object-severity` set the dependent case. `format-changed` keeps widening formats at `info` whatever its `severity` is; `off` turns off every finding of a rule.
 
 | Rule | Option | Default | Meaning |
 |---|---|---|---|
 | `operation-removed` | `unless.deprecated-for-days` | `90` | Removal is allowed (reported as `operation-removed-after-deprecation`) once the operation was deprecated at least this long. Can be per stability level: `{ stable: 90, beta: 30, alpha: 0 }` |
 | `operation-removed` | `unless.past-sunset` | `true` | Removal is also allowed once the operation's sunset date has passed |
+| `operation-removed` | `unless.undated-deprecation` | `allow` | For an operation marked `deprecated` with no deprecation date: `allow` counts it as deprecated long enough, `block` keeps the removal an error (the period can't be checked) |
 | `enum-value-added` | `honour-open-hint` | `true` | Treat enums marked open in the spec (`x-api-diff: { enum: open }`) as `info` |
 | `enum-value-added` | `open-extensions` | `[]` | Other extensions that mean "open enum", e.g. `[x-extensible-enum]` |
 | `property-added-optional` | `strict-clients` | `false` | `true` raises `…-in-response` to `warn`, for clients that reject unknown fields |
@@ -74,7 +81,7 @@ Only these rules take options beyond those in section 3. Every other rule takes 
 | `documents-unrelated` | `min-overlap` | `0.1` | The documents count as related if any signal reaches this share: shared items ÷ the smaller document's count (the overlap coefficient) |
 | `documents-unrelated` | `signals` | `[operations, operation-ids, schemas]` | Which overlaps to measure. One signal at or above `min-overlap` is enough; a signal empty on either side is skipped |
 | `documents-unrelated` | `min-size` | `5` | Skip the check when the smaller document has fewer operations and fewer schemas than this |
-| `documents-unrelated` | `ignore-path-segments` | `['^v\d+([a-z]+\d*)?$', '^\d{4}-\d{2}-\d{2}$']` | Path segments dropped before comparing paths, anywhere in the path (`v1`, `v2beta1`, `2024-01-01`), so any number of different prefixes work |
+| `documents-unrelated` | `ignore-path-segments` | `['^v\d+((alpha\|beta\|rc)\d*)?$', '^\d{4}-\d{2}-\d{2}$']` | Path segments dropped before comparing paths, anywhere in the path (`v1`, `v2beta1`, `2024-01-01`), so any number of different prefixes work |
 | `documents-unrelated` | `strip-prefixes` | `[]` | Extra path prefixes removed before comparing, e.g. `[/api, /internal]` |
 | `documents-unrelated` | `when` | `manual` | `manual` skips the check when both inputs are the same path at two git revisions; `always` checks those too |
 | `unclassified-change` | — | — | Severity only. Set it to `error` for a strict CI gate |
@@ -110,6 +117,15 @@ overrides:
 
 All keys in one `match` must match (AND). A list value means any of them (OR). An override sets either `severity` (all rules) or `rules` (a map of rule IDs, same format as the top-level `rules`), not both.
 
+How matching works:
+
+- **Operation keys** (`path`, `method`, `operationId`, `tag`, `stability`) match the operation a finding is in. A finding about a shared component matches through the operations that use it (its `impact`). Findings with no operation (the document, a security scheme) never match operation keys.
+- **Per operation:** when the operations behind one finding get different severities, the finding is split into one finding per severity, each listing its operations. A split part has its own stable finding ID.
+- **`extension`** matches if the operation (or its path item), the component schema or the document root has that extension with one of the listed values.
+- **Last match wins**, counting only overrides that set something for the finding's rule: an override whose `rules` map doesn't name the rule is skipped, so an earlier one can still apply.
+- **`severity`** applies to every finding of every rule, including the conditional cases in section 4 (a draft operation's removed required header is `info` too). An override's `rules` map behaves like the top-level `rules`: it can set `severity` and the conditional-case option (`required-severity`, `closed-object-severity`), but no other rule options, which only the top-level `rules` can set.
+- The finding's `severitySource` names the override, e.g. `policy api-diff.yaml: overrides #2 (path /legacy/**, method ["delete"])`.
+
 ## 6. Extensions
 
 ```yaml
@@ -119,6 +135,8 @@ extensions:
   x-internal: wire
   # any extension not listed is docs
 ```
+
+A change to an extension listed as `sdk` is `extension-changed-sdk` (`info`, `warn` under `--profile sdk`); as `wire`, `extension-changed-wire` (`warn`). Unlisted extensions, and those listed as `docs`, are `extension-changed` (`docs`, `info`). The lifecycle extensions (section 7) and `x-api-diff` are interpreted, not classified.
 
 ## 7. Lifecycle
 
@@ -131,6 +149,11 @@ lifecycle:
   deprecated-since: x-deprecated-since   # date (YYYY-MM-DD) the operation was deprecated
   sunset: x-sunset                    # date it will be removed
 ```
+
+- The extensions are read from the operation, or else its path item. Dates are `YYYY-MM-DD`; anything else is `spec-invalid` at the extension.
+- A stability level must be one of `stability-decreased`'s `levels` (`draft`, `alpha`, `beta`, `stable` by default); anything else, such as a typo, is `spec-invalid`. `default-stability` must be one of them too.
+- Deprecation periods and sunset dates are checked against today's date (UTC), or `--as-of <YYYY-MM-DD>` for reproducible runs.
+- These extensions are interpreted by the lifecycle rules, so changing them isn't also reported as `extension-changed`.
 
 ## 8. Exclusions
 
@@ -145,7 +168,11 @@ exclusions:
 ignore: []                            # sets not compared at all, e.g. [internal]
 ```
 
-Reports leave sets out with `exclude` (section 10). Nothing is excluded unless configured.
+Nothing is excluded unless configured.
+
+- **Membership:** an operation is in a set if any of its keys match: a `paths` glob (`*` one segment, a trailing `/**` any depth), an `operationIds` glob, one of its `tags`, or an `extensions` entry on the operation or its path item. `extensions` is a list of names (`[x-internal]`: any value except `false`) or a mapping of names to values (`{ x-audience: [internal, ops] }`). A component schema is in a set if a `components` glob or an `extensions` entry on the schema matches.
+- **`ignore`:** sets listed here aren't compared. Their operations and components produce no findings; a shared component is still compared for the operations outside the set. One `not-compared` notice per set lists what was skipped.
+- **Every other set** is recorded on each finding that belongs to it (`exclusions` in JSON): the finding's operation, its component, or, for a component used by several operations, only when all of them are in the set. Reports leave sets out with `exclude` (section 10, milestone M7).
 
 ## 9. Versions
 
@@ -158,11 +185,19 @@ versions:
     commit: x-git.sha
 ```
 
-Sources: an `x-` extension at the document root, `info.<field>`, or a JSON Pointer (`/info/x-meta/version`). The CLI options `--base-version`, `--revision-version` and `--base-label`/`--revision-label key=value` take precedence.
+Sources: an `x-` extension at the document root (dots step into it: `x-git.sha` is `sha` inside `x-git`), `info.<field>`, or a JSON Pointer (`/info/x-meta/version`). The CLI options `--base-version`, `--revision-version` and `--base-label`/`--revision-label key=value` take precedence. For git inputs, `commit` is filled in automatically. Each side's `version`, `versionSource` and `labels` are in the JSON result's `compared` section.
+
+The recorded versions are checked against the findings:
+
+- **`version-unchanged`** (`warn`): the spec changed but the version didn't. Notices (`spec-invalid`, `ref-unresolved`, `not-compared`, `cycle-not-productive`, `documents-unrelated`) don't count as changes.
+- **`version-bump-too-small`** (`warn`, semver only): any `error` finding needs a major bump, any other `wire` or `sdk` finding a minor bump, `docs`-only changes a patch bump. Below 1.0.0, each need is one level lower (breaking changes need a minor bump, as semver allows). Findings turned `off` or below `min-severity` don't count; lowered severities do. A lower version counts as no bump.
+- **`scheme`** (option on either rule): `semver` (default), `calver` (only `version-unchanged` applies), or `none` (both off). A version that isn't semver under `semver` gives a `not-compared` notice rather than a guess.
 
 ## 10. Reports
 
 ```yaml
+exclusions:
+  internal: { paths: ["/internal/**"] }   # section 8
 reports:
   changelog:
     exclude: [internal]                   # exclusion set names
@@ -180,16 +215,24 @@ reports:
 
 The built-in reports (`ci`, `review`, `changelog`, `sdk`, `summary`, `audit`, `explore`) are presets with these keys, so the same keys change them.
 
+What works now (M7): for `review`, `ci` and `summary`, `exclude`, `include.kinds`, `include.min-severity` and `format` (the format used when `--report` doesn't give one). A report leaves out findings in excluded sets or outside `include`, and its counts and state are worked out from what it shows; notices and version checks are always kept. **The `ci` report's settings also decide the exit code**, since `ci` is the gate. Every key above is validated now; the reports and settings that arrive later (`changelog`, `sdk`, `audit`, `explore`, custom reports, `extends`, `template`, `include.extensions`, and grouping other than the preset's: `review` groups by root cause, `ci` by severity) are refused only when such a report is produced, so they can be configured ahead of time.
+
 ## 11. Acknowledgements file
 
 ```yaml
-- finding: c7f3e1a2                       # stable finding ID from any report
+- finding: c7f3e1a2b4d6                   # stable finding ID from any report
   reason: "Only the mobile app sends 'archived', and it's already updated."
   owner: "@orders-team"
   expires: 2027-01-31                     # after this date the finding counts again
 ```
 
-`finding`, `reason` and `expires` are required. An acknowledgement whose finding no longer appears is reported as stale (`info`), so the file can be cleaned up.
+`finding`, `reason` and `expires` are required; unknown keys, a malformed ID (12 hex characters, the `id` of a finding in any report) or the same finding twice are errors.
+
+- **Effect:** an acknowledged finding is still reported with its severity, marked `acknowledged` in JSON and "acknowledged until …" in text, but it doesn't fail CI (`--fail-on`) and doesn't make the `state` `breaking`. `counts.acknowledged` says how many there are.
+- **Expiry:** `expires` is the last day it applies, checked against today (UTC) or `--as-of`. After that the finding counts again, and `acknowledgement-expired` (`info`) says why it's back.
+- **Stale:** an acknowledgement whose finding no longer appears (fixed, or changed so it has a new ID) is `acknowledgement-stale` (`info`), so the file can be cleaned up.
+- **Version checks are unaffected:** an acknowledged breaking change still needs a major version bump.
+- The file is `api-diff.ack.yaml` in the working directory if present, `--acknowledgements <file>` to choose another, or `--no-acknowledgements` to ignore it.
 
 ## 12. In-spec hints
 
@@ -201,7 +244,15 @@ Set on a schema, operation or the document, using the `x-api-diff` extension:
 | `x-api-diff: { ignore: true }` | This node is not compared (reported as `not-compared`) |
 | `x-api-diff: { rules: { <rule-id>: <severity> } }` | Rule severities for this node and everything under it |
 
+- **`enum: open`** goes on the schema that has the `enum`. The policy can list other extensions that mean the same, e.g. `open-extensions: [x-extensible-enum]` (section 4).
+- **`ignore: true`** works on an operation, a path item or any schema. Changes inside the node are not reported, on whichever side has the hint, and an operation marked ignored is removed from other findings' affected operations; a component used only by ignored operations is not reported either. One `not-compared` notice per ignored node says what was skipped.
+- **`rules`** takes the same severities as an override's `rules` (section 5): `severity` and the conditional-case option, no other rule options. For a finding, the hints checked are, in order: the nodes containing the change, nearest first; the affected operation and its path item (so an operation's hint covers the shared components it uses); then the document root. The first that names the finding's rule wins.
+- **Invalid hints** (an unknown key, rule ID or value) are `spec-invalid` findings at the hint, like other problems in the spec.
+- **Changes to `x-api-diff` itself** are not reported as `extension-changed`: they configure this tool, not the API.
+
 **Precedence**, highest first: acknowledgement → in-spec hint → `overrides` (last match) → `rules` → profile default → built-in default.
+
+For every extension a spec author can use, with defaults and examples, see [docs/spec-authors.md](docs/spec-authors.md).
 
 ## 13. Keeping these docs in sync
 

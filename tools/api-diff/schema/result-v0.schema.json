@@ -34,8 +34,27 @@
           "required": ["wire", "sdk", "docs"],
           "additionalProperties": { "type": "integer" }
         },
-        "byRule": { "type": "object", "additionalProperties": { "type": "integer" } }
+        "byRule": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "acknowledged": { "type": "integer", "minimum": 0, "description": "Findings covered by an acknowledgement (included in the other counts)." }
       }
+    },
+    "advice": {
+      "description": "Semver advice, when both versions are semver.",
+      "type": "object",
+      "required": ["needed", "actual", "ok", "breaking"],
+      "properties": {
+        "needed": { "enum": ["none", "patch", "minor", "major"] },
+        "actual": { "enum": ["none", "patch", "minor", "major"] },
+        "ok": { "type": "boolean" },
+        "because": { "type": "string" },
+        "breaking": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "policy": {
+      "description": "The policy file used, and the SHA-256 of its contents.",
+      "type": "object",
+      "required": ["file", "sha256"],
+      "properties": { "file": { "type": "string" }, "sha256": { "type": "string" } }
     },
     "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
   },
@@ -49,7 +68,9 @@
         "openapi": { "type": "string" },
         "version": { "type": "string", "description": "info.version, or 'unknown'." },
         "sha256": { "type": "string" },
-        "commit": { "type": "string", "description": "Resolved commit SHA for git inputs." }
+        "commit": { "type": "string", "description": "Resolved commit SHA for git inputs." },
+        "versionSource": { "type": "string", "description": "Where version came from, e.g. info.version, x-api-version or command line." },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Version labels from the policy or the command line; commit for git inputs." }
       }
     },
     "location": {
@@ -77,7 +98,14 @@
         "base": { "$ref": "#/$defs/location" },
         "revision": { "$ref": "#/$defs/location" },
         "details": { "type": "object" },
-        "impact": { "type": "array", "items": { "type": "string" } }
+        "impact": { "type": "array", "items": { "type": "string" } },
+        "exclusions": { "description": "Policy exclusion sets the finding belongs to; reports can leave them out.", "type": "array", "items": { "type": "string" } },
+        "acknowledged": {
+          "description": "Set when an acknowledgement covers the finding: reported, but it doesn't fail CI or count towards state.",
+          "type": "object",
+          "required": ["reason", "expires", "file"],
+          "properties": { "reason": { "type": "string" }, "owner": { "type": "string" }, "expires": { "type": "string" }, "file": { "type": "string" } }
+        }
       }
     }
   }

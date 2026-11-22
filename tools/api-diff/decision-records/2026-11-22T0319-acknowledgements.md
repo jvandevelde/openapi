@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-22 03:19 UTC |
 | **Summary** | Acknowledged findings stay in reports with their severity but don't fail CI or make the state breaking; stale and expired acknowledgements are `acknowledgement-stale` and `acknowledgement-expired` (info). |
 | **Milestone** | M6 |

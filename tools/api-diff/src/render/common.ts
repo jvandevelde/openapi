@@ -11,6 +11,8 @@ export interface TxtOptions {
   docs?: boolean;
   /** explore: URL template for links into the spec explorer. */
   explorerUrl?: string;
+  /** review and audit: how findings are grouped (policy reports.<name>.group-by). */
+  groupBy?: 'root-cause' | 'severity' | 'tag' | 'operation' | 'rule' | 'owner';
 }
 
 export type Paint = (code: string, s: string) => string;
@@ -61,7 +63,16 @@ export function header(r: Result, c: Paint): string[] {
   const lines = [c(DIM, `api-diff ${r.tool.version} · profile ${r.profile}${policy}`), `base      ${side(r.compared.base)}`, `revision  ${side(r.compared.revision)}`];
   const advice = adviceLine(r);
   if (advice) lines.push(`advice    ${advice}`);
+  const uses = usesLine(r);
+  if (uses) lines.push(`uses      ${uses}`);
   return lines;
+}
+
+/** `only changes that reach 12 operations from ops.txt (2 entries matched nothing)`, with --uses. */
+export function usesLine(r: Result): string | undefined {
+  if (!r.uses) return undefined;
+  const u = r.uses;
+  return `only changes that reach ${plural(u.operations.length, 'operation')} listed in ${u.file}${u.unmatched.length ? ` (${u.unmatched.length} ${u.unmatched.length === 1 ? 'entry' : 'entries'} matched nothing: ${u.unmatched.slice(0, 3).join(', ')}${u.unmatched.length > 3 ? ', …' : ''})` : ''}`;
 }
 
 /** One finding: severity, subject, message, location and rule; then acknowledgement, if any. */

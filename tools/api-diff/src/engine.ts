@@ -28,6 +28,11 @@ import type { Kind, Location, OperationSummary, Snippet } from './types.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
 import { isChange } from './render/common.ts';
+import type { Places } from './render/config.ts';
+
+/** The spec context and owners of each result, for report views (include.extensions, include.owners, --uses). Not part of the JSON. */
+const PLACES = new WeakMap<Result, Places>();
+export const placesOf = (r: Result): Places | undefined => PLACES.get(r);
 
 export interface CompareOptions {
   /** Overrides the policy's profile. */
@@ -194,6 +199,7 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
       }
     }
     if (Object.keys(ops).length) result.operations = ops;
+    PLACES.set(result, { ctx: context, owners: owners! });
   }
   return result;
 

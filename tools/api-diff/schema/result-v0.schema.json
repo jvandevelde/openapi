@@ -73,6 +73,12 @@
       "required": ["file", "sha256"],
       "properties": { "file": { "type": "string" }, "sha256": { "type": "string" } }
     },
+    "uses": {
+      "description": "--uses: the operations the reports were narrowed to (only changes that reach them are kept), and the file's entries that matched no operation.",
+      "type": "object",
+      "required": ["file", "operations", "unmatched"],
+      "properties": { "file": { "type": "string" }, "operations": { "type": "array", "items": { "type": "string" } }, "unmatched": { "type": "array", "items": { "type": "string" } } }
+    },
     "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
   },
   "$defs": {

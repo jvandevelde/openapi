@@ -112,6 +112,8 @@ export interface Result {
   snippets?: Record<string, { base?: Snippet; revision?: Snippet }>;
   /** The operations findings mention (as subject or impact), for grouping and labels; the revision's details win. */
   operations?: Record<string, OperationSummary>;
+  /** --uses: the consumer's operations the reports were narrowed to, and the entries that matched no operation. */
+  uses?: { file: string; operations: string[]; unmatched: string[] };
   findings: Finding[];
 }
 

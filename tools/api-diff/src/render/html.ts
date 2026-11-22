@@ -3,10 +3,10 @@
 // locally. Light and dark themes follow the viewer's settings.
 
 import type { Finding, Result, Severity } from '../types.ts';
-import { adviceLine, isChange, isNotice, isVersion, where } from './common.ts';
-import { docsSummary, groupFindings, type Group } from './review.ts';
+import { adviceLine, isChange, isNotice, isVersion, usesLine, where } from './common.ts';
+import { docsSummary, GROUP_NOUN, groupFindings, ownersText, type Group, type GroupBy } from './review.ts';
 import { summaryData } from './summary.ts';
-import { changelogData, type ChangelogEntry } from './changelog.ts';
+import { changelogData, usesHeadline, type ChangelogEntry } from './changelog.ts';
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 
@@ -62,6 +62,7 @@ function header(r: Result, title: string): string {
 <tr><td>base</td><td>${side(r.compared.base)}</td></tr>
 <tr><td>revision</td><td>${side(r.compared.revision)}</td></tr>
 ${advice ? `<tr><td>advice</td><td>${esc(advice)}</td></tr>` : ''}
+${r.uses ? `<tr><td>uses</td><td>${esc(usesLine(r)!)}</td></tr>` : ''}
 </table>`;
 }
 
@@ -71,10 +72,11 @@ function findingItem(f: Finding, withSubject = false, label = true): string {
   return `<li${label ? '' : ' class="plain"'}>${label ? sev(f.severity) : ''}<div>${withSubject ? `<strong>${esc(f.subject)}</strong> ` : ''}${esc(f.message)}<div class="where">${loc ? `${esc(loc)} · ` : ''}<code>${esc(f.rule)}</code> · id <code>${esc(f.id)}</code></div>${ack}</div></li>`;
 }
 
-function groupBlock(g: Group): string {
-  const ops = g.operations.length ? `<span class="muted">affects ${g.operations.length} operation${g.operations.length === 1 ? '' : 's'}: ${esc(g.operations.join(', '))}</span>` : '';
-  return `<details${g.severity === 'info' ? '' : ' open'}><summary>${sev(g.severity)}<span class="subject">${esc(g.subject)}</span>${ops}</summary>
-<ul class="findings">${g.findings.map((f) => findingItem(f, false, g.findings.some((x) => x.severity !== g.severity))).join('\n')}</ul></details>`;
+function groupBlock(g: Group, by: GroupBy = 'root-cause'): string {
+  const ops = g.operations.length && by !== 'operation' ? `<span class="muted">affects ${g.operations.length} operation${g.operations.length === 1 ? '' : 's'}: ${esc(g.operations.join(', '))}</span>` : '';
+  const owners = ownersText(g, by) ? `<span class="muted">${esc(ownersText(g, by))}</span>` : '';
+  return `<details${g.severity === 'info' ? '' : ' open'}><summary>${sev(g.severity)}<span class="subject">${esc(g.subject)}</span>${ops}${owners}</summary>
+<ul class="findings">${g.findings.map((f) => findingItem(f, by !== 'root-cause', g.findings.some((x) => x.severity !== g.severity))).join('\n')}</ul></details>`;
 }
 
 function countsLine(r: Result): string {
@@ -82,7 +84,7 @@ function countsLine(r: Result): string {
   return `<div class="counts">${n.total} finding${n.total === 1 ? '' : 's'}: ${n.bySeverity.error} error, ${n.bySeverity.warn} warn, ${n.bySeverity.info} info${n.acknowledged ? ` (${n.acknowledged} acknowledged)` : ''} · state: ${esc(r.state)}</div>`;
 }
 
-export function renderReviewHtml(r: Result): string {
+export function renderReviewHtml(r: Result, by: GroupBy = 'root-cause'): string {
   const parts = [header(r, 'API changes')];
   if (r.findings.length === 0) return page('api-diff review', `${parts[0]}\n<p>No changes found.</p>`);
   const notices = r.findings.filter(isNotice);
@@ -90,10 +92,11 @@ export function renderReviewHtml(r: Result): string {
   if (problems.length) parts.push(`<h2>Problems with the inputs</h2><ul class="findings">${problems.map((f) => findingItem(f, true)).join('\n')}</ul>`);
   const versions = r.findings.filter(isVersion);
   if (versions.length) parts.push(`<h2>Version</h2><ul class="findings">${versions.map((f) => findingItem(f)).join('\n')}</ul>`);
-  const groups = groupFindings(r.findings);
+  const groups = groupFindings(r.findings, by, r.operations);
   if (groups.length) {
     const breaking = groups.filter((g) => g.severity === 'error').length;
-    parts.push(`<h2>Changes <span class="muted">(${groups.length} place${groups.length === 1 ? '' : 's'}${breaking ? `, ${breaking} with breaking changes` : ''})</span></h2>`, ...groups.map(groupBlock));
+    const noun = GROUP_NOUN[by];
+    parts.push(`<h2>Changes <span class="muted">(${groups.length} ${noun}${groups.length === 1 ? '' : 's'}${breaking ? `, ${breaking} with breaking changes` : ''})</span></h2>`, ...groups.map((g) => groupBlock(g, by)));
   }
   const docs = docsSummary(r.findings);
   if (docs.length) {
@@ -136,7 +139,8 @@ export function renderChangelogHtml(r: Result, opts: { docs?: boolean } = {}): s
   const d = changelogData(r, opts);
   const title = `${d.title ?? 'API'} ${d.from} → ${d.to}`;
   const parts = [`<h1>${esc(title)}</h1>`];
-  if (!d.tags.length && !d.components.length) return page(`${title}: changelog`, `${parts[0]}\n<p>No changes for API clients.</p>`);
+  if (d.uses) parts.push(`<p><strong>${esc(usesHeadline(d.uses))}</strong></p>`);
+  if (!d.tags.length && !d.components.length) return page(`${title}: changelog`, `${parts.join('\n')}\n<p>No changes for API clients.</p>`);
   parts.push(`<p>${d.breaking ? `<strong>${d.breaking} breaking change${d.breaking === 1 ? '' : 's'}.</strong> Clients may need updating; each change below says what to do.` : 'No breaking changes.'}</p>`);
   for (const t of d.tags) {
     parts.push(`<h2>${esc(t.tag)}</h2>`);

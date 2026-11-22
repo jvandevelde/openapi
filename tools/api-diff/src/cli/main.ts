@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { compareInputs, countFindings, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
+import { compareInputs, countFindings, placesOf, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
 import { history, type HistoryOptions } from '../history.ts';
@@ -14,7 +14,7 @@ import { renderTimeline, renderTimelineHtml, timelineData } from '../render/time
 import { ParseCache } from '../load/cache.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
 import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
-import { checkSupported, explorerUrl, viewFor } from '../render/config.ts';
+import { checkSupported, explorerUrl, resolveUses, viewFor, type ViewOptions } from '../render/config.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
@@ -59,6 +59,8 @@ Options:
                          extra version labels, e.g. build=8812; repeatable
       --explorer-url <url>  explore and history: link findings into a spec explorer; {pointer}, {file} and
                          {side} are filled in (or reports.explore.explorer-url in the policy)
+      --uses <file>      keep only the changes that reach these operations, in every report and the exit
+                         code: one per line, METHOD /path or an operationId (from an SDK or access logs)
       --cache-dir <dir>  cache the parsed base documents here, keyed by their content (for CI: keep the
                          directory between runs)
       --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
@@ -134,6 +136,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
       report: { type: 'string', multiple: true },
       'cache-dir': { type: 'string' },
       'explorer-url': { type: 'string' },
+      uses: { type: 'string' },
       'base-version': { type: 'string' },
       'revision-version': { type: 'string' },
       'base-label': { type: 'string', multiple: true },
@@ -199,7 +202,23 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   for (const spec of reports) checkSupported(spec.name, policy.reports.get(spec.name));
   if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
   if (reports.some((r) => r.name === 'explore')) opts.snippets = true;
+  let usesText: string | undefined;
+  if (values.uses !== undefined) {
+    try {
+      usesText = readFileSync(resolve(cwd, values.uses), 'utf8');
+    } catch {
+      throw new UsageError(`--uses: can't read ${values.uses}`);
+    }
+  }
   const result = await compareInputs(base, revision, cwd, opts);
+  const places = placesOf(result);
+  const view: ViewOptions = places ? { places } : {};
+  if (usesText !== undefined) {
+    const u = resolveUses(usesText, places?.ctx);
+    result.uses = { file: values.uses!, ...u };
+    view.uses = new Set(u.operations);
+    if (u.unmatched.length) io.stderr.write(`api-diff: --uses ${values.uses}: ${u.unmatched.length} entr${u.unmatched.length === 1 ? 'y matches' : 'ies match'} no operation in either document: ${u.unmatched.slice(0, 5).join(', ')}${u.unmatched.length > 5 ? ', …' : ''}\n`);
+  }
 
   const recount = (fs: typeof result.findings) => ({ counts: countFindings(fs), state: stateOf(fs) });
   if (values.state) io.stdout.write(`${result.state}\n`);
@@ -209,12 +228,12 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : spec.name === 'explore' ? 'html' : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
     const linkTemplate = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : cfg?.explorerUrl;
-    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
+    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount, view), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(cfg?.groupBy ? { groupBy: cfg.groupBy } : {}), ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }
-  // The ci report is the gate: its exclusions and filters apply to the exit code too.
-  return shouldFail(viewFor(result, policy.reports.get('ci'), recount), failOn) ? 1 : 0;
+  // The ci report is the gate: its exclusions and filters (and --uses) apply to the exit code too.
+  return shouldFail(viewFor(result, policy.reports.get('ci'), recount, view), failOn) ? 1 : 0;
 }
 
 async function historyCommand(argv: string[], io: Io): Promise<number> {

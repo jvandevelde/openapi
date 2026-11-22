@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-22 07:01 UTC |
 | **Summary** | A report's `exclude` and `include` settings filter what it shows (notices and version checks always stay) and its counts and state are recomputed; the `ci` report's settings also decide the exit code; settings for reports that arrive later are validated now and refused only when used. |
 | **Milestone** | M7 |

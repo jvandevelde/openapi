@@ -71,3 +71,41 @@ test('explorer links: placeholders filled in and URL-encoded; the template is va
   assert.ok(f.links.base);
   assert.equal(JSON.parse(renderExplore(await result()).match(/id="data">([\s\S]*?)<\/script>/)![1]!).findings[0].links, undefined);
 });
+
+// Sections and grouping (decision record: group explore rows and fold documentation changes)
+
+test('each row has its section: input problems, version, changes, docs or notes', async () => {
+  const a = `openapi: 3.1.0
+info: { title: Pets, version: 1.0.0 }
+paths:
+  /pets:
+    get:
+      summary: List pets
+      responses: { '200': { description: ok } }
+    delete:
+      responses: { '204': { description: gone } }
+  /cats:
+    get:
+      x-api-diff: { ignore: true }
+      responses: { '200': { description: ok } }
+`;
+  const b = a.replace('List pets', 'List all pets').replace(/    delete:\n      responses: \{ '204': \{ description: gone \} \}\n/, '');
+  const r = await compareOpened({ source: new MemorySource({ 'a.yaml': a }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': b }), root: 'b.yaml' });
+  const data = JSON.parse(renderExplore(r).match(/<script type="application\/json" id="data">([\s\S]*?)<\/script>/)![1]!);
+  const section = (rule: string): string => data.rows.find((row: { parts: number[] }) => data.findings[row.parts[0]!].rule === rule).section;
+  assert.equal(section('operation-removed'), 'changes');
+  assert.equal(section('summary-changed'), 'docs');
+  assert.equal(section('version-unchanged'), 'version');
+  assert.equal(section('not-compared'), 'notes');
+  const bad = await compareOpened({ source: new MemorySource({ 'a.yaml': a }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': 'openapi: 3.1.0\n  bad: [\n' }), root: 'b.yaml' });
+  const badData = JSON.parse(renderExplore(bad).match(/id="data">([\s\S]*?)<\/script>/)![1]!);
+  assert.ok(badData.rows.some((row: { section: string }) => row.section === 'problems'));
+});
+
+test('the page has the group-by control, and keeps working without browser storage', async () => {
+  const html = renderExplore(await result());
+  assert.match(html, /<select id="group"><option value="place">schema or operation<\/option><option value="none">none<\/option><\/select>/);
+  // localStorage can throw (private windows, blocked storage): every use is guarded.
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]!;
+  for (const use of script.match(/[^\n]*localStorage[^\n]*/g)!) assert.match(use, /try \{/);
+});

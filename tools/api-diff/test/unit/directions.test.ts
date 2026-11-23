@@ -94,8 +94,9 @@ test('explore: one row per change, listing its findings', async () => {
   const r = await compare();
   const data = JSON.parse(renderExplore(r).match(/<script type="application\/json" id="data">([\s\S]*?)<\/script>/)![1]!);
   assert.equal(data.findings.length, r.findings.length, 'every finding is still in the data');
-  assert.equal(data.rows.flat().length, r.findings.length);
+  const rows: { parts: number[] }[] = data.rows;
+  assert.equal(rows.flatMap((row) => row.parts).length, r.findings.length);
   const rule = (n: number): string => data.findings[n].rule;
-  assert.ok(data.rows.some((row: number[]) => row.map(rule).join() === 'max-length-decreased-in-request,max-length-decreased-in-response'));
-  assert.ok(data.rows.some((row: number[]) => row.map(rule).join() === 'enum-value-added-in-request,enum-value-added-in-response'));
+  assert.ok(rows.some((row) => row.parts.map(rule).join() === 'max-length-decreased-in-request,max-length-decreased-in-response'));
+  assert.ok(rows.some((row) => row.parts.map(rule).join() === 'enum-value-added-in-request,enum-value-added-in-response'));
 });

@@ -742,6 +742,14 @@ Still open (not needed before M8):
 
 Ideas aimed at large enterprise specs. None of the tools in section 1 document these, as far as we found. Each idea has a rough value/effort rating so we can pick from it later. **★** marks the ones I'd do first.
 
+Bigger proposals are written up in [feature-backlog/](feature-backlog/README.md). This section keeps only a short entry for each: what it is, why it's worth having, and a link to the details.
+
+### Detailed proposals
+
+| Proposal | What it does and why | Value / effort |
+|---|---|---|
+| [**Overlays, a review file and a review loop**](feature-backlog/overlays-and-review-loop.md) | Use OpenAPI Overlays to keep `x-api-diff` hints out of the published spec and to diff what is actually published. Reviewers mark findings in the CLI or HTML report: decisions about a change (ack, note for clients, seen) go to a typed review file, lasting facts about a node ("this enum is open") go to a hints overlay, and later runs pick both up. The published spec stays clean, reviewers' decisions are kept instead of lost in PR threads, and every lowered severity can be traced and owned. | high / high |
+
 ### Evidence and accuracy
 
 | Idea | What it does | Value / effort |

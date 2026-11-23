@@ -5,22 +5,25 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseArgs } from 'node:util';
-import { compareInputs, countFindings, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
+import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
+import { compareInputs, countFindings, placesOf, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
 import { history, type HistoryOptions } from '../history.ts';
 import { renderTimeline, renderTimelineHtml, timelineData } from '../render/timeline.ts';
 import { ParseCache } from '../load/cache.ts';
 import { loadAcknowledgements } from '../policy/acks.ts';
-import { checkFormat, parseReportSpec, renderReport, ReportError, type ReportSpec } from '../render/reports.ts';
-import { checkSupported, explorerUrl, viewFor } from '../render/config.ts';
+import { checkFormat, parseReportSpec, renderReport, ReportError, type Format, type ReportSpec } from '../render/reports.ts';
+import { checkTemplate, SHAPES, TemplateError } from '../render/template.ts';
+import { BUILT_IN, checkSupported, explorerUrl, resolveReport, resolveUses, viewFor, type ViewOptions } from '../render/config.ts';
 import { RULE_DOCS } from '../rules/docs.ts';
 import { getRule, isImplemented, RULES, type RuleMeta } from '../rules/registry.ts';
 import { inputsFromArgs } from '../sources/input.ts';
 import { SourceError } from '../sources/source.ts';
 import type { FailOn, Profile } from '../types.ts';
 import { VERSION } from '../version.ts';
+// Imported rather than read from disk, so the release bundle carries it.
+import resultSchema from '../../schema/result-v0.schema.json' with { type: 'json' };
 
 const HELP = `api-diff ${VERSION}: compare two OpenAPI documents and report what changed.
 
@@ -43,8 +46,9 @@ Options:
       --report <name>[:<format>[:<file>]]
                          a report to write; repeatable. Reports: review (the default; what changed and who
                          it affects), ci (short, for CI logs), summary (size and risk), changelog (for API
-                         consumers), sdk (for SDK maintainers), explore (interactive HTML). Formats: txt,
-                         json, html (review, summary, changelog; explore is html only)
+                         consumers), sdk (for SDK maintainers), explore (interactive HTML), audit (governance: everything,
+                         with acknowledgements, severity sources, exclusions and owners). Formats: txt,
+                         json, html (review, summary, changelog, audit; explore is html only)
   -f, --format <fmt>     format of the default report: txt (default), json or html
   -o, --output <file>    write the default report to a file instead of stdout
       --fail-on <level>  exit 1 if any finding is at or above: error, warn, info, or never (the default:
@@ -59,6 +63,8 @@ Options:
                          extra version labels, e.g. build=8812; repeatable
       --explorer-url <url>  explore and history: link findings into a spec explorer; {pointer}, {file} and
                          {side} are filled in (or reports.explore.explorer-url in the policy)
+      --uses <file>      keep only the changes that reach these operations, in every report and the exit
+                         code: one per line, METHOD /path or an operationId (from an SDK or access logs)
       --cache-dir <dir>  cache the parsed base documents here, keyed by their content (for CI: keep the
                          directory between runs)
       --as-of <date>     reference date (YYYY-MM-DD) for deprecation periods and sunsets; default today (UTC)
@@ -93,12 +99,61 @@ function oneOf<T extends string>(name: string, v: string | undefined, allowed: r
   return v as T;
 }
 
+const DIFF_OPTIONS = {
+  base: { type: 'string' },
+  revision: { type: 'string' },
+  cwd: { type: 'string', short: 'C' },
+  format: { type: 'string', short: 'f' },
+  output: { type: 'string', short: 'o' },
+  'fail-on': { type: 'string' },
+  state: { type: 'boolean' },
+  profile: { type: 'string' },
+  policy: { type: 'string' },
+  'no-policy': { type: 'boolean' },
+  rule: { type: 'string', multiple: true },
+  'as-of': { type: 'string' },
+  acknowledgements: { type: 'string' },
+  'no-acknowledgements': { type: 'boolean' },
+  report: { type: 'string', multiple: true },
+  'cache-dir': { type: 'string' },
+  'explorer-url': { type: 'string' },
+  uses: { type: 'string' },
+  'base-version': { type: 'string' },
+  'revision-version': { type: 'string' },
+  'base-label': { type: 'string', multiple: true },
+  'revision-label': { type: 'string', multiple: true },
+  color: { type: 'boolean' },
+  'no-color': { type: 'boolean' },
+  help: { type: 'boolean', short: 'h' },
+  version: { type: 'boolean', short: 'v' },
+} as const satisfies ParseArgsOptionsConfig;
+
+const SUBCOMMANDS = new Set(['rules', 'history', 'schema']);
+
+/**
+ * The subcommand, if the first argument that isn't an option (or an option's
+ * value) names one, and the arguments without it. Options before the
+ * subcommand are kept, so `api-diff --no-color history …` works like
+ * `api-diff history --no-color …`.
+ */
+export function splitSubcommand(argv: string[]): [string | undefined, string[]] {
+  const { tokens } = parseArgs({ args: argv, options: DIFF_OPTIONS, allowPositionals: true, strict: false, tokens: true });
+  const first = tokens.find((t) => t.kind === 'positional' || t.kind === 'option-terminator');
+  if (first?.kind !== 'positional' || !SUBCOMMANDS.has(first.value)) return [undefined, argv];
+  return [first.value, [...argv.slice(0, first.index), ...argv.slice(first.index + 1)]];
+}
+
 export async function main(argv: string[], io: Io = { stdout: process.stdout, stderr: process.stderr, env: process.env }): Promise<number> {
   try {
-    if (argv[0] === 'rules') return rulesCommand(argv.slice(1), io.stdout);
-    if (argv[0] === 'history') return await historyCommand(argv.slice(1), io);
-    if (argv[0] === 'schema') {
-      io.stdout.write(readFileSync(new URL('../../schema/result-v0.schema.json', import.meta.url), 'utf8'));
+    const [command, rest] = splitSubcommand(argv);
+    if (command === 'rules') return rulesCommand(rest, io.stdout);
+    if (command === 'history') return await historyCommand(rest, io);
+    if (command === 'schema') {
+      if (rest.includes('--help') || rest.includes('-h')) {
+        io.stdout.write(HELP);
+        return 0;
+      }
+      io.stdout.write(`${JSON.stringify(resultSchema, null, 2)}\n`);
       return 0;
     }
     return await diffCommand(argv, io);
@@ -116,33 +171,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
-    options: {
-      base: { type: 'string' },
-      revision: { type: 'string' },
-      cwd: { type: 'string', short: 'C' },
-      format: { type: 'string', short: 'f' },
-      output: { type: 'string', short: 'o' },
-      'fail-on': { type: 'string' },
-      state: { type: 'boolean' },
-      profile: { type: 'string' },
-      policy: { type: 'string' },
-      'no-policy': { type: 'boolean' },
-      rule: { type: 'string', multiple: true },
-      'as-of': { type: 'string' },
-      acknowledgements: { type: 'string' },
-      'no-acknowledgements': { type: 'boolean' },
-      report: { type: 'string', multiple: true },
-      'cache-dir': { type: 'string' },
-      'explorer-url': { type: 'string' },
-      'base-version': { type: 'string' },
-      'revision-version': { type: 'string' },
-      'base-label': { type: 'string', multiple: true },
-      'revision-label': { type: 'string', multiple: true },
-      color: { type: 'boolean' },
-      'no-color': { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' },
-      version: { type: 'boolean', short: 'v' },
-    },
+    options: DIFF_OPTIONS,
   });
   if (values.help) {
     io.stdout.write(HELP);
@@ -195,26 +224,72 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   if (bl) opts.baseLabels = bl;
   if (rl) opts.revisionLabels = rl;
   if (values.report?.length && (values.format !== undefined || values.output !== undefined)) throw new UsageError('--format and --output set the default report; with --report, give the format and file in it (e.g. --report review:json:review.json)');
-  const reports: ReportSpec[] = values.report?.length ? values.report.map(parseReportSpec) : [{ name: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
-  for (const spec of reports) checkSupported(spec.name, policy.reports.get(spec.name));
+  // Custom reports from the policy: the built-in report each is based on, and its settings (merged along extends).
+  const resolved = new Map<string, ReturnType<typeof resolveReport>>();
+  for (const name of [...BUILT_IN, ...policy.reports.keys()]) resolved.set(name, resolveReport(name, policy.reports));
+  const custom = new Map([...resolved].filter(([n]) => !(BUILT_IN as readonly string[]).includes(n)).map(([n, r]) => [n, { base: r.base, ...(r.cfg?.template ? { template: r.cfg.format as Format } : {}) }]));
+  const reports: ReportSpec[] = values.report?.length ? values.report.map((a) => parseReportSpec(a, custom)) : [{ name: 'review', base: 'review', ...(values.format !== undefined ? { format } : {}), ...(values.output ? { file: values.output } : {}) }];
+  // Templates are read and checked before comparing, so a typo fails fast.
+  const templates = new Map<string, string>();
+  for (const spec of reports) {
+    const cfg = resolved.get(spec.name)!.cfg;
+    checkSupported(spec.base, cfg, spec.name);
+    if (cfg?.template && !templates.has(spec.name)) {
+      const path = resolve(policy.dir ?? cwd, cfg.template);
+      let text: string;
+      try {
+        text = readFileSync(path, 'utf8');
+      } catch {
+        throw new PolicyError(`policy reports.${spec.name}.template: can't read ${cfg.template}`);
+      }
+      try {
+        checkTemplate(text, SHAPES[spec.base]!, `template ${cfg.template}`);
+      } catch (e) {
+        if (e instanceof TemplateError) throw new PolicyError(e.message);
+        throw e;
+      }
+      templates.set(spec.name, text);
+    }
+  }
   if (reports.filter((r) => !r.file).length > 1) throw new UsageError('only one --report can write to stdout; give the others a file (e.g. --report summary:txt:summary.txt)');
-  if (reports.some((r) => r.name === 'explore')) opts.snippets = true;
+  if (reports.some((r) => r.base === 'explore')) opts.snippets = true;
+  let usesText: string | undefined;
+  if (values.uses !== undefined) {
+    try {
+      usesText = readFileSync(resolve(cwd, values.uses), 'utf8');
+    } catch {
+      throw new UsageError(`--uses: can't read ${values.uses}`);
+    }
+  }
   const result = await compareInputs(base, revision, cwd, opts);
+  const places = placesOf(result);
+  const view: ViewOptions = places ? { places } : {};
+  if (usesText !== undefined) {
+    const u = resolveUses(usesText, places?.ctx);
+    result.uses = { file: values.uses!, ...u };
+    view.uses = new Set(u.operations);
+    if (u.unmatched.length) io.stderr.write(`api-diff: --uses ${values.uses}: ${u.unmatched.length} entr${u.unmatched.length === 1 ? 'y matches' : 'ies match'} no operation in either document: ${u.unmatched.slice(0, 5).join(', ')}${u.unmatched.length > 5 ? ', …' : ''}\n`);
+  }
 
   const recount = (fs: typeof result.findings) => ({ counts: countFindings(fs), state: stateOf(fs) });
   if (values.state) io.stdout.write(`${result.state}\n`);
+  // For the audit report: which reports leave out each exclusion set.
+  const hiddenBy: Record<string, string[]> = {};
+  for (const [name, cfg] of policy.reports) for (const s of cfg.exclude ?? []) (hiddenBy[s] ??= []).push(name);
+  for (const s of policy.ignore) (hiddenBy[s] ??= []).push('every report (ignore: not compared)');
   for (const spec of reports) {
     if (values.state && !spec.file) continue;
-    const cfg = policy.reports.get(spec.name);
-    const fmt = spec.format ?? (cfg?.format ? checkFormat(spec.name, cfg.format) : spec.name === 'explore' ? 'html' : 'txt');
+    const cfg = resolved.get(spec.name)!.cfg;
+    const template = templates.get(spec.name);
+    const fmt = spec.format ?? (template ? (cfg!.format as Format) : cfg?.format ? checkFormat(spec.base, cfg.format, spec.name) : spec.base === 'explore' ? 'html' : 'txt');
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
     const linkTemplate = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : cfg?.explorerUrl;
-    const text = renderReport({ name: spec.name, format: fmt }, viewFor(result, cfg, recount), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) });
+    const text = renderReport({ name: spec.base, format: fmt }, viewFor(result, cfg, recount, view), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(cfg?.groupBy ? { groupBy: cfg.groupBy } : {}), hiddenBy, ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) }, fmt === 'json' ? undefined : template);
     if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
   }
-  // The ci report is the gate: its exclusions and filters apply to the exit code too.
-  return shouldFail(viewFor(result, policy.reports.get('ci'), recount), failOn) ? 1 : 0;
+  // The ci report is the gate: its exclusions and filters (and --uses) apply to the exit code too.
+  return shouldFail(viewFor(result, resolved.get('ci')!.cfg, recount, view), failOn) ? 1 : 0;
 }
 
 async function historyCommand(argv: string[], io: Io): Promise<number> {
@@ -233,8 +308,16 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
       'tags-only': { type: 'boolean' },
       'max-steps': { type: 'string' },
       'explorer-url': { type: 'string' },
+      // Accepted for consistency with the other commands; the timeline has no colour.
+      color: { type: 'boolean' },
+      'no-color': { type: 'boolean' },
+      help: { type: 'boolean', short: 'h' },
     },
   });
+  if (values.help) {
+    io.stdout.write(HELP);
+    return 0;
+  }
   if (positionals.length !== 2) throw new UsageError('usage: api-diff history <start>..<end> <file>');
   const cwd = resolve(values.cwd ?? process.cwd());
   const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
@@ -271,7 +354,11 @@ function severityText(r: RuleMeta): string {
 }
 
 function rulesCommand(argv: string[], out: Io['stdout']): number {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { format: { type: 'string', short: 'f' }, all: { type: 'boolean' } } });
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { format: { type: 'string', short: 'f' }, all: { type: 'boolean' }, color: { type: 'boolean' }, 'no-color': { type: 'boolean' }, help: { type: 'boolean', short: 'h' } } });
+  if (values.help) {
+    out.write(HELP);
+    return 0;
+  }
   const format = oneOf('format', values.format, ['txt', 'json'] as const, 'txt');
   const pick = positionals[0] ? [getRuleOrUsage(positionals[0])] : RULES.filter((r) => values.all || isImplemented(r));
   if (format === 'json') {

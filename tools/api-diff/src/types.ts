@@ -61,6 +61,10 @@ export interface Finding {
   impact?: string[];
   /** Policy exclusion sets the finding belongs to (POLICY.md section 8); reports can leave them out. */
   exclusions?: string[];
+  /** The policy's migration note for clients (rules.<id>.note), used instead of the built-in one. */
+  note?: string;
+  /** Teams that own the finding (POLICY.md section 14): its operation's or component's owners, plus those of the operations it affects. */
+  owners?: string[];
   /** Set when an acknowledgement covers the finding: it's reported but doesn't fail CI or count towards `state`. */
   acknowledged?: { reason: string; owner?: string; expires: string; file: string };
 }
@@ -110,6 +114,8 @@ export interface Result {
   snippets?: Record<string, { base?: Snippet; revision?: Snippet }>;
   /** The operations findings mention (as subject or impact), for grouping and labels; the revision's details win. */
   operations?: Record<string, OperationSummary>;
+  /** --uses: the consumer's operations the reports were narrowed to, and the entries that matched no operation. */
+  uses?: { file: string; operations: string[]; unmatched: string[] };
   findings: Finding[];
 }
 
@@ -128,4 +134,6 @@ export interface OperationSummary {
   operationId?: string;
   tags: string[];
   summary?: string;
+  /** The operation's owners (POLICY.md section 14), when any. */
+  owners?: string[];
 }

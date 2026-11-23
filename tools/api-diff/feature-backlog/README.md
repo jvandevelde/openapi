@@ -18,7 +18,7 @@ One file per proposed feature or design, including every idea in [PLAN.md sectio
 | [Cached base index](cached-base-index.md) | Large specs and noise | Built | Cache the parsed base by content hash so CI only parses the revision. |
 | [Spec quality side-report](spec-quality-side-report.md) | Large specs and noise | Idea | List identical inline schemas found by the content hashes ("appears inline 42 times; consider a component"). |
 | [Portfolio mode](portfolio-mode.md) | Large specs and noise | Idea | Compare many specs in one run and report which APIs a change to a shared schema file affects. |
-| [Ownership routing](ownership-routing.md) | Ownership and governance | Planned | Read owners from `x-owner` or a CODEOWNERS-style file, list owning teams on each finding and split reports per team. |
+| [Ownership routing](ownership-routing.md) | Ownership and governance | Built (M9) | Owners from `x-owner` or the policy's `owners.assign` list, listed on each finding, with reports split per team. |
 | [Git blame for findings](git-blame-for-findings.md) | Ownership and governance | Idea | Use the source maps to find the commit and author that introduced each change. |
 | [Deprecation ledger](deprecation-ledger.md) | Ownership and governance | Idea | A standing report of everything deprecated, with sunset dates, overdue removals and `Deprecation`/`Sunset` header checks. |
 | [Breaking-change budget](breaking-change-budget.md) | Ownership and governance | Idea | A policy limit on breaking changes per release or audience. |

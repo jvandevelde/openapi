@@ -1,0 +1,18 @@
+description: "With acknowledgements.require-owner, only an owner of the finding can acknowledge it. The removed operation is owned by @pets-team (x-owner on its path item), but the acknowledgement is by @platform, so it doesn't apply: the removal still counts as breaking, and acknowledgement-not-owner says why."
+milestone: M9
+options:
+  acknowledgements:
+    - finding: 6862f893c35a
+      reason: Only the retired admin console called it.
+      owner: '@platform'
+      expires: 2027-01-31
+  policy:
+    acknowledgements:
+      require-owner: true
+findings:
+  - rule: operation-removed
+    severity: error
+    subject: DELETE /pets/{id}
+  - rule: acknowledgement-not-owner
+    severity: info
+    subject: DELETE /pets/{id}

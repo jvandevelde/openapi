@@ -2,24 +2,23 @@
 
 | | |
 |---|---|
-| **Status** | Planned |
-| **Summary** | Read owners from `x-owner` or a CODEOWNERS-style file, list owning teams on each finding and split reports per team. |
+| **Status** | Built (M9) |
+| **Summary** | Owners from `x-owner` or the policy's `owners.assign` list, listed on each finding, with reports split per team. |
 | **Value / effort** | high / medium |
 | **Plan entry** | [PLAN.md section 8, *Ownership and governance*](../PLAN.md#ownership-and-governance) |
 
-Moved from the PLAN.md backlog table on 2026-11-23, unchanged apart from links. It hasn't been worked out in more detail yet; add background, options and open questions here when it is.
+Moved from the PLAN.md backlog table on 2026-11-23, unchanged apart from links. Built in M9; the decision records below describe what was built.
 
 Marked **★** in PLAN.md: one of the ideas to do first.
 
 ## What it does
 
-Read owners from `x-owner` on operations or tags, or from a CODEOWNERS-style file mapping paths to teams. Each finding lists the owning teams, and reports can be split per team ("findings for @payments"). An acknowledgement can require an owner of the affected operations.
+Read owners from `x-owner` on operations, path items, tags, schemas or the document, or from the policy's `owners.assign` list (decided instead of a CODEOWNERS-style file). Each finding lists the owning teams, and reports can be split per team ("findings for @payments"). An acknowledgement can require an owner of the affected operations.
 
 ## Related
 
-- Part of M9 (Governance).
-- `x-owner` is listed as backlog (M9) in [docs/spec-authors.md](../docs/spec-authors.md).
-- [Overlays and a review loop](overlays-and-review-loop.md) section 6 would use it to check ack owners.
+- Built in M9: [M9 governance choices](../decision-records/2026-11-22T2027-m9-governance-choices.md), [M9 reports, owners and templates](../decision-records/2026-11-22T2028-m9-reports-owners-and-templates.md).
+- `acknowledgements.require-owner` covers the ack-owner check that [overlays and a review loop](overlays-and-review-loop.md) section 6 mentions.
 
 ## Open questions
 

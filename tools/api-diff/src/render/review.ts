@@ -16,32 +16,77 @@ export interface ReviewOptions extends TxtOptions {
   maxChars?: number;
 }
 
+/** `owners @a, @b`, for a group line; empty when grouped by owner or nobody owns the group. */
+export const ownersText = (g: Group, by: GroupBy): string => (by === 'owner' || !g.owners.length ? '' : `owners ${g.owners.join(', ')}`);
+
 export const REVIEW_MAX_CHARS = 60_000;
 
 const RANK: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
 
 export interface Group {
+  /** The group's key: a component or operation (root-cause), a severity, rule, tag or owner. */
   subject: string;
   severity: Severity;
   findings: Finding[];
   /** Operations affected, from the findings' impact lists. */
   operations: string[];
+  /** Owners of the group's findings. */
+  owners: string[];
 }
 
-/** Root-cause groups of wire and sdk findings, worst first, then by subject. */
-export function groupFindings(findings: Finding[]): Group[] {
+export type GroupBy = 'root-cause' | 'severity' | 'tag' | 'operation' | 'rule' | 'owner';
+
+const isOperation = (s: string): boolean => /^[A-Z]+ \//.test(s);
+
+/** What a finding is grouped under; a finding can be in several groups (several operations, tags or owners). */
+export function groupKeys(f: Finding, by: GroupBy, operations: Result['operations']): string[] {
+  const ops = isOperation(f.subject) ? [f.subject] : (f.impact ?? []);
+  switch (by) {
+    case 'root-cause':
+      return [f.subject];
+    case 'severity':
+      return [f.severity];
+    case 'rule':
+      return [f.rule];
+    case 'operation':
+      return ops.length ? ops : [f.subject];
+    case 'tag': {
+      const tags = [...new Set(ops.flatMap((o) => operations?.[o]?.tags ?? []))];
+      return tags.length ? tags : ['(no tag)'];
+    }
+    case 'owner':
+      return f.owners?.length ? f.owners : ['(no owner)'];
+  }
+}
+
+/** An owner or tag group lists only its own operations among those a finding affects. */
+function inGroup(op: string, key: string, by: GroupBy, operations: Result['operations']): boolean {
+  if (by === 'owner' && key !== '(no owner)') return operations?.[op]?.owners?.includes(key) ?? true;
+  if (by === 'tag' && key !== '(no tag)') return operations?.[op]?.tags.includes(key) ?? true;
+  return true;
+}
+
+/** The noun for a group, for headings: `3 places`, `2 owners`. */
+export const GROUP_NOUN: Record<GroupBy, string> = { 'root-cause': 'place', severity: 'severity level', tag: 'tag', operation: 'operation', rule: 'rule', owner: 'owner' };
+
+/** Groups of wire and sdk findings (by root cause unless `by` says otherwise), worst first, then by subject. */
+export function groupFindings(findings: Finding[], by: GroupBy = 'root-cause', operations?: Result['operations']): Group[] {
   const groups = new Map<string, Group>();
   for (const f of findings) {
     if (!isChange(f) || f.kind === 'docs') continue;
-    let g = groups.get(f.subject);
-    if (!g) groups.set(f.subject, (g = { subject: f.subject, severity: f.severity, findings: [], operations: [] }));
-    g.findings.push(f);
-    if (RANK[f.severity] < RANK[g.severity]) g.severity = f.severity;
-    for (const op of f.impact ?? []) if (!g.operations.includes(op)) g.operations.push(op);
+    for (const key of groupKeys(f, by, operations)) {
+      let g = groups.get(key);
+      if (!g) groups.set(key, (g = { subject: key, severity: f.severity, findings: [], operations: [], owners: [] }));
+      g.findings.push(f);
+      if (RANK[f.severity] < RANK[g.severity]) g.severity = f.severity;
+      for (const op of f.impact ?? (by !== 'root-cause' && isOperation(f.subject) ? [f.subject] : [])) if (!g.operations.includes(op) && inGroup(op, key, by, operations)) g.operations.push(op);
+      for (const o of f.owners ?? []) if (!g.owners.includes(o)) g.owners.push(o);
+    }
   }
   for (const g of groups.values()) {
     g.findings.sort((a, b) => RANK[a.severity] - RANK[b.severity] || a.message.localeCompare(b.message));
     g.operations.sort();
+    g.owners.sort();
   }
   return [...groups.values()].sort((a, b) => RANK[a.severity] - RANK[b.severity] || b.findings.length - a.findings.length || a.subject.localeCompare(b.subject));
 }
@@ -75,16 +120,18 @@ export function renderReview(r: Result, opts: ReviewOptions): string {
     out.push('');
   }
 
-  const groups = groupFindings(r.findings);
+  const by = opts.groupBy ?? 'root-cause';
+  const groups = groupFindings(r.findings, by, r.operations);
   if (groups.length) {
     const breaking = groups.filter((g) => g.severity === 'error').length;
-    out.push(c(BOLD, `Changes (${plural(groups.length, 'place')}${breaking ? `, ${breaking} with breaking changes` : ''})`));
+    out.push(c(BOLD, `Changes (${plural(groups.length, GROUP_NOUN[by])}${breaking ? `, ${breaking} with breaking changes` : ''})`));
     let size = out.join('\n').length;
     let shown = 0;
     for (const g of groups) {
-      const block = [`${c(COLOR[g.severity], LABEL[g.severity])}  ${c(BOLD, g.subject)}${g.operations.length ? `  ${c(DIM, affects(g.operations))}` : ''}`];
+      const meta = [g.operations.length && by !== 'operation' ? affects(g.operations) : '', ownersText(g, by)].filter(Boolean).join(' · ');
+      const block = [`${c(COLOR[g.severity], LABEL[g.severity])}  ${c(BOLD, g.subject)}${meta ? `  ${c(DIM, meta)}` : ''}`];
       const mixed = g.findings.some((f) => f.severity !== g.severity);
-      for (const f of g.findings) block.push(...findingLine(f, c, { subject: false, indent: '       ', label: mixed }));
+      for (const f of g.findings) block.push(...findingLine(f, c, { subject: by !== 'root-cause', indent: '       ', label: mixed }));
       const text = block.join('\n');
       if (size + text.length + 200 > max && shown > 0) break;
       out.push(...block);
@@ -93,7 +140,7 @@ export function renderReview(r: Result, opts: ReviewOptions): string {
     }
     if (shown < groups.length) {
       const rest = groups.slice(shown);
-      out.push('', c(DIM, `… ${plural(rest.length, 'more place')} (${plural(rest.reduce((n, g) => n + g.findings.length, 0), 'finding')}), shortened to fit; the JSON and HTML reports have them all:`));
+      out.push('', c(DIM, `… ${plural(rest.length, `more ${GROUP_NOUN[by]}`)} (${plural(rest.reduce((n, g) => n + g.findings.length, 0), 'finding')}), shortened to fit; the JSON and HTML reports have them all:`));
       for (const g of rest) out.push(c(DIM, `  ${g.severity.padEnd(5)}  ${g.subject} (${plural(g.findings.length, 'finding')})`));
     }
     out.push('');

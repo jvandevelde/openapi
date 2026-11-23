@@ -2,15 +2,22 @@
 
 Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Works with OpenAPI **3.0, 3.1 and 3.2**, in JSON or YAML, from files or from **git revisions**.
 
-> **Status: milestone M8.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (all 132 rules implemented, including rename detection). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions), acknowledgements and in-spec `x-api-diff` hints. Reports: `review` (the default), `ci`, `summary`, `changelog` (with migration notes for clients), `sdk` and `explore` (interactive HTML), plus a step-by-step `history` timeline and a ready-to-copy PR workflow. Audit and custom reports arrive in M9.
+> **Status: milestone M10.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (all 133 rules implemented, including rename detection). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions, owners), acknowledgements and in-spec `x-api-diff` hints. Each finding lists the teams that own it (`x-owner` or the policy). Reports: `review` (the default), `ci`, `summary`, `changelog` (with migration notes for clients), `sdk`, `explore` (interactive HTML) and `audit` (for governance), custom reports with Mustache templates, consumer views (`--uses`), plus a step-by-step `history` timeline and a ready-to-copy PR workflow. Released as one file, `api-diff.mjs`, on [GitHub releases](https://github.com/jvandevelde/openapi/releases) tagged `api-diff-v<version>`.
+
+**New to it?** Start with [docs/getting-started.md](docs/getting-started.md): how to download it, each command and report with its default behaviour, and where to change the defaults.
 
 ## Requirements
 
-Node.js 22.18 or later. Node runs the TypeScript sources directly; there is no build step.
+Node.js 22.18 or later. The release file has every dependency bundled; from the sources, Node runs the TypeScript directly, with no build step.
 
 ## Running it
 
 ```sh
+# The release file: download a pinned version once, check it, run it anywhere
+url=https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.0
+curl -fsSLO "$url/api-diff.mjs" -O "$url/api-diff.mjs.sha256" && sha256sum -c api-diff.mjs.sha256
+node api-diff.mjs main:openapi.yaml openapi.yaml
+
 # From the repo root, using make (installs dependencies on first use)
 make run TOOL=api-diff ARGS="test/cases/operation-removed/base.yaml test/cases/operation-removed/revision.yaml"
 
@@ -39,7 +46,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 |---|---|
 | `--base <rev>`, `--revision <rev>` | Read the given file at these revisions. `<rev>...` means the merge-base with the other side (`HEAD` by default) |
 | `-C, --cwd <dir>` | Run as if started in `<dir>` |
-| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. `changelog`: what changed for API consumers and what they need to do, grouped by tag and operation, in Markdown-style text you can paste into release notes. `sdk`: renamed methods, arguments and types, changes by method and type, and the SDK version bump (under `--profile sdk` severities). `explore`: every finding in one interactive HTML file, with filters, search and the base and revision source side by side. Formats `txt`, `json` and `html` (`review`, `summary`, `changelog`; `explore` is HTML only; one self-contained file); without a file it goes to stdout (one report at most). The policy's `reports` section can leave exclusion sets out of a report |
+| `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. `changelog`: what changed for API consumers and what they need to do, grouped by tag and operation, in Markdown-style text you can paste into release notes. `sdk`: renamed methods, arguments and types, changes by method and type, and the SDK version bump (under `--profile sdk` severities). `explore`: every finding in one interactive HTML file, with filters, search and the base and revision source side by side. `audit`: everything, whatever the other reports leave out, with acknowledgements (who, why, until when), where each severity came from, exclusion sets and findings per owner. A custom report from the policy's `reports` section works the same way (`--report partner-changelog`). Formats `txt`, `json` and `html` (`review`, `summary`, `changelog`, `audit`; `explore` is HTML only; one self-contained file); without a file it goes to stdout (one report at most). The policy's `reports` section can filter, regroup or template a report ([POLICY.md](POLICY.md) section 10) |
 | `-f, --format <fmt>` | Format of the default `review` report: `txt` (default), `html` or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
 | `-o, --output <file>` | Write the default report to a file |
 | `--fail-on <level>` | Exit with code 1 if any finding is at or above `error`, `warn` or `info`. The default is `never`: breaking changes are reported, not blocked, unless a team opts in |
@@ -49,6 +56,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--base-version <v>`, `--revision-version <v>` | The versions to record and check, instead of reading them from the documents |
 | `--base-label <k=v>`, `--revision-label <k=v>` | Extra version labels, e.g. `build=8812`. Repeatable |
 | `--explorer-url <url>` | For `explore` and `history`: link each finding into a spec explorer. A URL template with `{pointer}` (and optionally `{file}`, `{side}`); also `reports.explore.explorer-url` in the policy |
+| `--uses <file>` | Keep only the changes that reach these operations, in every report and in the exit code: one per line, `METHOD /path` or an operationId (e.g. from an SDK or access logs). The changelog then says how many changes affect that consumer |
 | `--cache-dir <dir>` | Cache the parsed base documents in this directory, keyed by their content. Useful in CI when the base (e.g. `main`) rarely changes: keep the directory between runs. Saves the base's parse time (about 0.5 s on an 8 MB spec) |
 | `--as-of <YYYY-MM-DD>` | Reference date for deprecation periods and sunset dates (default: today, UTC). Use it for reproducible runs |
 | `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
@@ -62,7 +70,7 @@ Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` fi
 
 ```
 $ api-diff base.yaml revision.yaml
-api-diff 0.1.0 · profile wire
+api-diff 0.10.0 · profile wire
 base      base.yaml  (OpenAPI 3.1.0, version 1.0.0)
 revision  revision.yaml  (OpenAPI 3.1.0, version 1.1.0)
 
@@ -85,7 +93,7 @@ api-diff history v1.4.0..v2.0.0 openapi.yaml --report timeline:html:history.html
 
 ## On pull requests
 
-[docs/ci.md](docs/ci.md) has a ready-to-copy GitHub Actions workflow: it compares the spec with the base branch, posts the `review` report as a PR comment (updated on each push) and keeps the HTML and JSON reports as artifacts. It reports changes without failing the build unless you opt in. This repository runs the same workflow on [`examples/petstore`](examples/petstore/openapi.yaml) for every PR.
+[docs/ci.md](docs/ci.md) has a ready-to-copy GitHub Actions workflow: it downloads a pinned release, compares the spec with the base branch, posts the `review` report as a PR comment (updated on each push) and keeps the HTML and JSON reports as artifacts. It reports changes without failing the build unless you opt in. This repository runs the same workflow on [`examples/petstore`](examples/petstore/openapi.yaml) for every PR.
 
 ## Policy and in-spec hints
 
@@ -113,6 +121,7 @@ npm test                     # tests only
 npx tsc --noEmit -p .        # type check only
 node test/bench/bench.ts 8   # timing on two generated 8 MB specs
 UPDATE_CASES=1 npm test      # rewrite expected.yaml files from actual results (review the diff!)
+make bundle                  # the release file, dist/api-diff.mjs (+ .sha256)
 ```
 
 - `src/`: one folder per pipeline stage (`sources`, `load`, `normalize`, `model`, `diff`, `classify`, `render`, `cli`), described in [PLAN.md](PLAN.md) section 6.
@@ -121,3 +130,4 @@ UPDATE_CASES=1 npm test      # rewrite expected.yaml files from actual results (
 - **Adding or changing a rule:** update the registry and `src/rules/docs.ts`, add or update its test case, run `npm run docs`, update RULES.md if the design changed, and add a decision record if a default was decided.
 - `test/cases/`: one folder per rule or scenario; see [test/cases/README.md](test/cases/README.md).
 - New decisions get a record in [decision-records/](decision-records/README.md), in the same commit as the change.
+- **Releasing:** bump the version, merge, then tag or run the release workflow; see [docs/releasing.md](docs/releasing.md).

@@ -37,6 +37,8 @@ export interface ChangelogData {
   to: string;
   advice?: string;
   breaking: number;
+  /** With --uses: how many entries reach the consumer's operations (all of them, since the view keeps only those), and the file. */
+  uses?: { file: string; changes: number };
   /** By tag (operations without tags under "Other"), in tag order. */
   tags: { tag: string; operations: ChangelogOperation[] }[];
   /** Changes to shared components, with the operations they affect. */
@@ -124,9 +126,15 @@ export function changelogData(r: Result, opts: { docs?: boolean } = {}): Changel
   };
   const title = r.compared.revision.title ?? r.compared.base.title;
   if (title) data.title = title;
+  if (r.uses) data.uses = { file: r.uses.file, changes: tags.reduce((n, t) => n + t.operations.reduce((m, o) => m + o.entries.length, 0), 0) + components.reduce((n, c) => n + c.entries.length, 0) };
   const advice = adviceLine(r);
   if (advice) data.advice = advice;
   return data;
+}
+
+/** `3 changes affect you (operations listed in ops.txt).` */
+export function usesHeadline(u: { file: string; changes: number }): string {
+  return `${u.changes === 0 ? 'No changes affect you' : `${u.changes} change${u.changes === 1 ? '' : 's'} ${u.changes === 1 ? 'affects' : 'affect'} you`} (operations listed in ${u.file}).`;
 }
 
 const LABEL: Record<EntryKind, string> = { added: 'Added', changed: 'Changed', deprecated: 'Deprecated', removed: 'Removed' };
@@ -141,6 +149,7 @@ function entryLines(e: ChangelogEntry): string[] {
 export function renderChangelog(r: Result, opts: { docs?: boolean } = {}): string {
   const d = changelogData(r, opts);
   const out = [`# ${d.title ?? 'API'} ${d.from} → ${d.to}`, ''];
+  if (d.uses) out.push(`**${usesHeadline(d.uses)}**`, '');
   if (!d.tags.length && !d.components.length) return [...out, 'No changes for API clients.', ''].join('\n');
   out.push(d.breaking ? `**${d.breaking} breaking change${d.breaking === 1 ? '' : 's'}.** Clients may need updating; each change below says what to do.` : 'No breaking changes.');
   out.push('');

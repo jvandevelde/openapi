@@ -64,7 +64,7 @@
       "additionalProperties": {
         "type": "object",
         "required": ["tags"],
-        "properties": { "operationId": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "summary": { "type": "string" } }
+        "properties": { "operationId": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "summary": { "type": "string" }, "owners": { "type": "array", "items": { "type": "string" }, "description": "The operation's owners." } }
       }
     },
     "policy": {
@@ -72,6 +72,12 @@
       "type": "object",
       "required": ["file", "sha256"],
       "properties": { "file": { "type": "string" }, "sha256": { "type": "string" } }
+    },
+    "uses": {
+      "description": "--uses: the operations the reports were narrowed to (only changes that reach them are kept), and the file's entries that matched no operation.",
+      "type": "object",
+      "required": ["file", "operations", "unmatched"],
+      "properties": { "file": { "type": "string" }, "operations": { "type": "array", "items": { "type": "string" } }, "unmatched": { "type": "array", "items": { "type": "string" } } }
     },
     "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
   },
@@ -122,6 +128,8 @@
         "revision": { "$ref": "#/$defs/location" },
         "details": { "type": "object" },
         "impact": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": "string", "description": "The policy's migration note for clients (rules.<id>.note), used instead of the built-in one." },
+        "owners": { "description": "Teams that own the finding: its operation's or component's owners, plus those of the operations it affects.", "type": "array", "items": { "type": "string" } },
         "exclusions": { "description": "Policy exclusion sets the finding belongs to; reports can leave them out.", "type": "array", "items": { "type": "string" } },
         "acknowledged": {
           "description": "Set when an acknowledgement covers the finding: reported, but it doesn't fail CI or count towards state.",

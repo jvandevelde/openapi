@@ -30,7 +30,7 @@ PLAN.md section 8 already holds many backlog ideas that may or may not be built.
 
 - New `feature-backlog/` directory with a README and the first proposal, [overlays and a review loop](../feature-backlog/overlays-and-review-loop.md).
 - PLAN.md section 8 gains a *Review and publishing* area for the overlays proposal, and a status column.
-- Every existing backlog row in PLAN.md moved to its own file (2026-11-23, asked and answered), unchanged apart from links, with status *Built* for bulk-change collapsing and the cached base index and *Planned* for ownership routing (M9).
+- Every existing backlog row in PLAN.md moved to its own file (2026-11-23, asked and answered), unchanged apart from links, with status *Built* for bulk-change collapsing and the cached base index and ownership routing (M9).
 
 ## References
 

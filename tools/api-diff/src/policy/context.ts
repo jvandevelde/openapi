@@ -28,6 +28,8 @@ export interface SpecContext {
   components: Map<string, Record<string, unknown>>;
   /** `x-` extensions at the document root. */
   document: Record<string, unknown>;
+  /** `x-` extensions of each entry in the top-level `tags` list, keyed by tag name. */
+  tags: Map<string, Record<string, unknown>>;
 }
 
 export interface LifecycleSettings {
@@ -62,13 +64,14 @@ function operationInfo(m: Model, op: Operation, lc: LifecycleSettings, hints: Hi
 }
 
 export function buildContext(base: Model | undefined, revision: Model | undefined, lc: LifecycleSettings = DEFAULT_LIFECYCLE, hints: { base?: HintIndex; revision?: HintIndex } = {}): SpecContext {
-  const ctx: SpecContext = { operations: new Map(), components: new Map(), document: {} };
+  const ctx: SpecContext = { operations: new Map(), components: new Map(), document: {}, tags: new Map() };
   for (const [m, h] of [[base, hints.base], [revision, hints.revision]] as const) {
     if (!m) continue;
     for (const op of m.operations.values()) ctx.operations.set(`${op.method.toUpperCase()} ${op.path}`, operationInfo(m, op, lc, h));
     const doc = m.docs.root.parsed.value;
     if (!isObject(doc)) continue;
     ctx.document = { ...ctx.document, ...extensionsOf(doc) };
+    if (Array.isArray(doc.tags)) for (const t of doc.tags) if (isObject(t) && typeof t.name === 'string') ctx.tags.set(t.name, extensionsOf(t));
     const schemas = isObject(doc.components) && isObject(doc.components.schemas) ? doc.components.schemas : {};
     for (const [name, s] of Object.entries(schemas)) ctx.components.set(name, extensionsOf(s));
   }

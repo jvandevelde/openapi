@@ -1,6 +1,6 @@
 # api-diff: plan
 
-Status: **M0–M8 done** (every rule is implemented, including rename detection; the policy file, acknowledgements and in-spec hints are supported; the `review`, `ci`, `summary`, `changelog`, `sdk` and `explore` reports, the `history` timeline and a PR workflow are in place; see [README.md](README.md)). Next: M9 (governance). The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md). This directory has no `Makefile`, so the root `make` ignores it for now.
+Status: **M0–M10 built** (every rule is implemented, including rename detection; the policy file, acknowledgements, in-spec hints and ownership routing are supported; the `review`, `ci`, `summary`, `changelog`, `sdk`, `explore` and `audit` reports, custom reports with templates, `--uses` consumer views, the `history` timeline, a PR workflow and a release workflow for the bundled `api-diff.mjs` are in place; see [README.md](README.md)). M10 is done once the first release, `api-diff-v0.10.0`, is published and another repo's CI runs it ([docs/releasing.md](docs/releasing.md)). The initial rule set is in [RULES.md](RULES.md), the policy file reference in [POLICY.md](POLICY.md), and decisions in [decision-records/](decision-records/README.md).
 
 `api-diff` compares two OpenAPI documents (a *base* and a *revision*), finds what changed, and decides which changes break clients. Several tools already do parts of this (section 1). We're building our own so that we decide what counts as breaking and how results are shown, and so the tool is built around the problems those tools leave open (section 3): shared and recursive schemas, request vs response direction, wire vs SDK compatibility, and reports for different readers.
 
@@ -168,7 +168,7 @@ The tool never assumes it's inside this tools repo. Git commands run **in the re
 **Getting the tool into another repo's CI.** **Decided: a single release file, no package registry.** Each release builds `api-diff.mjs` (all dependencies bundled with esbuild, so no `npm install`) and attaches it to a GitHub release of this repo, tagged `api-diff-v<version>` (tags are per tool, since the repo holds several). This repo is public, so downloads need no token.
 
 ```sh
-curl -fsSLo api-diff.mjs https://github.com/jvandevelde/openapi/releases/download/api-diff-v1.2.3/api-diff.mjs
+curl -fsSLo api-diff.mjs https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.0/api-diff.mjs
 node api-diff.mjs main:openapi.yaml openapi.yaml
 ```
 
@@ -204,7 +204,7 @@ jobs:
   api-diff:
     runs-on: ubuntu-latest
     env:
-      API_DIFF: https://github.com/jvandevelde/openapi/releases/download/api-diff-v1.2.3
+      API_DIFF: https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.0
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }            # the base commit must be present
@@ -542,7 +542,7 @@ versions:
 Each side also records the file name, a SHA-256 of the file, and where its version came from, along with the tool version and a hash of the policy. This makes every report reproducible:
 
 ```
-api-diff 0.1.0 · policy 3fa2c1e
+api-diff 0.10.0 · policy 3fa2c1e
 base      orders.yaml  v1.4.0 (x-api-version)  build 812  commit 9d4a736
 revision  orders.yaml  v1.5.0 (x-api-version)  build 845  commit c7f3e1a
 advice    major bump needed (2 breaking changes); revision is a minor bump
@@ -713,10 +713,10 @@ Each milestone is one or a few pull requests and ends with something that runs.
 | **M6** ✅ | Policy | Policy file and validation, rules, overrides and precedence, in-spec hints, lifecycle, extensions, exclusions and `ignore`, versions, acknowledgements (incl. stale), severity provenance, the `documents-unrelated` precheck | Every POLICY.md example is a passing test |
 | **M7** ✅ | PR check | Report presets, `ci`, `review` (the default) and `summary` reports (txt/json/html), multiple `--report`, versions header with bump advice, `--fail-on never` by default, opt-in `--cache-dir` base index, a copyable GitHub Actions workflow and a self-check workflow in this repo | **Runs on every PR here and is ready to copy into an API repo** |
 | **M8** ✅ | Presentation | `explore` HTML (diff view with `explorer-url` links, no spec rendering), `changelog`, `sdk`, rename detection, semver advice, migration notes for clients (instead of fix advice), history timeline | Reviewers prefer it to the tools in section 1 |
-| **M9** | Governance | `audit`, custom reports and templates, `--uses` consumer reports, ownership routing | Release notes and governance reviews use it without manual editing |
-| **M10** | Distribution | esbuild bundle, release workflow (tag `api-diff-v*` → `api-diff.mjs` + `.sha256` on a GitHub release), generated rule docs, README | Another repo's CI downloads a pinned release and runs it |
+| **M9** ✅ | Governance | `audit`, custom reports and Mustache templates, per-rule message and note wording, `--uses` consumer reports, ownership routing (`x-owner`, policy `owners`, `group-by: owner`, `include.owners`, `acknowledgements.require-owner`) | Release notes and governance reviews use it without manual editing |
+| **M10** (built) | Distribution | esbuild bundle (`make bundle`, deterministic, tested against the sources on every golden case), release workflow (tag `api-diff-v*` pushed, or a manual run that creates it → `api-diff.mjs` + `.sha256` on a GitHub release), generated rule docs (since M3), README and CI docs using the release; first release `0.10.0` | Another repo's CI downloads a pinned release and runs it |
 
-M10 can move earlier, e.g. straight after M3 or M7, if other repos want to try it sooner. Until then, they use a local clone or a second checkout (section 4, *Using it in other repositories*).
+Until the first release is published, other repos use a local clone or a second checkout (section 4, *Using it in other repositories*).
 
 The backlog (section 8) is picked from after M7, except the low-effort ★ items already folded in above (bulk-change collapsing in M5, the cached base index in M7). Example re-validation is not scheduled.
 
@@ -772,7 +772,7 @@ Each idea has its own file in [feature-backlog/](feature-backlog/README.md) with
 
 | Idea | What it does and why | Value / effort | Status |
 |---|---|---|---|
-| [**★ Ownership routing**](feature-backlog/ownership-routing.md) | Read owners from `x-owner` or a CODEOWNERS-style file, list owning teams on each finding and split reports per team. | high / medium | Planned |
+| [**★ Ownership routing**](feature-backlog/ownership-routing.md) | Owners from `x-owner` or the policy's `owners.assign` list, listed on each finding, with reports split per team. | high / medium | Built (M9) |
 | [**Git blame for findings**](feature-backlog/git-blame-for-findings.md) | Use the source maps to find the commit and author that introduced each change. | medium / low | Idea |
 | [**Deprecation ledger**](feature-backlog/deprecation-ledger.md) | A standing report of everything deprecated, with sunset dates, overdue removals and `Deprecation`/`Sunset` header checks. | medium / low | Idea |
 | [**Breaking-change budget**](feature-backlog/breaking-change-budget.md) | A policy limit on breaking changes per release or audience. | low / low | Idea |

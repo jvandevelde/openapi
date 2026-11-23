@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 132 rules, with their default severities. 132 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 133 rules, with their default severities. 133 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -191,6 +191,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 | [`documents-unrelated`](documents-unrelated.md) | wire | error | M6 ✅ | The two documents look like different APIs |
 | [`acknowledgement-stale`](acknowledgement-stale.md) | wire | info | M6 ✅ | An acknowledgement's finding no longer appears |
 | [`acknowledgement-expired`](acknowledgement-expired.md) | wire | info | M6 ✅ | An acknowledgement expired |
+| [`acknowledgement-not-owner`](acknowledgement-not-owner.md) | wire | info | M9 ✅ | An acknowledgement's owner doesn't own the finding |
 | [`not-compared`](not-compared.md) | wire | info | M3 ✅ | Parts of the spec that weren't compared |
 
 Default `in / out`: severity for data clients send (requests) / receive (responses). `(sdk: …)`: severity under `--profile sdk`.

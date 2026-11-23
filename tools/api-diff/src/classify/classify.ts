@@ -125,7 +125,7 @@ export function resolveSeverity(c: Change, rule: string, opts: ClassifyOptions, 
     const target = { rule, baseRule: meta.id, kind: meta.kind, direction: c.direction, subject: c.subject, op };
     for (let i = overrides.length - 1; i >= 0; i--) {
       const o: Override = overrides[i]!;
-      if (!matches(o.match, target, opts.context ?? { operations: new Map(), components: new Map(), document: {} })) continue;
+      if (!matches(o.match, target, opts.context ?? { operations: new Map(), components: new Map(), document: {}, tags: new Map() })) continue;
       const where = `${fileLabel}: overrides #${o.index} (${o.label})`;
       if (o.severity) return { severity: o.severity, source: where };
       const r = fromRules(c, meta, settingsIn(o.rules, rule, meta), (id, key = '') => `${where}: rules.${id}${key}`);

@@ -449,7 +449,7 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
     fix: 'Usually nothing; check the SDK change is intended.',
   },
   'component-renamed': {
-    description: 'A component was renamed: a component disappeared and one with the same structure (shape hash) and a new name appeared. Matches are one-to-one; when several components share a structure, they stay removed + added. A `$ref` that now points at the new name is part of the rename, not a separate `ref-target-changed`.',
+    description: 'A component was renamed: a component disappeared and one with the same structure (shape hash) and a new name appeared. Matches are one-to-one; when several components share a structure, they stay removed + added. A `$ref` that now points at the new name is part of the rename, not a separate `ref-target-changed`. Recursive schemas (one that refers to itself, or a group that refers to each other) are matched by a key in which references inside the group do not use names, so they are found too; members of a group that are identical apart from their names cannot be told apart and stay unmatched.',
     why: 'Generated SDK type names change.',
     fix: 'Keep the old name.',
     options: [{ name: 'match', default: 'exact', description: '`exact` (same shape hash; descriptions and examples may differ) or `similar` (also matches when the type and the property names and types are the same, e.g. only limits changed).' }],

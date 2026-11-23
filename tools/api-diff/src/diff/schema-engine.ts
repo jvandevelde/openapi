@@ -741,9 +741,10 @@ export class SchemaEngine {
         if (bs.length === 1 && rs?.length === 1) out.set(bs[0]!, rs[0]!);
       }
     };
-    match((n) => n.deep.shape);
+    // A recursive schema's hashes include its own name; its rename key doesn't.
+    match((n) => n.renameKey?.deep ?? n.deep.shape);
     // Same own content, but a schema it references changed too (reported on its own): still a rename.
-    match((n) => `local:${n.local.shape}`);
+    match((n) => `local:${n.renameKey?.local ?? n.local.shape}`);
     if (this.#opts.renameMatch === 'similar') {
       match((n, which) => {
         const v = this.#side(which).docs.value(n.ref);

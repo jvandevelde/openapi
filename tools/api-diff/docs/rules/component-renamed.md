@@ -14,7 +14,7 @@ Component renamed (same structure)
 
 ## What it detects
 
-A component was renamed: a component disappeared and one with the same structure (shape hash) and a new name appeared. Matches are one-to-one; when several components share a structure, they stay removed + added. A `$ref` that now points at the new name is part of the rename, not a separate `ref-target-changed`.
+A component was renamed: a component disappeared and one with the same structure (shape hash) and a new name appeared. Matches are one-to-one; when several components share a structure, they stay removed + added. A `$ref` that now points at the new name is part of the rename, not a separate `ref-target-changed`. Recursive schemas (one that refers to itself, or a group that refers to each other) are matched by a key in which references inside the group do not use names, so they are found too; members of a group that are identical apart from their names cannot be told apart and stay unmatched.
 
 ## Why this default
 
@@ -46,11 +46,13 @@ Findings:
 
 ## Test cases
 
-2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`component-renamed`](../../test/cases/component-renamed/) | `component-renamed` · info · #/components/schemas/Animal | Pet was renamed to Animal with the same structure: one component-renamed (info; error under --profile sdk) instead of a ref change, since the JSON is the same but generated type names change. |
+| [`component-renamed-recursive`](../../test/cases/component-renamed-recursive/) | `component-renamed` · info · #/components/schemas/Node | TreeNode, which refers to itself, was renamed to Node with the same structure. Its own name is part of its hashes, so rename matching uses a name-neutral key (references inside the cycle become positions): one component-renamed, and the $ref changes (at GET /tree and inside the schema) are part of the rename. |
+| [`component-renamed-recursive-cycle`](../../test/cases/component-renamed-recursive-cycle/) | `component-renamed` · info · #/components/schemas/Writer<br>`component-renamed` · info · #/components/schemas/Work | Author and Book refer to each other (Author.books, Book.author) and both were renamed (Writer, Work). Each one's content names the other, so neither the deep hash nor its own content matches; the name-neutral rename key (references inside the cycle become positions) matches both: two component-renamed, and the $ref changes are part of the renames. |
 | [`component-renamed-similar`](../../test/cases/component-renamed-similar/) | `component-renamed` · info · #/components/schemas/Animal | Renamed and a limit changed. With match: similar (same type and property names and types) it is still a rename, and the limit change is reported on the new component. |
 
 ## Policy options

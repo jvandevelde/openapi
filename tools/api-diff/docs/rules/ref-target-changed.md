@@ -52,11 +52,12 @@ Findings:
 
 ## Test cases
 
-2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`component-renamed-ambiguous`](../../test/cases/component-renamed-ambiguous/) | `ref-target-changed` · info · GET /a<br>`ref-target-changed` · info · GET /b | Two components with the same structure were renamed: it can't tell which became which, so no rename is guessed and the $ref changes are reported as they are. |
+| [`component-renamed-recursive-twins`](../../test/cases/component-renamed-recursive-twins/) | `ref-target-changed` · info · #/components/schemas/East<br>`ref-target-changed` · info · #/components/schemas/West<br>`ref-target-changed` · info · GET /a | Left and Right refer to each other and are identical apart from their names; both were renamed (East, West). Without names they can't be told apart, so there is no rename key and no guessed rename: the $ref changes are reported as they are. |
 | [`ref-target-changed`](../../test/cases/ref-target-changed/) | `ref-target-changed` · info · GET /pets | An operation now references a different but identical component: ref-target-changed (an sdk change), and nothing else. |
 
 ## Policy options

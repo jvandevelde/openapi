@@ -1,0 +1,9 @@
+description: "Author and Book refer to each other (Author.books, Book.author) and both were renamed (Writer, Work). Each one's content names the other, so neither the deep hash nor its own content matches; the name-neutral rename key (references inside the cycle become positions) matches both: two component-renamed, and the $ref changes are part of the renames."
+milestone: M8
+findings:
+  - rule: component-renamed
+    severity: info
+    subject: '#/components/schemas/Writer'
+  - rule: component-renamed
+    severity: info
+    subject: '#/components/schemas/Work'

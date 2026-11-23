@@ -1,0 +1,14 @@
+openapi: 3.1.0
+info: { title: Tree, version: 1.0.0 }
+paths:
+  /tree:
+    get:
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/TreeNode' } } } }
+components:
+  schemas:
+    TreeNode:
+      type: object
+      properties:
+        name: { type: string }
+        children: { type: array, items: { $ref: '#/components/schemas/TreeNode' } }

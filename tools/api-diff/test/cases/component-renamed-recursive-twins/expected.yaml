@@ -1,0 +1,12 @@
+description: "Left and Right refer to each other and are identical apart from their names; both were renamed (East, West). Without names they can't be told apart, so there is no rename key and no guessed rename: the $ref changes are reported as they are."
+milestone: M8
+findings:
+  - rule: ref-target-changed
+    severity: info
+    subject: '#/components/schemas/East'
+  - rule: ref-target-changed
+    severity: info
+    subject: '#/components/schemas/West'
+  - rule: ref-target-changed
+    severity: info
+    subject: GET /a

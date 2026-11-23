@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-23 03:13 UTC |
 | **Summary** | Every text report shows each finding's ID; `review` and `ci` end with a hint while a change at warn or above is open; `api-diff ack <id> --reason --expires [--owner]` appends a checked entry to `api-diff.ack.yaml` without running a comparison. |
 | **Milestone** | — (after M10) |

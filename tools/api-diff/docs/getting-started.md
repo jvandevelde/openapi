@@ -92,7 +92,7 @@ To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-
 | **Today's date** | Deprecation periods and sunset dates are checked against today (UTC) | `--as-of 2027-01-31` for reproducible runs |
 | **Text to stdout** | The `review` report, coloured in a terminal | `-f json` / `-f html`, `-o <file>`, `--no-color`, or other reports (next section) |
 
-Exit codes: `0` passed, `1` a finding reached `--fail-on`, `2` a usage or input error (missing file, unknown revision, invalid policy).
+Exit codes: `0` passed, `1` a finding reached `--fail-on`, `2` a usage or input error (missing file, unknown revision, invalid policy, a report file that can't be written, or a spec that can't be read as OpenAPI 3.x, such as broken YAML or Swagger 2.0; the report is still printed, under "Problems with the inputs").
 
 ## 3. Reports: one per audience
 
@@ -185,7 +185,7 @@ api-diff rules --format json                     # for scripts
 
 ### `schema`
 
-`api-diff schema` prints the JSON Schema of the `-f json` result.
+`api-diff schema` (or `api-diff schema result`) prints the JSON Schema of the `-f json` result. There's no JSON Schema for the policy file yet; `api-diff schema policy` says so.
 
 Every command takes `--help`.
 

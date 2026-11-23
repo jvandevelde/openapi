@@ -82,6 +82,7 @@ async function loadSide(input: OpenedInput, side: Side, cache?: ParseCacheLike):
     await docs.load();
   } catch (e) {
     if (!(e instanceof LoadError)) throw e;
+    compared.unreadable = true;
     return { compared, changes: [{ rule: 'spec-invalid', subject: SIDE_NAME[side], details: { reason: e.message, side } }] };
   }
   compared.sha256 = docs.root.sha256;
@@ -99,7 +100,10 @@ async function loadSide(input: OpenedInput, side: Side, cache?: ParseCacheLike):
     changes.push({ rule: 'spec-invalid', subject: SIDE_NAME[side], [side]: docs.location({ file: docs.root, segs: [] }), details: { reason: `${compared.file}: ${e.message}`, side } });
   }
   for (const n of docs.notices) changes.push(noticeToChange(n, side));
-  if (!model) return { compared, changes };
+  if (!model) {
+    compared.unreadable = true;
+    return { compared, changes };
+  }
   const hints = HintIndex.build(docs, side, parseHintRules);
   changes.push(...hints.problems);
   return { model, hints, compared, changes };

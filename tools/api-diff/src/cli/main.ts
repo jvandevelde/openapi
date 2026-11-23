@@ -3,11 +3,11 @@
 // Exit codes: 0 ok, 1 findings at or above --fail-on (never by default, so
 // only when a team opts in), 2 usage or input error.
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
 import { compareInputs, countFindings, placesOf, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
-import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
+import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError, suggest } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
 import { history, type HistoryOptions } from '../history.ts';
 import { renderTimeline, renderTimelineHtml, timelineData } from '../render/timeline.ts';
@@ -31,7 +31,7 @@ Usage:
   api-diff [options] <base> <revision>
   api-diff [options] --base <rev> [--revision <rev>] <file>
   api-diff rules [<rule-id>] [--format txt|json] [--all]
-  api-diff schema
+  api-diff schema [result]                               the JSON Schema of the -f json result
   api-diff ack <finding-id> --reason <text> --expires <YYYY-MM-DD> [--owner <team>]
                         accept a finding: add it to api-diff.ack.yaml (or --acknowledgements <file>)
   api-diff history <start>..<end> <file> [options]   how the spec changed step by step (see below)
@@ -88,6 +88,18 @@ History (api-diff history <start>..<end> <file>):
 `;
 
 class UsageError extends Error {}
+/** A report file that can't be written. */
+class OutputError extends Error {}
+
+/** Writes a report file, creating missing parent folders. */
+function writeOutput(path: string, text: string): void {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, text);
+  } catch (e) {
+    throw new OutputError(`can't write ${path}: ${(e as NodeJS.ErrnoException).code ?? (e as Error).message}`);
+  }
+}
 
 export interface Io {
   stdout: { write(s: string): unknown; isTTY?: boolean };
@@ -156,14 +168,19 @@ export async function main(argv: string[], io: Io = { stdout: process.stdout, st
         io.stdout.write(HELP);
         return 0;
       }
+      const { positionals: names } = parseArgs({ args: rest, options: DIFF_OPTIONS, allowPositionals: true, strict: false });
+      const name = names[0] ?? 'result';
+      if (names.length > 1 || name !== 'result') {
+        throw new UsageError(name === 'policy' ? "there's no JSON Schema for the policy file yet; 'api-diff schema' prints the result schema" : `unknown schema '${names.join(' ')}'; 'api-diff schema' (or 'api-diff schema result') prints the result schema`);
+      }
       io.stdout.write(`${JSON.stringify(resultSchema, null, 2)}\n`);
       return 0;
     }
     return await diffCommand(argv, io);
   } catch (e) {
-    if (e instanceof UsageError || e instanceof SourceError || e instanceof PolicyError || e instanceof ReportError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
+    if (e instanceof UsageError || e instanceof SourceError || e instanceof PolicyError || e instanceof ReportError || e instanceof OutputError || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION' || (e as NodeJS.ErrnoException).code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
       io.stderr.write(`api-diff: ${(e as Error).message}\n`);
-      if (e instanceof UsageError || !(e instanceof SourceError || e instanceof PolicyError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
+      if (e instanceof UsageError || !(e instanceof SourceError || e instanceof PolicyError || e instanceof OutputError)) io.stderr.write(`Run 'api-diff --help' for usage.\n`);
       return 2;
     }
     throw e;
@@ -200,6 +217,11 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   if (positionals.length === 0 && values.base === undefined) {
     io.stdout.write(HELP);
     return 2;
+  }
+  // A mistyped or unknown command (`api-diff explain <id>`) would otherwise read as a missing file.
+  const first = positionals[0];
+  if (values.base === undefined && values.revision === undefined && first !== undefined && /^[A-Za-z][\w-]*$/.test(first) && !existsSync(resolve(cwd, first))) {
+    throw new UsageError(`'${first}' isn't a command or a file${suggest(first, [...SUBCOMMANDS])}. Commands: ${[...SUBCOMMANDS].join(', ')}`);
   }
   const [base, revision] = inputsFromArgs(positionals, { base: values.base, revision: values.revision }, cwd);
   const asOf = values['as-of'];
@@ -288,8 +310,14 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
     const color = values['no-color'] ? false : values.color ? true : !spec.file && !!io.stdout.isTTY && !io.env.NO_COLOR;
     const linkTemplate = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : cfg?.explorerUrl;
     const text = renderReport({ name: spec.base, format: fmt }, viewFor(result, cfg, recount, view), { color, failOn, docs: !!cfg?.include?.kinds?.includes('docs'), ...(cfg?.groupBy ? { groupBy: cfg.groupBy } : {}), hiddenBy, ...(linkTemplate ? { explorerUrl: linkTemplate } : {}) }, fmt === 'json' ? undefined : template);
-    if (spec.file) writeFileSync(resolve(cwd, spec.file), text);
+    if (spec.file) writeOutput(resolve(cwd, spec.file), text);
     else io.stdout.write(text);
+  }
+  // A document that couldn't be read means nothing was compared: an input error, whatever --fail-on says.
+  const unreadable = (['base', 'revision'] as const).filter((s) => result.compared[s].unreadable);
+  if (unreadable.length) {
+    io.stderr.write(`api-diff: the ${unreadable.join(' and ')} document${unreadable.length > 1 ? 's' : ''} couldn't be read as OpenAPI 3.x, so nothing was compared (see "Problems with the inputs")\n`);
+    return 2;
   }
   // The ci report is the gate: its exclusions and filters (and --uses) apply to the exit code too.
   return shouldFail(viewFor(result, resolved.get('ci')!.cfg, recount, view), failOn) ? 1 : 0;
@@ -347,7 +375,7 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
   const links = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : policy.reports.get('explore')?.explorerUrl;
   const h = await history(positionals[0]!, positionals[1]!, cwd, opts);
   const text = format === 'json' ? JSON.stringify(timelineData(h), null, 2) + '\n' : format === 'html' ? renderTimelineHtml(h, links) : renderTimeline(h);
-  if (file && file !== '-') writeFileSync(resolve(cwd, file), text);
+  if (file && file !== '-') writeOutput(resolve(cwd, file), text);
   else io.stdout.write(text);
   return 0;
 }
@@ -386,7 +414,7 @@ function ackCommand(argv: string[], io: Io): number {
   const name = values.acknowledgements ?? DEFAULT_ACK_FILE;
   const path = resolve(cwd, name);
   const text = existsSync(path) ? readFileSync(path, 'utf8') : undefined;
-  writeFileSync(path, appendAcknowledgement(text, { finding, reason, expires, ...(values.owner ? { owner: values.owner } : {}) }, name));
+  writeOutput(path, appendAcknowledgement(text, { finding, reason, expires, ...(values.owner ? { owner: values.owner } : {}) }, name));
   io.stdout.write(`${text === undefined ? 'Created' : 'Updated'} ${name}: ${finding} acknowledged until ${expires}. Commit it with your change; the next run marks the finding acknowledged, or reports it as stale if no finding has this ID.\n`);
   return 0;
 }

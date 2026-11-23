@@ -47,7 +47,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--base <rev>`, `--revision <rev>` | Read the given file at these revisions. `<rev>...` means the merge-base with the other side (`HEAD` by default) |
 | `-C, --cwd <dir>` | Run as if started in `<dir>` |
 | `--report <name>[:<format>[:<file>]]` | A report to write; repeatable, from one comparison. `review` (the default): what changed and who it affects, grouped by component or operation. `ci`: short, for CI logs. `summary`: size, risk and version advice. `changelog`: what changed for API consumers and what they need to do, grouped by tag and operation, in Markdown-style text you can paste into release notes. `sdk`: renamed methods, arguments and types, changes by method and type, and the SDK version bump (under `--profile sdk` severities). `explore`: every finding in one interactive HTML file, with filters, search and the base and revision source side by side. `audit`: everything, whatever the other reports leave out, with acknowledgements (who, why, until when), where each severity came from, exclusion sets and findings per owner. A custom report from the policy's `reports` section works the same way (`--report partner-changelog`). Formats `txt`, `json` and `html` (`review`, `summary`, `changelog`, `audit`; `explore` is HTML only; one self-contained file); without a file it goes to stdout (one report at most). The policy's `reports` section can filter, regroup or template a report ([POLICY.md](POLICY.md) section 10) |
-| `-f, --format <fmt>` | Format of the default `review` report: `txt` (default), `html` or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`) |
+| `-f, --format <fmt>` | Format of the default `review` report: `txt` (default), `html` or `json` (the full result; [schema](schema/result-v0.schema.json), also printed by `api-diff schema`; there's no policy schema yet) |
 | `-o, --output <file>` | Write the default report to a file |
 | `--fail-on <level>` | Exit with code 1 if any finding is at or above `error`, `warn` or `info`. The default is `never`: breaking changes are reported, not blocked, unless a team opts in |
 | `--state` | Print only `no-changes`, `compatible` or `breaking` |
@@ -62,7 +62,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--rule <rule-id>=<severity>` | Set one rule's severity (`error`, `warn`, `info`, `off`), beating the policy file. Repeatable |
 | `--color`, `--no-color` | Colour is on for terminals unless `NO_COLOR` is set |
 
-Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` findings at or above it, `2` usage or input error (missing file, unknown revision, invalid policy).
+Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` findings at or above it, `2` usage or input error (missing file, unknown revision, invalid policy, a report file that can't be written, or a document that can't be read as OpenAPI 3.x, such as broken YAML or Swagger 2.0; the report is still printed). Missing folders in a report's file path are created.
 
 `api-diff ack <finding-id> --reason <text> --expires <YYYY-MM-DD> [--owner <team>]` accepts a finding: it appends a checked entry to `api-diff.ack.yaml`, which you commit with the change. Every report shows each finding's `id`. See [POLICY.md](POLICY.md) section 11.
 

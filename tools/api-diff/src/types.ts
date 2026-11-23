@@ -88,6 +88,8 @@ export interface ComparedSide {
   versionSource?: string;
   /** Version labels (POLICY.md section 9); `commit` is filled in for git inputs. */
   labels?: Record<string, string>;
+  /** The document couldn't be read as OpenAPI 3.x (a `spec-invalid` finding says why), so nothing was compared. The CLI exits 2. */
+  unreadable?: true;
 }
 
 export interface Counts {

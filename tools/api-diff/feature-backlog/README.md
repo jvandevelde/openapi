@@ -28,6 +28,7 @@ One file per proposed feature or design, including every idea in [PLAN.md sectio
 | [Rule plugins](rule-plugins.md) | Developer experience | Idea | Custom TypeScript rules against the change-record API, tested with the golden-case format. |
 | [Lint only what changed](lint-only-what-changed.md) | Developer experience | Idea | Let plugin rules declare `scope: changed` so house rules apply only to new and changed parts. |
 | [Watch mode](watch-mode.md) | Developer experience | Idea | `api-diff --watch` re-runs on save. |
+| [Policy file JSON Schema](policy-json-schema.md) | Developer experience | Idea | Publish a JSON Schema for `api-diff.yaml`, printed by `api-diff schema policy`, so editors validate and autocomplete the policy file. |
 | [Offline and deterministic](offline-and-deterministic.md) | Enterprise operation | Idea | No network calls or telemetry, and byte-identical output for the same inputs, so it works in air-gapped CI. |
 | [Example value redaction](example-value-redaction.md) | Enterprise operation | Idea | Mask `example` values in reports, keeping their type and shape, since they can hold real customer data. |
 | [Signed reports](signed-reports.md) | Enterprise operation | Idea | Hash (and optionally sign) the inputs and the report so audit records can be shown to be unchanged. |

@@ -3,7 +3,7 @@
 // Exit codes: 0 ok, 1 findings at or above --fail-on (never by default, so
 // only when a team opts in), 2 usage or input error.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
 import { compareInputs, countFindings, placesOf, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
@@ -12,7 +12,7 @@ import { isoDate } from '../diff/lifecycle.ts';
 import { history, type HistoryOptions } from '../history.ts';
 import { renderTimeline, renderTimelineHtml, timelineData } from '../render/timeline.ts';
 import { ParseCache } from '../load/cache.ts';
-import { loadAcknowledgements } from '../policy/acks.ts';
+import { appendAcknowledgement, DEFAULT_ACK_FILE, loadAcknowledgements } from '../policy/acks.ts';
 import { checkFormat, parseReportSpec, renderReport, ReportError, type Format, type ReportSpec } from '../render/reports.ts';
 import { checkTemplate, SHAPES, TemplateError } from '../render/template.ts';
 import { BUILT_IN, checkSupported, explorerUrl, resolveReport, resolveUses, viewFor, type ViewOptions } from '../render/config.ts';
@@ -32,6 +32,8 @@ Usage:
   api-diff [options] --base <rev> [--revision <rev>] <file>
   api-diff rules [<rule-id>] [--format txt|json] [--all]
   api-diff schema
+  api-diff ack <finding-id> --reason <text> --expires <YYYY-MM-DD> [--owner <team>]
+                        accept a finding: add it to api-diff.ack.yaml (or --acknowledgements <file>)
   api-diff history <start>..<end> <file> [options]   how the spec changed step by step (see below)
 
 Inputs:
@@ -128,7 +130,7 @@ const DIFF_OPTIONS = {
   version: { type: 'boolean', short: 'v' },
 } as const satisfies ParseArgsOptionsConfig;
 
-const SUBCOMMANDS = new Set(['rules', 'history', 'schema']);
+const SUBCOMMANDS = new Set(['rules', 'history', 'schema', 'ack']);
 
 /**
  * The subcommand, if the first argument that isn't an option (or an option's
@@ -148,6 +150,7 @@ export async function main(argv: string[], io: Io = { stdout: process.stdout, st
     const [command, rest] = splitSubcommand(argv);
     if (command === 'rules') return rulesCommand(rest, io.stdout);
     if (command === 'history') return await historyCommand(rest, io);
+    if (command === 'ack') return ackCommand(rest, io);
     if (command === 'schema') {
       if (rest.includes('--help') || rest.includes('-h')) {
         io.stdout.write(HELP);
@@ -346,6 +349,45 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
   const text = format === 'json' ? JSON.stringify(timelineData(h), null, 2) + '\n' : format === 'html' ? renderTimelineHtml(h, links) : renderTimeline(h);
   if (file && file !== '-') writeFileSync(resolve(cwd, file), text);
   else io.stdout.write(text);
+  return 0;
+}
+
+function ackCommand(argv: string[], io: Io): number {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      cwd: { type: 'string', short: 'C' },
+      reason: { type: 'string' },
+      expires: { type: 'string' },
+      owner: { type: 'string' },
+      acknowledgements: { type: 'string' },
+      'as-of': { type: 'string' },
+      color: { type: 'boolean' },
+      'no-color': { type: 'boolean' },
+      help: { type: 'boolean', short: 'h' },
+    },
+  });
+  if (values.help) {
+    io.stdout.write(HELP);
+    return 0;
+  }
+  if (positionals.length !== 1) throw new UsageError('usage: api-diff ack <finding-id> --reason <text> --expires <YYYY-MM-DD> [--owner <team>]');
+  const finding = positionals[0]!;
+  if (!/^[0-9a-f]{12}$/.test(finding)) throw new UsageError(`'${finding}' isn't a finding ID: use the 12-character id a report shows, e.g. 1e04c5d74301`);
+  const reason = values.reason?.trim();
+  if (!reason) throw new UsageError('--reason is required: say why the change is accepted');
+  const expires = isoDate(values.expires);
+  if (!expires) throw new UsageError('--expires is required and must be a date (YYYY-MM-DD): the last day the acknowledgement applies');
+  const asOf = values['as-of'] ?? new Date().toISOString().slice(0, 10);
+  if (!isoDate(asOf)) throw new UsageError(`--as-of must be a date (YYYY-MM-DD), got '${asOf}'`);
+  if (expires < asOf) throw new UsageError(`--expires ${expires} is already past (today is ${asOf})`);
+  const cwd = resolve(values.cwd ?? process.cwd());
+  const name = values.acknowledgements ?? DEFAULT_ACK_FILE;
+  const path = resolve(cwd, name);
+  const text = existsSync(path) ? readFileSync(path, 'utf8') : undefined;
+  writeFileSync(path, appendAcknowledgement(text, { finding, reason, expires, ...(values.owner ? { owner: values.owner } : {}) }, name));
+  io.stdout.write(`${text === undefined ? 'Created' : 'Updated'} ${name}: ${finding} acknowledged until ${expires}. Commit it with your change; the next run marks the finding acknowledged, or reports it as stale if no finding has this ID.\n`);
   return 0;
 }
 

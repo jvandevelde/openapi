@@ -5,7 +5,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { load } from 'js-yaml';
+import { dump, load } from 'js-yaml';
 import { isoDate } from '../diff/lifecycle.ts';
 import type { Change, Finding } from '../types.ts';
 import { PolicyError } from './errors.ts';
@@ -25,6 +25,9 @@ export interface Acknowledgements {
 
 export const DEFAULT_ACK_FILE = 'api-diff.ack.yaml';
 const KEYS = ['finding', 'reason', 'owner', 'expires'];
+
+/** True if a YAML text has no content besides comments and blank lines (js-yaml rejects it). */
+const noContent = (text: string): boolean => text.split('\n').every((l) => /^\s*(#.*)?$/.test(l));
 
 export function parseAcknowledgements(data: unknown, file: string): Acknowledgements {
   if (data === null || data === undefined) return { file, entries: [] };
@@ -58,7 +61,8 @@ export function loadAcknowledgements(cwd: string, explicit?: string): Acknowledg
   }
   let data: unknown;
   try {
-    data = load(readFileSync(path, 'utf8'));
+    const text = readFileSync(path, 'utf8');
+    data = noContent(text) ? null : load(text);
   } catch (e) {
     throw new PolicyError(`${name}: ${(e as Error).message.split('\n')[0]}`);
   }
@@ -94,4 +98,39 @@ export function applyAcknowledgements(findings: Finding[], acks: Acknowledgement
     f.acknowledged = { reason: a.reason, expires: a.expires, file: acks.file, ...(a.owner ? { owner: a.owner } : {}) };
   }
   return notices;
+}
+
+/**
+ * Returns `text` (the acknowledgements file's contents, or undefined if it
+ * doesn't exist yet) with `entry` appended. Existing entries and comments are
+ * kept as written. Throws a PolicyError if the entry is invalid, its finding
+ * is already acknowledged, or the file is in a form that can't be appended to
+ * (e.g. a flow-style list); the result is checked by parsing it again.
+ */
+export function appendAcknowledgement(text: string | undefined, entry: Acknowledgement, file: string): string {
+  const parse = (t: string): unknown => {
+    try {
+      return noContent(t) ? null : load(t);
+    } catch (e) {
+      throw new PolicyError(`${file}: ${(e as Error).message.split('\n')[0]}`);
+    }
+  };
+  const before = parseAcknowledgements(text === undefined ? null : parse(text), file);
+  if (before.entries.some((a) => a.finding === entry.finding)) throw new PolicyError(`${file}: finding ${entry.finding} is already acknowledged; edit its entry instead`);
+  const block = dump([{ finding: entry.finding, reason: entry.reason, ...(entry.owner ? { owner: entry.owner } : {}), expires: entry.expires }], { lineWidth: -1 });
+  let head = text ?? '# Accepted api-diff findings (POLICY.md section 11). Each entry stops one finding failing CI until it expires.\n';
+  // A file with no entries may still hold a bare `[]` or `null`; keep only its comments and blank lines.
+  if (before.entries.length === 0) head = head.split('\n').filter((l) => /^\s*(#.*)?$/.test(l)).join('\n');
+  if (head !== '' && !head.endsWith('\n')) head += '\n';
+  const out = head + block;
+  const cant = new PolicyError(`${file}: can't append to this file automatically (is it a flow-style list?); add the entry by hand`);
+  let after: Acknowledgements;
+  try {
+    after = parseAcknowledgements(load(out), file);
+  } catch {
+    throw cant;
+  }
+  const last = after.entries.at(-1);
+  if (after.entries.length !== before.entries.length + 1 || last?.finding !== entry.finding || last.reason !== entry.reason || last.expires !== entry.expires) throw cant;
+  return out;
 }

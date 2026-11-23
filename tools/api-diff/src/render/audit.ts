@@ -142,7 +142,7 @@ export function renderAudit(r: Result, opts: AuditOptions): string {
       for (const id of g.findings) {
         const f = byId.get(id)!;
         out.push(...findingLine(f, c, { indent: '       ', subject: true }));
-        const meta = [`severity ← ${f.severitySource}`, f.owners?.length ? `owners ${f.owners.join(', ')}` : '', f.exclusions?.length ? `in ${f.exclusions.join(', ')}` : '', `id ${f.id}`].filter(Boolean).join(' · ');
+        const meta = [`severity ← ${f.severitySource}`, f.owners?.length ? `owners ${f.owners.join(', ')}` : '', f.exclusions?.length ? `in ${f.exclusions.join(', ')}` : ''].filter(Boolean).join(' · ');
         out.push(`              ${c(DIM, meta)}`);
       }
     }

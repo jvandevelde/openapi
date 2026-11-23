@@ -1,10 +1,11 @@
 // The CLI end to end: exit codes, output formats and options.
 
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { main, type Io } from '../../src/cli/main.ts';
+import { main, splitSubcommand, type Io } from '../../src/cli/main.ts';
 
 const cases = fileURLToPath(new URL('../cases/', import.meta.url));
 
@@ -83,4 +84,32 @@ test('rules and schema commands', async () => {
 test('--version and --help', async () => {
   assert.match((await run('--version')).out, /^\d+\.\d+\.\d+\n$/);
   assert.match((await run('--help')).out, /Usage:/);
+});
+
+test('a subcommand is found after leading options, not in option values', () => {
+  assert.deepEqual(splitSubcommand(['rules', '--all']), ['rules', ['--all']]);
+  assert.deepEqual(splitSubcommand(['--no-color', 'history', 'a..b', 'f.yaml']), ['history', ['--no-color', 'a..b', 'f.yaml']]);
+  assert.deepEqual(splitSubcommand(['-C', 'specs', 'schema']), ['schema', ['-C', 'specs']]);
+  // `history` here is the directory given to -C, and `rules` comes after the first input.
+  assert.deepEqual(splitSubcommand(['-C', 'history', 'a.yaml', 'b.yaml']), [undefined, ['-C', 'history', 'a.yaml', 'b.yaml']]);
+  assert.deepEqual(splitSubcommand(['a.yaml', 'rules']), [undefined, ['a.yaml', 'rules']]);
+  assert.deepEqual(splitSubcommand(['--', 'rules', 'b.yaml']), [undefined, ['--', 'rules', 'b.yaml']]);
+});
+
+test('rules and schema accept options before the subcommand, and --no-color and --help after it', async () => {
+  assert.deepEqual(await run('--no-color', 'rules', 'schema-narrowed'), await run('rules', 'schema-narrowed'));
+  assert.deepEqual(await run('rules', 'schema-narrowed', '--no-color'), await run('rules', 'schema-narrowed'));
+  assert.equal((await run('--no-color', 'schema')).out, (await run('schema')).out);
+  assert.match((await run('rules', '--help')).out, /^api-diff \S+: compare two OpenAPI documents/);
+  assert.match((await run('schema', '--help')).out, /^api-diff \S+: compare two OpenAPI documents/);
+});
+
+test('stops quietly when the reader closes the pipe early', async () => {
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../../bin/api-diff.ts', import.meta.url)), 'rules', '--all'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let err = '';
+  child.stderr.on('data', (d: Buffer) => (err += d));
+  child.stdout.once('data', () => child.stdout.destroy());
+  const code = await new Promise<number | null>((done) => child.on('close', done));
+  assert.equal(err, '');
+  assert.equal(code, 0);
 });

@@ -186,7 +186,7 @@ api-diff rules --format json                     # for scripts
 
 `api-diff schema` prints the JSON Schema of the `-f json` result.
 
-> Put the command name first: `api-diff history …`, not `api-diff --no-color history …`.
+Every command takes `--help`.
 
 ## 5. Customise it
 

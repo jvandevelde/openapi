@@ -5,7 +5,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseArgs } from 'node:util';
+import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
 import { compareInputs, countFindings, placesOf, shouldFail, stateOf, type CompareOptions } from '../engine.ts';
 import { emptyPolicy, loadPolicyFile, parseRuleSetting, PolicyError } from '../policy/policy.ts';
 import { isoDate } from '../diff/lifecycle.ts';
@@ -99,11 +99,60 @@ function oneOf<T extends string>(name: string, v: string | undefined, allowed: r
   return v as T;
 }
 
+const DIFF_OPTIONS = {
+  base: { type: 'string' },
+  revision: { type: 'string' },
+  cwd: { type: 'string', short: 'C' },
+  format: { type: 'string', short: 'f' },
+  output: { type: 'string', short: 'o' },
+  'fail-on': { type: 'string' },
+  state: { type: 'boolean' },
+  profile: { type: 'string' },
+  policy: { type: 'string' },
+  'no-policy': { type: 'boolean' },
+  rule: { type: 'string', multiple: true },
+  'as-of': { type: 'string' },
+  acknowledgements: { type: 'string' },
+  'no-acknowledgements': { type: 'boolean' },
+  report: { type: 'string', multiple: true },
+  'cache-dir': { type: 'string' },
+  'explorer-url': { type: 'string' },
+  uses: { type: 'string' },
+  'base-version': { type: 'string' },
+  'revision-version': { type: 'string' },
+  'base-label': { type: 'string', multiple: true },
+  'revision-label': { type: 'string', multiple: true },
+  color: { type: 'boolean' },
+  'no-color': { type: 'boolean' },
+  help: { type: 'boolean', short: 'h' },
+  version: { type: 'boolean', short: 'v' },
+} as const satisfies ParseArgsOptionsConfig;
+
+const SUBCOMMANDS = new Set(['rules', 'history', 'schema']);
+
+/**
+ * The subcommand, if the first argument that isn't an option (or an option's
+ * value) names one, and the arguments without it. Options before the
+ * subcommand are kept, so `api-diff --no-color history …` works like
+ * `api-diff history --no-color …`.
+ */
+export function splitSubcommand(argv: string[]): [string | undefined, string[]] {
+  const { tokens } = parseArgs({ args: argv, options: DIFF_OPTIONS, allowPositionals: true, strict: false, tokens: true });
+  const first = tokens.find((t) => t.kind === 'positional' || t.kind === 'option-terminator');
+  if (first?.kind !== 'positional' || !SUBCOMMANDS.has(first.value)) return [undefined, argv];
+  return [first.value, [...argv.slice(0, first.index), ...argv.slice(first.index + 1)]];
+}
+
 export async function main(argv: string[], io: Io = { stdout: process.stdout, stderr: process.stderr, env: process.env }): Promise<number> {
   try {
-    if (argv[0] === 'rules') return rulesCommand(argv.slice(1), io.stdout);
-    if (argv[0] === 'history') return await historyCommand(argv.slice(1), io);
-    if (argv[0] === 'schema') {
+    const [command, rest] = splitSubcommand(argv);
+    if (command === 'rules') return rulesCommand(rest, io.stdout);
+    if (command === 'history') return await historyCommand(rest, io);
+    if (command === 'schema') {
+      if (rest.includes('--help') || rest.includes('-h')) {
+        io.stdout.write(HELP);
+        return 0;
+      }
       io.stdout.write(`${JSON.stringify(resultSchema, null, 2)}\n`);
       return 0;
     }
@@ -122,34 +171,7 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
-    options: {
-      base: { type: 'string' },
-      revision: { type: 'string' },
-      cwd: { type: 'string', short: 'C' },
-      format: { type: 'string', short: 'f' },
-      output: { type: 'string', short: 'o' },
-      'fail-on': { type: 'string' },
-      state: { type: 'boolean' },
-      profile: { type: 'string' },
-      policy: { type: 'string' },
-      'no-policy': { type: 'boolean' },
-      rule: { type: 'string', multiple: true },
-      'as-of': { type: 'string' },
-      acknowledgements: { type: 'string' },
-      'no-acknowledgements': { type: 'boolean' },
-      report: { type: 'string', multiple: true },
-      'cache-dir': { type: 'string' },
-      'explorer-url': { type: 'string' },
-      uses: { type: 'string' },
-      'base-version': { type: 'string' },
-      'revision-version': { type: 'string' },
-      'base-label': { type: 'string', multiple: true },
-      'revision-label': { type: 'string', multiple: true },
-      color: { type: 'boolean' },
-      'no-color': { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' },
-      version: { type: 'boolean', short: 'v' },
-    },
+    options: DIFF_OPTIONS,
   });
   if (values.help) {
     io.stdout.write(HELP);
@@ -286,8 +308,16 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
       'tags-only': { type: 'boolean' },
       'max-steps': { type: 'string' },
       'explorer-url': { type: 'string' },
+      // Accepted for consistency with the other commands; the timeline has no colour.
+      color: { type: 'boolean' },
+      'no-color': { type: 'boolean' },
+      help: { type: 'boolean', short: 'h' },
     },
   });
+  if (values.help) {
+    io.stdout.write(HELP);
+    return 0;
+  }
   if (positionals.length !== 2) throw new UsageError('usage: api-diff history <start>..<end> <file>');
   const cwd = resolve(values.cwd ?? process.cwd());
   const policy = values['no-policy'] ? emptyPolicy() : loadPolicyFile(cwd, values.policy);
@@ -324,7 +354,11 @@ function severityText(r: RuleMeta): string {
 }
 
 function rulesCommand(argv: string[], out: Io['stdout']): number {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { format: { type: 'string', short: 'f' }, all: { type: 'boolean' } } });
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { format: { type: 'string', short: 'f' }, all: { type: 'boolean' }, color: { type: 'boolean' }, 'no-color': { type: 'boolean' }, help: { type: 'boolean', short: 'h' } } });
+  if (values.help) {
+    out.write(HELP);
+    return 0;
+  }
   const format = oneOf('format', values.format, ['txt', 'json'] as const, 'txt');
   const pick = positionals[0] ? [getRuleOrUsage(positionals[0])] : RULES.filter((r) => values.all || isImplemented(r));
   if (format === 'json') {

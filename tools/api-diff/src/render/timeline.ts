@@ -3,7 +3,7 @@
 
 import type { History, RevertLink } from '../history.ts';
 import type { Finding, Result, Severity } from '../types.ts';
-import { isChange, isVersion } from './common.ts';
+import { directionOf, isChange, isVersion, mergeDirections, type Entry } from './common.ts';
 import { scriptJson } from './explore.ts';
 import { explorerLink } from './config.ts';
 
@@ -12,6 +12,9 @@ const LABEL: Record<Severity, string> = { error: 'ERROR', warn: 'WARN ', info: '
 const counts = (fs: Finding[]): Record<Severity, number> => ({ error: fs.filter((f) => f.severity === 'error').length, warn: fs.filter((f) => f.severity === 'warn').length, info: fs.filter((f) => f.severity === 'info').length });
 const countText = (c: Record<Severity, number>): string => `${c.error} error, ${c.warn} warn, ${c.info} info`;
 const shown = (r: Result): Finding[] => r.findings.filter((f) => isChange(f) || isVersion(f));
+
+/** ` (request INFO, response WARN)`, for a change reported for both directions (shown once, with its worst severity). */
+const directions = (e: Entry): string => (e.parts.length > 1 ? `  (${e.parts.map((p) => `${directionOf(p)} ${p.severity.toUpperCase()}`).join(', ')})` : '');
 
 /** Text for one finding's revert link, if any. */
 function linkText(f: Finding, step: number, links: RevertLink[], h: History): string {
@@ -39,7 +42,11 @@ export function renderTimeline(h: History): string {
     out.push(`${head}${v}`);
     const fs = shown(s.result).sort((a, b) => RANK[a.severity] - RANK[b.severity]);
     const docs = fs.filter((f) => f.kind === 'docs');
-    for (const f of fs.filter((x) => x.kind !== 'docs')) out.push(`            ${LABEL[f.severity]}  ${f.subject}  ${f.message}${linkText(f, i, h.links, h)}`);
+    for (const e of mergeDirections(fs.filter((x) => x.kind !== 'docs'))) {
+      const f = e.finding;
+      const link = e.parts.map((p) => linkText(p, i, h.links, h)).find(Boolean) ?? '';
+      out.push(`            ${LABEL[f.severity]}  ${f.subject}  ${f.message}${directions(e)}${link}`);
+    }
     if (docs.length) out.push(`            INFO   ${docs.length} documentation change${docs.length === 1 ? '' : 's'}`);
     for (const t of s.tags) out.push(`── tag ${t} ${'─'.repeat(Math.max(3, 60 - t.length))}`);
   });
@@ -48,15 +55,18 @@ export function renderTimeline(h: History): string {
   return out.join('\n');
 }
 
-/** JSON: steps with commit details and finding IDs, every finding once, links, and the net result. */
+/**
+ * JSON: steps with commit details and their own findings, revert links, and the net result.
+ * Each step keeps its own finding records: a finding ID names a kind of change at a place,
+ * so the same ID can come up in several steps with different details (a version check,
+ * a property edited twice), and one shared table would show one step's text in another.
+ */
 export function timelineData(h: History): unknown {
-  const findings: Record<string, Finding> = {};
   const steps = h.steps.map((s) => {
-    for (const f of s.result.findings) findings[f.id] = f;
     const { result, ...meta } = s;
-    return { ...meta, counts: counts(shown(result)), state: result.state, findings: result.findings.map((f) => f.id) };
+    return { ...meta, counts: counts(shown(result)), state: result.state, findings: result.findings };
   });
-  return { report: 'history', spec: h.spec, range: h.range, omitted: h.omitted, steps, findings, links: h.links, net: h.net };
+  return { report: 'history', spec: h.spec, range: h.range, omitted: h.omitted, steps, links: h.links, net: h.net };
 }
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
@@ -94,21 +104,36 @@ function linkFor(id, i) {
   const b = data.links.find((l) => l.revertedBy === id && l.revertedIn === i); if (b) return '↺ reverts ' + ref(b.step);
   return '';
 }
-function card(title, meta, ids, stepIndex) {
+const dirOf = (f) => (/-in-request$/.test(f.rule) ? 'request' : /-in-response$/.test(f.rule) ? 'response' : '');
+// A change reported for requests and responses is one line, with its worst severity: same rule apart from the direction, subject, message and place.
+function entries(findings) {
+  const out = [], byKey = new Map();
+  for (const f of findings.slice().sort((a, b) => rank[a.severity] - rank[b.severity])) {
+    const at = f.revision || f.base || {};
+    const key = dirOf(f) ? [f.rule.replace(/-in-(request|response)$/, ''), f.subject, f.message, at.file, at.pointer].join('\u0000') : undefined;
+    const e = key && byKey.get(key);
+    if (e && !e.parts.some((p) => dirOf(p) === dirOf(f))) { e.parts.push(f); continue; }
+    const entry = { finding: f, parts: [f] };
+    out.push(entry); if (key && !e) byKey.set(key, entry);
+  }
+  for (const e of out) e.parts.sort((a, b) => (dirOf(a) === 'request' ? 0 : 1) - (dirOf(b) === 'request' ? 0 : 1));
+  return out;
+}
+function card(title, meta, findings, stepIndex) {
   const box = el('section', { class: 'step' }, el('div', { class: 'head' }, el('strong', {}, title), el('span', { class: 'muted' }, meta)));
   const ul = el('ul');
-  for (const id of ids.slice().sort((a, b) => rank[data.findings[a].severity] - rank[data.findings[b].severity])) {
-    const f = data.findings[id];
-    const extra = stepIndex === undefined ? '' : linkFor(id, stepIndex);
+  for (const e of entries(findings)) {
+    const f = e.finding;
+    const extra = stepIndex === undefined ? '' : e.parts.map((p) => linkFor(p.id, stepIndex)).find(Boolean) || '';
     const links = f.links ? el('span', { class: 'revert' }, ...Object.entries(f.links).flatMap(([side, href], n) => [n ? ' · ' : ' ', el('a', { href, target: '_blank', rel: 'noopener' }, side)])) : '';
-    const li = el('li', { 'data-text': (f.subject + ' ' + f.message + ' ' + f.rule).toLowerCase() }, el('span', { class: 'sev ' + f.severity }, f.severity), el('div', {}, el('strong', {}, f.subject), ' ', f.message, links, extra ? el('div', { class: 'revert' }, extra) : ''));
+    const dirs = e.parts.length > 1 ? el('span', { class: 'revert' }, ' ' + e.parts.map((p) => dirOf(p) + ' ' + p.severity).join(' · ')) : '';
+    const li = el('li', { 'data-text': e.parts.map((p) => p.subject + ' ' + p.message + ' ' + p.rule).join(' ').toLowerCase() }, el('span', { class: 'sev ' + f.severity }, f.severity), el('div', {}, el('strong', {}, f.subject), ' ', f.message, dirs, links, extra ? el('div', { class: 'revert' }, extra) : ''));
     ul.append(li);
   }
-  if (!ids.length) ul.append(el('li', {}, el('span'), el('span', { class: 'muted' }, 'No API changes (only notices or nothing).')));
+  if (!findings.length) ul.append(el('li', {}, el('span'), el('span', { class: 'muted' }, 'No API changes (only notices or nothing).')));
   box.append(ul);
   return box;
 }
-for (const f of data.net.findings) data.findings[f.id] = f;
 const strip = $('#strip');
 data.steps.forEach((s, i) => {
   const worst = s.counts.error ? 'error' : s.counts.warn ? 'warn' : s.counts.info ? 'info' : 'none';
@@ -121,7 +146,7 @@ data.steps.forEach((s, i) => {
 });
 function show(only) {
   const list = $('#list'); list.replaceChildren();
-  if ($('#net').checked) list.append(card('Net: ' + data.range.start.rev + ' → ' + data.range.end.rev, data.net.counts.total + ' findings', data.net.findings.map((f) => f.id)));
+  if ($('#net').checked) list.append(card('Net: ' + data.range.start.rev + ' → ' + data.range.end.rev, data.net.counts.total + ' findings', data.net.findings));
   else data.steps.forEach((s, i) => { if (only === undefined || only === i) list.append(card(s.date + '  ' + s.commit.slice(0, 7) + '  ' + (s.pr ? '#' + s.pr + ' ' + s.subject.replace(/\\s*\\(#\\d+\\)\\s*$/, '') : s.subject), s.author + (s.versions.base !== s.versions.revision ? ' · ' + s.versions.base + ' → ' + s.versions.revision : '') + (s.tags.length ? ' · tag ' + s.tags.join(', ') : ''), s.findings, i)); });
   filter();
 }
@@ -136,9 +161,9 @@ show();
 `;
 
 export function renderTimelineHtml(h: History, explorerUrl?: string): string {
-  const data = timelineData(h) as { findings: Record<string, Finding & { links?: Record<string, string> }> } & Record<string, unknown>;
+  const data = timelineData(h) as { steps: { findings: (Finding & { links?: Record<string, string> })[] }[] } & Record<string, unknown>;
   if (explorerUrl) {
-    for (const f of [...Object.values(data.findings), ...h.net.findings] as (Finding & { links?: Record<string, string> })[]) {
+    for (const f of [...data.steps.flatMap((s) => s.findings), ...h.net.findings] as (Finding & { links?: Record<string, string> })[]) {
       const base = explorerLink(explorerUrl, 'base', f.base);
       const revision = explorerLink(explorerUrl, 'revision', f.revision);
       if (base || revision) f.links = { ...(base ? { base } : {}), ...(revision ? { revision } : {}) };

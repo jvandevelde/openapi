@@ -1,6 +1,6 @@
 {
   "name": "api-diff",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": true,
   "description": "Compare two OpenAPI documents and decide which changes break clients.",
   "type": "module",

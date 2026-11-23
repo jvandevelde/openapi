@@ -1,0 +1,123 @@
+# Publishes an api-diff release: api-diff.mjs and api-diff.mjs.sha256 on a
+# GitHub release tagged api-diff-v<version> (see tools/api-diff/docs/releasing.md).
+#
+# Two ways to start it:
+#   - push the tag:   git tag api-diff-v0.10.0 && git push origin api-diff-v0.10.0
+#   - Actions → "api-diff release" → Run workflow on main, with the version.
+#     This creates the tag on the commit it runs on, then publishes in the same
+#     run. (A tag pushed with the workflow's own token doesn't start workflows,
+#     so it can't publish twice.)
+#
+# Either way the version must equal tools/api-diff/package.json's, the tests
+# must pass, and an existing tag or release is never replaced.
+name: api-diff release
+
+on:
+  push:
+    tags: ['api-diff-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the "v" (e.g. 0.10.0). Must match tools/api-diff/package.json.'
+        required: true
+        type: string
+
+permissions:
+  contents: write # to push the tag and create the release
+
+concurrency:
+  group: api-diff-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/api-diff
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/api-diff/package-lock.json
+
+      - name: Work out and check the version
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            if [ "$REF" != refs/heads/main ]; then
+              echo "::error::Run the release from main (this run is on $REF)."; exit 1
+            fi
+            version="$INPUT_VERSION"
+          else
+            version="${REF_NAME#api-diff-v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::'$version' isn't a version like 1.2.3 or 1.2.3-rc.1."; exit 1
+          fi
+          package=$(node -p "require('./package.json').version")
+          if [ "$version" != "$package" ]; then
+            echo "::error::Releasing $version, but tools/api-diff/package.json says $package. Bump it (and src/version.ts) in a PR first."; exit 1
+          fi
+          tag="api-diff-v$version"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $tag already exists. Releases are never replaced; bump the version."; exit 1
+          fi
+          if [ "$EVENT" = workflow_dispatch ] && git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::error::Tag $tag already exists. To publish it, re-run the workflow it started, or bump the version."; exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
+      - run: make test
+
+      - name: Build the release file
+        run: make bundle
+
+      - name: Check the release file runs on its own
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          cp dist/api-diff.mjs dist/api-diff.mjs.sha256 "$RUNNER_TEMP/release/"
+          cd "$RUNNER_TEMP/release"
+          sha256sum -c api-diff.mjs.sha256
+          test "$(node api-diff.mjs --version)" = "$VERSION"
+          node api-diff.mjs "$GITHUB_WORKSPACE/tools/api-diff/examples/petstore/openapi.yaml" "$GITHUB_WORKSPACE/tools/api-diff/examples/petstore/openapi.yaml"
+
+      - name: Create the tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+
+      - name: Publish the release
+        run: |
+          sha=$(cut -d' ' -f1 dist/api-diff.mjs.sha256)
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG"
+          {
+            echo "api-diff $VERSION, built from $GITHUB_SHA."
+            echo
+            echo 'One file with every dependency bundled. Needs Node 22.18 or later.'
+            echo
+            echo '```sh'
+            echo "curl -fsSLO $url/api-diff.mjs -O $url/api-diff.mjs.sha256"
+            echo 'sha256sum -c api-diff.mjs.sha256'
+            echo 'node api-diff.mjs main:openapi.yaml openapi.yaml'
+            echo '```'
+            echo
+            echo "SHA-256: \`$sha\`"
+            echo
+            echo "Setting it up in CI: [docs/ci.md]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$TAG/tools/api-diff/docs/ci.md)."
+          } > "$RUNNER_TEMP/notes.md"
+          prerelease=()
+          case "$VERSION" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$TAG" dist/api-diff.mjs dist/api-diff.mjs.sha256 \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --latest=false "${prerelease[@]}" \
+            --title "api-diff $VERSION" --notes-file "$RUNNER_TEMP/notes.md"

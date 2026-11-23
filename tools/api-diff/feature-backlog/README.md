@@ -16,6 +16,7 @@ One file per proposed feature or design, including every idea in [PLAN.md sectio
 | [Versioning-scheme aware matching](versioning-scheme-matching.md) | Evidence and accuracy | Idea | Match `/v1/…` with `/v2/…`, or versioned media types, when a new API version is published alongside the old one. |
 | [Bulk-change collapsing](bulk-change-collapsing.md) | Large specs and noise | Built | Group the same change made in many places without a shared `$ref` into one "N operations" finding. |
 | [Cached base index](cached-base-index.md) | Large specs and noise | Built | Cache the parsed base by content hash so CI only parses the revision. |
+| [One entry per change in requests and responses](merge-request-response-findings.md) | Large specs and noise | Built | Show a schema change judged for both requests and responses once, in `review` and `explore`, with each direction's severity and finding ID. |
 | [Spec quality side-report](spec-quality-side-report.md) | Large specs and noise | Idea | List identical inline schemas found by the content hashes ("appears inline 42 times; consider a component"). |
 | [Portfolio mode](portfolio-mode.md) | Large specs and noise | Idea | Compare many specs in one run and report which APIs a change to a shared schema file affects. |
 | [Ownership routing](ownership-routing.md) | Ownership and governance | Built (M9) | Owners from `x-owner` or the policy's `owners.assign` list, listed on each finding, with reports split per team. |

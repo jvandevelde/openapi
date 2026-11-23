@@ -2,8 +2,9 @@
 // self-contained HTML file (inline CSS and JS, no network), for anyone
 // investigating a change. Filters by severity, kind, tag and path, a search
 // box, and for each finding its details, client note, affected operations
-// and the base and revision source side by side. Findings inside recursive
-// schemas are marked ↻.
+// and the base and revision source side by side. A schema change's request
+// and response findings share one row, with each direction's details inside.
+// Findings inside recursive schemas are marked ↻.
 //
 // The page embeds the result as JSON (with `<` escaped, so it can't close the
 // script tag) and renders it with a small script; everything spec-controlled
@@ -11,7 +12,7 @@
 
 import { clientNote } from '../rules/notes.ts';
 import type { Result } from '../types.ts';
-import { adviceLine } from './common.ts';
+import { adviceLine, mergeDirections } from './common.ts';
 import { explorerLink } from './config.ts';
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
@@ -47,6 +48,8 @@ details.f > summary::-webkit-details-marker { display:none; }
 .subj { font-weight:600; overflow-wrap:anywhere; } .msg { overflow-wrap:anywhere; }
 .body { padding:0 10px 10px 78px; }
 .body dl { display:grid; grid-template-columns:max-content 1fr; gap:2px 12px; margin:6px 0; } .body dt { color:var(--muted); } .body dd { margin:0; overflow-wrap:anywhere; }
+.dirs { color:var(--muted); font-size:12.5px; white-space:nowrap; }
+.part { margin:8px 0 0; padding-top:6px; border-top:1px solid var(--line); } .part h4 { margin:0; font-size:13px; font-weight:600; } .part h4 .sev { margin-left:6px; }
 .note { margin:6px 0; padding:6px 10px; border-left:3px solid var(--info); background:var(--bg); }
 .sides { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
 .side { border:1px solid var(--line); border-radius:6px; overflow:auto; background:var(--bg); }
@@ -72,47 +75,72 @@ function side(title, s) {
   box.append(pre);
   return box;
 }
-function item(f) {
+const RANK = { error: 0, warn: 1, info: 2 };
+const worst = (fs) => fs.reduce((a, b) => (RANK[b.severity] < RANK[a.severity] ? b : a));
+const dirOf = (f) => (/-in-request$/.test(f.rule) ? 'request' : /-in-response$/.test(f.rule) ? 'response' : '');
+const noteEl = (note) => el('div', { class: 'note' }, ...note.split(String.fromCharCode(96)).map((part, i) => (i % 2 ? el('code', {}, part) : part)));
+// The per-finding facts: rule (and kind), severity source, ID, affected operations, acknowledgement, exclusions, links.
+function facts(dl, f, withKind) {
+  const row = (k, v) => { if (v) dl.append(el('dt', {}, k), el('dd', {}, v)); };
+  row('rule', f.rule); if (withKind) row('kind', f.kind); row('severity from', f.severitySource); row('finding id', f.id);
+  row('affects', (f.impact || []).join(', '));
+  if (f.acknowledged) row('acknowledged', 'until ' + f.acknowledged.expires + (f.acknowledged.owner ? ' by ' + f.acknowledged.owner : '') + ': ' + f.acknowledged.reason);
+  if (f.exclusions) row('exclusion sets', f.exclusions.join(', '));
+  if (f.links) {
+    const dd = el('span');
+    for (const side of ['base', 'revision']) if (f.links[side]) { if (dd.childNodes.length) dd.append(' · '); dd.append(el('a', { href: f.links[side], target: '_blank', rel: 'noopener' }, side)); }
+    dl.append(el('dt', {}, 'spec explorer'), el('dd', {}, dd));
+  }
+}
+// One row: a finding, or a schema change's request and response findings merged (worst severity on the badge).
+function item(parts) {
+  const f = worst(parts);
   const d = el('details', { class: 'f' });
-  const sum = el('summary', {}, el('span', { class: 'sev ' + f.severity }, f.severity), el('div', {}, el('span', { class: 'subj' }, f.subject + (f.details.recursive ? ' ↻' : '')), ' ', el('span', { class: 'msg' }, f.message)));
-  d.append(sum);
+  const badge = el('span', { class: 'sev ' + f.severity }, f.severity);
+  const head = el('div', {}, el('span', { class: 'subj' }, f.subject + (f.details.recursive ? ' ↻' : '')), ' ', el('span', { class: 'msg' }, f.message));
+  if (parts.length > 1) head.append(' ', el('span', { class: 'dirs' }, parts.map((p) => dirOf(p) + ' ' + p.severity).join(' · ')));
+  d.append(el('summary', {}, badge, head));
   d.addEventListener('toggle', () => {
     if (!d.open || d.dataset.built) return;
     d.dataset.built = '1';
     const body = el('div', { class: 'body' });
-    if (f.note) body.append(el('div', { class: 'note' }, ...f.note.split(String.fromCharCode(96)).map((part, i) => (i % 2 ? el('code', {}, part) : part))));
+    const notes = [...new Set(parts.map((p) => p.note).filter(Boolean))];
+    if (notes.length === 1) body.append(noteEl(notes[0]));
     const dl = el('dl');
-    const row = (k, v) => { if (v) dl.append(el('dt', {}, k), el('dd', {}, v)); };
-    row('rule', f.rule); row('kind', f.kind); row('severity from', f.severitySource); row('finding id', f.id);
-    row('affects', (f.impact || []).join(', '));
-    if (f.details.recursive) row('recursive', '↻ this schema refers to itself');
-    if (f.acknowledged) row('acknowledged', 'until ' + f.acknowledged.expires + (f.acknowledged.owner ? ' by ' + f.acknowledged.owner : '') + ': ' + f.acknowledged.reason);
-    if (f.exclusions) row('exclusion sets', f.exclusions.join(', '));
-    if (f.links) {
-      const dd = el('span');
-      for (const side of ['base', 'revision']) if (f.links[side]) { if (dd.childNodes.length) dd.append(' · '); dd.append(el('a', { href: f.links[side], target: '_blank', rel: 'noopener' }, side)); }
-      dl.append(el('dt', {}, 'spec explorer'), el('dd', {}, dd));
-    }
+    if (parts.length === 1) facts(dl, f, true);
+    else { dl.append(el('dt', {}, 'rule'), el('dd', {}, f.rule.replace(/-in-(request|response)$/, '')), el('dt', {}, 'kind'), el('dd', {}, f.kind)); }
+    if (f.details.recursive) dl.append(el('dt', {}, 'recursive'), el('dd', {}, '↻ this schema refers to itself'));
     body.append(dl);
-    const s = (data.snippets || {})[f.id] || {};
-    if (s.base || s.revision) body.append(el('div', { class: 'sides' }, side('base', s.base), side('revision', s.revision)));
+    if (parts.length > 1) for (const p of parts) {
+      const part = el('div', { class: 'part' }, el('h4', {}, 'In ' + dirOf(p) + 's ', el('span', { class: 'sev ' + p.severity }, p.severity)));
+      if (notes.length > 1 && p.note) part.append(noteEl(p.note));
+      const pdl = el('dl'); facts(pdl, p, false); part.append(pdl); body.append(part);
+    }
+    const snip = parts.map((p) => (data.snippets || {})[p.id]).find((x) => x && (x.base || x.revision));
+    if (snip) body.append(el('div', { class: 'sides' }, side('base', snip.base), side('revision', snip.revision)));
     d.append(body);
   });
-  return d;
+  return { node: d, badge };
 }
-const items = data.findings.map((f) => ({ f, node: item(f), text: (f.subject + ' ' + f.message + ' ' + f.rule + ' ' + (f.note || '')).toLowerCase(), tags: tagsOf(f), paths: opsOf(f).map((o) => o.split(' ')[1]) }));
+const items = data.rows.map((row) => {
+  const parts = row.map((n) => data.findings[n]);
+  const { node, badge } = item(parts);
+  return { node, badge, parts: parts.map((f) => ({ f, text: (f.subject + ' ' + f.message + ' ' + f.rule + ' ' + (f.note || '')).toLowerCase(), tags: tagsOf(f), paths: opsOf(f).map((o) => o.split(' ')[1]) })) };
+});
 const list = $('#list');
 for (const i of items) list.append(i.node);
+// A row is shown while any of its findings matches; its badge shows the worst severity among those that match.
 function apply() {
   const sev = new Set([...document.querySelectorAll('input[name=sev]:checked')].map((x) => x.value));
   const kind = new Set([...document.querySelectorAll('input[name=kind]:checked')].map((x) => x.value));
   const tag = $('#tag').value, path = $('#path').value.trim(), q = $('#q').value.trim().toLowerCase();
-  let shown = 0;
+  let shown = 0, shownFindings = 0;
   for (const i of items) {
-    const ok = sev.has(i.f.severity) && kind.has(i.f.kind) && (!tag || i.tags.includes(tag)) && (!path || i.paths.some((p) => p && p.startsWith(path)) || i.f.subject.includes(path)) && (!q || i.text.includes(q));
-    i.node.hidden = !ok; if (ok) shown++;
+    const hits = i.parts.filter((p) => sev.has(p.f.severity) && kind.has(p.f.kind) && (!tag || p.tags.includes(tag)) && (!path || p.paths.some((x) => x && x.startsWith(path)) || p.f.subject.includes(path)) && (!q || p.text.includes(q)));
+    i.node.hidden = hits.length === 0;
+    if (hits.length) { shown++; shownFindings += hits.length; const w = worst(hits.map((h) => h.f)).severity; i.badge.className = 'sev ' + w; i.badge.textContent = w; }
   }
-  $('#count').textContent = shown + ' of ' + items.length + ' findings';
+  $('#count').textContent = items.length === data.findings.length ? shown + ' of ' + items.length + ' findings' : shown + ' of ' + items.length + ' changes (' + shownFindings + ' of ' + data.findings.length + ' findings)';
 }
 document.querySelectorAll('.bar input, .bar select').forEach((x) => x.addEventListener('input', apply));
 apply();
@@ -124,7 +152,10 @@ export function renderExplore(r: Result, explorerUrl?: string): string {
     const links = { base: explorerLink(explorerUrl, 'base', f.base), revision: explorerLink(explorerUrl, 'revision', f.revision) };
     return { ...f, ...(note ? { note } : {}), ...(links.base || links.revision ? { links } : {}) };
   });
-  const data = { findings, operations: r.operations ?? {}, snippets: r.snippets ?? {} };
+  // Rows: a schema change's request and response findings share one row.
+  const index = new Map(r.findings.map((f, i) => [f, i]));
+  const rows = mergeDirections(r.findings).map((e) => e.parts.map((f) => index.get(f)!));
+  const data = { findings, rows, operations: r.operations ?? {}, snippets: r.snippets ?? {} };
   const side = (s: Result['compared']['base']): string => `<code>${esc(s.file)}</code>${s.commit ? ` <span class="mono">@ ${esc(s.commit.slice(0, 7))}</span>` : ''} · version ${esc(s.version)}`;
   const advice = adviceLine(r);
   const title = r.compared.revision.title ?? r.compared.base.title ?? 'API';

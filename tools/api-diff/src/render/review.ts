@@ -8,9 +8,13 @@
 //
 // The text stays under `maxChars` (a GitHub comment holds 65,536): once the
 // budget is reached, the remaining groups are listed one line each.
+//
+// A schema change reported for both requests and responses (`…-in-request`
+// and `…-in-response`) is shown once, with its worst severity, and a second
+// line gives each direction's severity and finding ID.
 
 import type { Finding, Result, Severity } from '../types.ts';
-import { ackHint, affects, BOLD, COLOR, countsLine, DIM, findingLine, header, isChange, isNotice, isVersion, LABEL, painter, plural, type TxtOptions } from './common.ts';
+import { ackHint, affects, BOLD, COLOR, countsLine, DIM, entryLines, findingLine, header, isChange, isNotice, isVersion, LABEL, mergeDirections, painter, plural, type TxtOptions } from './common.ts';
 
 export interface ReviewOptions extends TxtOptions {
   maxChars?: number;
@@ -130,8 +134,10 @@ export function renderReview(r: Result, opts: ReviewOptions): string {
     for (const g of groups) {
       const meta = [g.operations.length && by !== 'operation' ? affects(g.operations) : '', ownersText(g, by)].filter(Boolean).join(' · ');
       const block = [`${c(COLOR[g.severity], LABEL[g.severity])}  ${c(BOLD, g.subject)}${meta ? `  ${c(DIM, meta)}` : ''}`];
-      const mixed = g.findings.some((f) => f.severity !== g.severity);
-      for (const f of g.findings) block.push(...findingLine(f, c, { subject: by !== 'root-cause', indent: '       ', label: mixed }));
+      // A schema change's request and response findings are one entry, with a line for each direction.
+      const entries = mergeDirections(g.findings);
+      const mixed = entries.some((e) => e.finding.severity !== g.severity);
+      for (const e of entries) block.push(...entryLines(e, c, { subject: by !== 'root-cause', indent: '       ', label: mixed }));
       const text = block.join('\n');
       if (size + text.length + 200 > max && shown > 0) break;
       out.push(...block);

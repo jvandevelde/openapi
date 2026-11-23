@@ -284,7 +284,7 @@ A component can't be breaking or safe on its own. That depends on **where it's u
 | property marked `readOnly` | `out` only, even inside a request schema |
 | property marked `writeOnly` | `in` only, even inside a response schema |
 
-Each usage carries a full path (`POST /orders → requestBody → Order.items[] → LineItem.sku`), so `readOnly`/`writeOnly` and nested `$ref`s resolve per property, not per component. Cycles are handled by memoising on *(component, direction)*.
+The comparison walks each property path from the operation (`POST /orders → requestBody → Order.items[] → LineItem.sku`), so `readOnly`/`writeOnly` and nested `$ref`s resolve per property, not per component. Cycles are handled by caching each *(base schema, revision schema, direction)* pair (see the table under *Reference graph, deep nesting and cycles*).
 
 **Step 3: score each usage, then combine.** Every usage gets its own severity from the rules (`enum-value-added-in-request` → info, `…-in-response` → warn). The finding's severity is the **worst** usage, and the output lists all of them:
 
@@ -344,22 +344,23 @@ Typical shapes: `TreeNode.children: items: $ref TreeNode` (refers to itself), an
 
 **We never inline `$ref`s.** Each document gets a **schema index**, built once after loading. Documents don't change during a run, so there is nothing to keep up to date:
 
-- **Nodes**: every component schema, plus inline schemas keyed by their JSON pointer.
-- **Edges**: every `$ref` and subschema, labelled with how it's reached (`property:name`, `items`, `oneOf[i]`, `anyOf[i]`, `allOf[i]`, `additionalProperties`, discriminator mapping) and with `readOnly`/`writeOnly`.
-- **Reverse edges**: who refers to me (for working out usages).
-- **Tarjan's strongly connected components (SCCs)**, implemented **iteratively** with an explicit stack. A recursive implementation can itself overflow on deep graphs. Each node records `sccId`, whether it's recursive (an SCC of more than one node, **or** a single node with an edge to itself, which Tarjan doesn't flag on its own) and its topological order.
+- **Nodes**: every schema root: component schemas, schemas an operation uses directly (inline, keyed by their JSON pointer) and every `$ref` target. Inline subschemas belong to their root's own content.
+- **Edges**: every `$ref` from a node's content to another node, with where it sits (its path inside the node) and whether that path passes through a `properties`, `items` or `additionalProperties` step (*productive*, see cycle validity below).
+- **Reverse edges**: who refers to me.
+- **Tarjan's strongly connected components (SCCs)**, implemented **iteratively** with an explicit stack. A recursive implementation can itself overflow on deep graphs. Each node records its SCC and whether it's recursive (an SCC of more than one node, **or** a single node with an edge to itself, which Tarjan doesn't flag on its own).
 
-Tarjan gives us the SCCs in reverse topological order, which is exactly the order the later stages need:
+Tarjan gives us the SCCs in reverse topological order (each SCC after every SCC it refers to). Its result is used for three things; the other stages handle cycles their own way. As built:
 
-| Stage | How the index is used |
+| Stage | How it handles references and cycles |
 |---|---|
-| **Cycle validity** | A cycle is *productive* if it passes through at least one `property`, `items` or `additionalProperties` edge, meaning the data actually nests (fine). A cycle made only of `allOf`/`oneOf`/`anyOf`/`$ref` edges (e.g. `A: allOf [$ref A]`) describes nothing valid. It's reported as a spec error instead of looping. |
-| **Effective schemas** (allOf merge) | Computed bottom-up in topological order and stored per node. Inside a recursive SCC, a `$ref` that closes a cycle stays a reference and is never expanded. |
-| **Diff** | Compares pairs (base node, revision node), cached per pair. If a pair comes up again while it's still being compared, we **assume they're equal** and stop there (the standard way to compare recursive types). Any real difference is still found on the non-cyclic part of the path. Pairs not on a cycle just use the cache. |
-| **Usages / direction** | Propagated over the **condensation** (each SCC collapsed to one node). Every member of an SCC reaches every other, so they share one usage set. Directions form a tiny set (`{in, out}`), so propagation always ends. |
-| **Impact paths** | No list of every path. Each usage stores **one shortest example path** (found by breadth-first search) and a **count**, e.g. `GET /shapes → 200 → Shape.oneOf[1] Group.children[] → Shape (+11 more paths)`. |
-| **Structural hashing** (rename detection, equality, completeness) | A Merkle hash over the condensation. Each recursive SCC is hashed as one unit in a canonical order, so self-referencing schemas get a stable hash. See *Content hashes* below. |
-| **Rendering** | Nothing is expanded past a back-edge. It's shown as `↻ Shape (recursive)`. A configurable `--max-depth` limits how deep the output goes, purely for readability. |
+| **Structural hashing** (uses Tarjan) | Deep (Merkle) hashes: each node's own content plus the deep hashes of what it references, computed SCC by SCC in Tarjan's order, so referenced nodes are hashed first. Each recursive SCC is hashed as one unit, keyed by the members' stable names, so self-referencing schemas get a stable hash (`#merkle` in `src/index/schema-index.ts`). The diff uses the deep hashes to skip unchanged schemas (same name, same `full` hash), to detect renames (same `shape` hash, new name) and to spot changes to unused components. See *Content hashes* below. |
+| **Cycle validity** (uses Tarjan) | A cycle is *productive* if it passes through at least one `property`, `items` or `additionalProperties` edge, meaning the data actually nests (fine). Within each recursive SCC, Tarjan runs again on the other edges only: a cycle made only of `allOf`/`oneOf`/`anyOf`/`$ref` edges (e.g. `A: allOf [$ref A]`) describes nothing valid and is reported as `cycle-not-productive` instead of looping (`#checkProductive`). |
+| **Recursive marker** (uses Tarjan) | A node in a recursive SCC (more than one member, or a self-loop) is marked `recursive`. Findings inside it carry `details.recursive`, shown as `↻` in the `explore` report. |
+| **Effective schemas** (allOf merge) | Computed on demand for each position compared (`#effective` in `src/diff/schema-engine.ts`), following `allOf` members and `$ref`s. A visited set and a depth limit (50) stop `allOf` cycles, which the index reports. Each merged keyword keeps where it came from. |
+| **Diff** | Compares pairs (base node, revision node), cached per pair and direction. A pair met again while it's still being compared is **assumed equal** (the standard way to compare recursive types); any real difference is still found on the non-cyclic part of the path. |
+| **Usages / direction** | The diff walks from each operation's request and response schemas with a direction (`in` or `out`; a `readOnly` property is skipped in requests and a `writeOnly` one in responses) and records, for each pair it reaches, the pairs it was reached from. A finding's affected operations are found by walking those links back to the operations (`#impact`). The pair cache above keeps this finite on cycles. |
+| **Impact paths** | Not built: findings list the affected operations, not example paths through the schemas. |
+| **Rendering** | Reports show findings and snippets of the changed source, never an expanded schema, so there is no depth to limit. |
 
 The component graph is small even for an 8 MB spec (thousands of nodes), and Tarjan is O(V+E), so building the index takes milliseconds.
 

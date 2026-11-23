@@ -765,6 +765,7 @@ Each idea has its own file in [feature-backlog/](feature-backlog/README.md) with
 |---|---|---|---|
 | [**★ Bulk-change collapsing**](feature-backlog/bulk-change-collapsing.md) | Group the same change made in many places without a shared `$ref` into one "N operations" finding. | high / low | Built |
 | [**★ Cached base index**](feature-backlog/cached-base-index.md) | Cache the parsed base by content hash so CI only parses the revision. | high / low | Built |
+| [**One entry per change in requests and responses**](feature-backlog/merge-request-response-findings.md) | Show a schema change's `…-in-request` and `…-in-response` findings as one entry in `review` and `explore`, with each direction's severity and ID, so reviewers don't read every schema change twice. IDs and acknowledgements stay per finding. | high / low | Built |
 | [**Spec quality side-report**](feature-backlog/spec-quality-side-report.md) | List identical inline schemas found by the content hashes ("appears inline 42 times; consider a component"). | medium / low | Idea |
 | [**Portfolio mode**](feature-backlog/portfolio-mode.md) | Compare many specs in one run and report which APIs a change to a shared schema file affects. | high / high | Idea |
 

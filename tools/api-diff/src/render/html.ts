@@ -3,7 +3,7 @@
 // locally. Light and dark themes follow the viewer's settings.
 
 import type { Finding, Result, Severity } from '../types.ts';
-import { adviceLine, isChange, isNotice, isVersion, usesLine, where } from './common.ts';
+import { ackText, adviceLine, directionOf, isChange, isNotice, isVersion, mergeDirections, ruleWithoutDirection, usesLine, where, type Entry } from './common.ts';
 import { docsSummary, GROUP_NOUN, groupFindings, ownersText, type Group, type GroupBy } from './review.ts';
 import { summaryData } from './summary.ts';
 import { auditData, type AuditOptions } from './audit.ts';
@@ -74,11 +74,22 @@ function findingItem(f: Finding, withSubject = false, label = true): string {
   return `<li${label ? '' : ' class="plain"'}>${label ? sev(f.severity) : ''}<div>${withSubject ? `<strong>${esc(f.subject)}</strong> ` : ''}${esc(f.message)}<div class="where">${loc ? `${esc(loc)} · ` : ''}<code>${esc(f.rule)}</code> · id <code>${esc(f.id)}</code></div>${ack}</div></li>`;
 }
 
+/** A merged entry (request and response findings of one change): worst severity, the rule without direction, and each direction's severity and ID. */
+function entryItem(e: Entry, withSubject: boolean, label: boolean): string {
+  if (e.parts.length === 1) return findingItem(e.finding, withSubject, label);
+  const f = e.finding;
+  const loc = where(f.revision ?? f.base);
+  const dirs = e.parts.map((p) => `${esc(directionOf(p)!)} ${sev(p.severity)} id <code>${esc(p.id)}</code>`).join(' · ');
+  const acks = e.parts.filter((p) => p.acknowledged).map((p) => `<div class="ack">${esc(ackText(p, `${directionOf(p)}: `))}</div>`).join('');
+  return `<li${label ? '' : ' class="plain"'}>${label ? sev(f.severity) : ''}<div>${withSubject ? `<strong>${esc(f.subject)}</strong> ` : ''}${esc(f.message)}<div class="where">${loc ? `${esc(loc)} · ` : ''}<code>${esc(ruleWithoutDirection(f.rule))}</code></div><div class="where">${dirs}</div>${acks}</div></li>`;
+}
+
 function groupBlock(g: Group, by: GroupBy = 'root-cause'): string {
   const ops = g.operations.length && by !== 'operation' ? `<span class="muted">affects ${g.operations.length} operation${g.operations.length === 1 ? '' : 's'}: ${esc(g.operations.join(', '))}</span>` : '';
   const owners = ownersText(g, by) ? `<span class="muted">${esc(ownersText(g, by))}</span>` : '';
+  const entries = mergeDirections(g.findings);
   return `<details${g.severity === 'info' ? '' : ' open'}><summary>${sev(g.severity)}<span class="subject">${esc(g.subject)}</span>${ops}${owners}</summary>
-<ul class="findings">${g.findings.map((f) => findingItem(f, by !== 'root-cause', g.findings.some((x) => x.severity !== g.severity))).join('\n')}</ul></details>`;
+<ul class="findings">${entries.map((e) => entryItem(e, by !== 'root-cause', entries.some((x) => x.finding.severity !== g.severity))).join('\n')}</ul></details>`;
 }
 
 function countsLine(r: Result): string {

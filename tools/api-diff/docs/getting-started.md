@@ -56,13 +56,13 @@ Version
 
 Changes (3 places, 2 with breaking changes)
 ERROR  #/components/schemas/NewPet  affects 3 operations: GET /pets, GET /pets/{petId}, POST /pets
-       ERROR  maxLength decreased (100 → 50) at /properties/name/maxLength  openapi.yaml:94 · max-length-decreased-in-request · id 8b48ac001f7e
-       INFO   maxLength decreased (100 → 50) at /properties/name/maxLength  openapi.yaml:94 · max-length-decreased-in-response · id c6a8e0868a08
+       -  maxLength decreased (100 → 50) at /properties/name/maxLength  openapi.yaml:94 · max-length-decreased
+              request ERROR · id 8b48ac001f7e   response INFO · id c6a8e0868a08
 ERROR  GET /pets
        -  query parameter 'limit' became required  openapi.yaml:17 · query-parameter-became-required · id 7266a0a41492
 WARN   #/components/schemas/PetStatus  affects 3 operations: GET /pets, GET /pets/{petId}, POST /pets
-       WARN   enum value added: 'adopted' at /enum  openapi.yaml:89 · enum-value-added-in-response · id 0d553c2a7a3a
-       INFO   enum value added: 'adopted' at /enum  openapi.yaml:89 · enum-value-added-in-request · id 6f4a9cb185dc
+       -  enum value added: 'adopted' at /enum  openapi.yaml:89 · enum-value-added
+              request INFO · id 6f4a9cb185dc   response WARN · id 0d553c2a7a3a
 
 6 findings: 2 error, 2 warn, 2 info · state: breaking · not failing CI (--fail-on never)
 To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-MM-DD> (POLICY.md section 11)
@@ -74,7 +74,7 @@ To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-
   - **`ERROR`** breaks existing clients.
   - **`WARN`** may break some clients, for example a new enum value that a strict client doesn't expect.
   - **`INFO`** is safe.
-- **Severity depends on direction.** The same schema change is judged separately for data clients **send** (requests) and data they **receive** (responses). That's why the shorter `maxLength` is an `ERROR` for requests and only `INFO` for responses.
+- **Severity depends on direction.** The same schema change is judged separately for data clients **send** (requests) and data they **receive** (responses). That's why the shorter `maxLength` is an `ERROR` for requests and only `INFO` for responses. Such a change is listed once, with its worst severity, and the line below it gives each direction's severity and `id` (`request ERROR · id 8b48ac001f7e   response INFO · id c6a8e0868a08`). They are two findings in the JSON result, each accepted separately. The `explore` page shows them as one row too.
 - **A shared component's change is shown once,** with the operations it affects.
 - **Each line ends with the file and line, the rule ID and the finding's `id`.** The `id` is what you use to accept a change ([section 5](#5-customise-it)). `api-diff rules <rule-id>` explains a rule, and [docs/rules/](rules/README.md) has a page for each rule with an example.
 - **`advice`** compares the version bump in `info.version` with the changes. It warns when the bump is too small, or when the spec changed but the version didn't.

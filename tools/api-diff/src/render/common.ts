@@ -89,6 +89,75 @@ export function findingLine(f: Finding, c: Paint, opts: { subject?: boolean; wid
   return out;
 }
 
+/** Which direction a finding of a paired rule (`…-in-request` / `…-in-response`) is about. */
+export type Direction = 'request' | 'response';
+export const directionOf = (f: Finding): Direction | undefined => (f.rule.endsWith('-in-request') ? 'request' : f.rule.endsWith('-in-response') ? 'response' : undefined);
+/** A rule ID without its direction: `max-length-decreased-in-request` → `max-length-decreased`. */
+export const ruleWithoutDirection = (rule: string): string => rule.replace(/-in-(request|response)$/, '');
+
+const SEVERITY_RANK: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
+
+/**
+ * One change as reports show it: a single finding, or the request and
+ * response findings of one schema change, merged. `finding` is the worst
+ * part, and `parts` lists every finding (request first) with its own
+ * severity, ID and acknowledgement. Only the display is merged: the result,
+ * finding IDs and acknowledgements are per finding.
+ */
+export interface Entry {
+  finding: Finding;
+  parts: Finding[];
+}
+
+/**
+ * Merges each change's request and response findings into one entry: same
+ * rule apart from the direction, same subject, message and place. Keeps the
+ * order of `findings`, each entry at its first part's position.
+ */
+export function mergeDirections(findings: Finding[]): Entry[] {
+  const out: Entry[] = [];
+  const byKey = new Map<string, Entry>();
+  for (const f of findings) {
+    const dir = directionOf(f);
+    const at = f.revision ?? f.base;
+    const key = dir ? [ruleWithoutDirection(f.rule), f.subject, f.message, at?.file ?? '', at?.pointer ?? ''].join('\0') : undefined;
+    const e = key !== undefined ? byKey.get(key) : undefined;
+    if (e && !e.parts.some((p) => directionOf(p) === dir)) {
+      e.parts.push(f);
+      e.parts.sort((a, b) => (directionOf(a) === 'request' ? 0 : 1) - (directionOf(b) === 'request' ? 0 : 1));
+      if (SEVERITY_RANK[f.severity] < SEVERITY_RANK[e.finding.severity]) e.finding = f;
+      continue;
+    }
+    const entry = { finding: f, parts: [f] };
+    out.push(entry);
+    if (key !== undefined && !e) byKey.set(key, entry);
+  }
+  return out;
+}
+
+/** `request ERROR · id 8b48ac001f7e   response INFO · id c6a8e0868a08`, for a merged entry. */
+export const directionsText = (e: Entry): string => e.parts.map((p) => `${directionOf(p)} ${p.severity.toUpperCase()} · id ${p.id}`).join('   ');
+
+/** acknowledged until …, for a finding (with its direction, in a merged entry). */
+export const ackText = (f: Finding, prefix = ''): string => `${prefix}acknowledged until ${f.acknowledged!.expires}${f.acknowledged!.owner ? ` by ${f.acknowledged!.owner}` : ''}: ${f.acknowledged!.reason}`;
+
+/**
+ * An entry's lines: `findingLine` for a single finding; for a merged one, the
+ * change with its worst severity and the rule without direction, then a line
+ * with each direction's severity and ID, then any acknowledgements.
+ */
+export function entryLines(e: Entry, c: Paint, opts: { subject?: boolean; width?: number; indent?: string; label?: boolean } = {}): string[] {
+  if (e.parts.length === 1) return findingLine(e.finding, c, opts);
+  const f = e.finding;
+  const loc = where(f.revision ?? f.base);
+  const subject = opts.subject === false ? '' : `${f.subject.padEnd(opts.width ?? 0)}  `;
+  const label = opts.label === false ? '-' : c(COLOR[f.severity], LABEL[f.severity]);
+  const pad = `${opts.indent ?? ''}       `;
+  const out = [`${opts.indent ?? ''}${label}  ${subject}${f.message}  ${c(DIM, [loc, ruleWithoutDirection(f.rule)].filter(Boolean).join(' · '))}`, `${pad}${c(DIM, directionsText(e))}`];
+  for (const p of e.parts) if (p.acknowledged) out.push(`${pad}${c(DIM, ackText(p, `${directionOf(p)}: `))}`);
+  return out;
+}
+
 /** `5 findings: 1 error, 2 warn, 2 info (1 acknowledged) · state: breaking`, plus the gate. */
 export function countsLine(r: Result, opts: TxtOptions): string {
   const n = r.counts;

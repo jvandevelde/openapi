@@ -1,0 +1,11 @@
+openapi: 3.1.0
+info: { title: Twins, version: 1.0.0 }
+paths:
+  /a:
+    get:
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Left' } } } }
+components:
+  schemas:
+    Left: { type: object, properties: { next: { $ref: '#/components/schemas/Right' } } }
+    Right: { type: object, properties: { next: { $ref: '#/components/schemas/Left' } } }

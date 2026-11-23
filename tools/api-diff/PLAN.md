@@ -168,7 +168,7 @@ The tool never assumes it's inside this tools repo. Git commands run **in the re
 **Getting the tool into another repo's CI.** **Decided: a single release file, no package registry.** Each release builds `api-diff.mjs` (all dependencies bundled with esbuild, so no `npm install`) and attaches it to a GitHub release of this repo, tagged `api-diff-v<version>` (tags are per tool, since the repo holds several). This repo is public, so downloads need no token.
 
 ```sh
-curl -fsSLo api-diff.mjs https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.11.0/api-diff.mjs
+curl -fsSLo api-diff.mjs https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.11.1/api-diff.mjs
 node api-diff.mjs main:openapi.yaml openapi.yaml
 ```
 
@@ -204,7 +204,7 @@ jobs:
   api-diff:
     runs-on: ubuntu-latest
     env:
-      API_DIFF: https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.11.0
+      API_DIFF: https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.11.1
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }            # the base commit must be present
@@ -353,7 +353,7 @@ Tarjan gives us the SCCs in reverse topological order (each SCC after every SCC 
 
 | Stage | How it handles references and cycles |
 |---|---|
-| **Structural hashing** (uses Tarjan) | Deep (Merkle) hashes: each node's own content plus the deep hashes of what it references, computed SCC by SCC in Tarjan's order, so referenced nodes are hashed first. Each recursive SCC is hashed as one unit, keyed by the members' stable names, so self-referencing schemas get a stable hash (`#merkle` in `src/index/schema-index.ts`). The diff uses the deep hashes to skip unchanged schemas (same name, same `full` hash), to detect renames (same `shape` hash, new name) and to spot changes to unused components. See *Content hashes* below. |
+| **Structural hashing** (uses Tarjan) | Deep (Merkle) hashes: each node's own content plus the deep hashes of what it references, computed SCC by SCC in Tarjan's order, so referenced nodes are hashed first. Each recursive SCC is hashed as one unit, keyed by the members' stable names, so self-referencing schemas get a stable hash (`#merkle` in `src/index/schema-index.ts`). The diff uses the deep hashes to skip unchanged schemas (same name, same `full` hash), to detect renames (same `shape` hash, new name) and to spot changes to unused components. A recursive schema's hashes include its own name (in its `$ref`s and the unit), so members of recursive SCCs also get a **rename key**: the same hashes with each reference inside the SCC written as the member's position in an order found without names (`#renameKeys`); rename matching uses it instead of the deep hash. See *Content hashes* below. |
 | **Cycle validity** (uses Tarjan) | A cycle is *productive* if it passes through at least one `property`, `items` or `additionalProperties` edge, meaning the data actually nests (fine). Within each recursive SCC, Tarjan runs again on the other edges only: a cycle made only of `allOf`/`oneOf`/`anyOf`/`$ref` edges (e.g. `A: allOf [$ref A]`) describes nothing valid and is reported as `cycle-not-productive` instead of looping (`#checkProductive`). |
 | **Recursive marker** (uses Tarjan) | A node in a recursive SCC (more than one member, or a self-loop) is marked `recursive`. Findings inside it carry `details.recursive`, shown as `↻` in the `explore` report. |
 | **Effective schemas** (allOf merge) | Computed on demand for each position compared (`#effective` in `src/diff/schema-engine.ts`), following `allOf` members and `$ref`s. A visited set and a depth limit (50) stop `allOf` cycles, which the index reports. Each merged keyword keeps where it came from. |
@@ -544,7 +544,7 @@ versions:
 Each side also records the file name, a SHA-256 of the file, and where its version came from, along with the tool version and a hash of the policy. This makes every report reproducible:
 
 ```
-api-diff 0.11.0 · policy 3fa2c1e
+api-diff 0.11.1 · policy 3fa2c1e
 base      orders.yaml  v1.4.0 (x-api-version)  build 812  commit 9d4a736
 revision  orders.yaml  v1.5.0 (x-api-version)  build 845  commit c7f3e1a
 advice    major bump needed (2 breaking changes); revision is a minor bump

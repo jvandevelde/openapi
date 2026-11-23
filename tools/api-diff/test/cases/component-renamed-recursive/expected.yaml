@@ -1,0 +1,6 @@
+description: "TreeNode, which refers to itself, was renamed to Node with the same structure. Its own name is part of its hashes, so rename matching uses a name-neutral key (references inside the cycle become positions): one component-renamed, and the $ref changes (at GET /tree and inside the schema) are part of the rename."
+milestone: M8
+findings:
+  - rule: component-renamed
+    severity: info
+    subject: '#/components/schemas/Node'

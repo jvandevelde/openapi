@@ -33,6 +33,13 @@ export interface SchemaNode {
   deep: Record<Mode, string>;
   scc: number;
   recursive: boolean;
+  /**
+   * For members of a recursive group only: shape hashes in which references inside the group
+   * are replaced by each member's position in a canonical order, so they don't depend on the
+   * members' names. Used to match renames of recursive schemas; absent when the group's
+   * members can't be ordered without their names (members identical apart from names).
+   */
+  renameKey?: { local: string; deep: string };
 }
 
 export interface IndexNotice {
@@ -110,11 +117,16 @@ export class SchemaIndex {
     const reported = new Set<string>();
     // Trees with $ref slots, kept until every node exists and names can be filled in.
     const pendingTrees = new Map<number, LocalTrees>();
+    // For each node, the node each of its trees' $refs resolves to (undefined: unresolved).
+    const refTargets = new Map<number, (number | undefined)[]>();
     while (this.#pending.length) {
       const n = this.#pending.pop()!;
       const trees = localTrees(this.docs.value(n.ref), this.version);
       pendingTrees.set(n.i, trees);
+      const targets: (number | undefined)[] = [];
+      refTargets.set(n.i, targets);
       for (const f of trees.refs) {
+        targets.push(undefined);
         const target = this.docs.resolveRef(n.ref.file, f.ref);
         if ('error' in target) {
           const at: Ref = { file: n.ref.file, segs: [...n.ref.segs, ...f.path] };
@@ -126,6 +138,7 @@ export class SchemaIndex {
           continue;
         }
         const t = this.#node(target, true);
+        targets[targets.length - 1] = t.i;
         for (const o of f.slots) o.$ref = t.logical;
         n.edges.push({ to: t.i, path: f.path, productive: f.productive });
       }
@@ -146,6 +159,45 @@ export class SchemaIndex {
     }
     this.#merkle(sccs);
     this.#checkProductive(sccs);
+    this.#renameKeys(sccs, pendingTrees, refTargets);
+  }
+
+  /**
+   * Name-neutral shape hashes for members of recursive groups (see `SchemaNode.renameKey`).
+   * Members are ordered by a hash with every in-group reference blanked out; each in-group
+   * reference then becomes `@<position>`, and the group is hashed as one unit as in `#merkle`.
+   */
+  #renameKeys(sccs: number[][], trees: Map<number, LocalTrees>, refTargets: Map<number, (number | undefined)[]>): void {
+    for (const scc of sccs) {
+      const members = scc.map((i) => this.nodes[i]!);
+      if (!members[0]!.recursive) continue;
+      const inScc = new Set(scc);
+      /** The member's shape hashes with each in-group reference written as `mark(target)`. */
+      const hashes = (m: SchemaNode, mark: (target: number) => string): { local: string; own: string } => {
+        const t = trees.get(m.i)!;
+        const targets = refTargets.get(m.i)!;
+        t.refs.forEach((r, k) => {
+          const to = targets[k];
+          if (to !== undefined && inScc.has(to)) for (const o of r.slots) o.$ref = mark(to);
+        });
+        const local = hash(canonicalString(t.shape));
+        t.refs.forEach((r, k) => {
+          const to = targets[k];
+          if (to !== undefined) for (const o of r.slots) o.$ref = this.nodes[to]!.logical;
+        });
+        const outside = m.edges.map((e) => `${encodePointer(e.path)}=${inScc.has(e.to) ? mark(e.to) : this.nodes[e.to]!.deep.shape}`).sort();
+        return { local, own: hash(`${local}|${outside.join(',')}`) };
+      };
+      const blank = new Map(members.map((m) => [m.i, hashes(m, () => '@').own]));
+      const order = [...members].sort((a, b) => (blank.get(a.i)! < blank.get(b.i)! ? -1 : blank.get(a.i)! > blank.get(b.i)! ? 1 : 0));
+      // Members identical apart from names can't be told apart without them: no key, so no guessed rename.
+      if (new Set(blank.values()).size < members.length) continue;
+      const pos = new Map(order.map((m, k) => [m.i, k]));
+      const mark = (to: number): string => `@${pos.get(to)}`;
+      const own = new Map(members.map((m) => [m.i, hashes(m, mark)]));
+      const unit = hash(order.map((m) => `${pos.get(m.i)}=${own.get(m.i)!.own}`).join(';'));
+      for (const m of members) m.renameKey = { local: own.get(m.i)!.local, deep: hash(`${own.get(m.i)!.own}|${unit}`) };
+    }
   }
 
   /** Deep hashes bottom-up: sinks first, each recursive SCC hashed as one unit. */

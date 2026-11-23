@@ -54,7 +54,7 @@ node "$HOME/bin/api-diff.mjs" HEAD:"$spec" :"$spec" --report ci --fail-on error 
 A blocked commit looks like this:
 
 ```
-ERROR  #/components/schemas/NewPet  maxLength decreased (50 → 20) at /properties/name/maxLength  :openapi.yaml:87 · max-length-decreased-in-request
+ERROR  #/components/schemas/NewPet  maxLength decreased (50 → 20) at /properties/name/maxLength  :openapi.yaml:87 · max-length-decreased-in-request · id 8b48ac001f7e
 
 3 findings: 1 error, 1 warn, 1 info · state: breaking · fails CI at error and above
 FAIL: 1 finding at error or above
@@ -137,7 +137,7 @@ Every report then keeps only the changes that reach those operations. The exit c
 
 ## 8. Accepting a breaking change
 
-If a breaking change is intended and its consumers have been told, record that decision so the change stops failing checks. Every finding has a stable 12-character ID, shown in `audit`, `explore` and the JSON result:
+If a breaking change is intended and its consumers have been told, record that decision so the change stops failing checks. Every finding has a stable 12-character ID. The `review` and `ci` reports (and so the PR comment and the pre-commit hook's output) end each line with it, `… · query-parameter-became-required · id 7266a0a41492`, and `audit`, `explore` and the JSON result show it too. To list the breaking ones for a script:
 
 ```sh
 api-diff --base main openapi.yaml -f json | jq -r '.findings[] | select(.severity == "error") | "\(.id)  \(.rule)  \(.message)"'

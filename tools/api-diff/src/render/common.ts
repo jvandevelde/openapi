@@ -75,11 +75,14 @@ export function usesLine(r: Result): string | undefined {
   return `only changes that reach ${plural(u.operations.length, 'operation')} listed in ${u.file}${u.unmatched.length ? ` (${u.unmatched.length} ${u.unmatched.length === 1 ? 'entry' : 'entries'} matched nothing: ${u.unmatched.slice(0, 3).join(', ')}${u.unmatched.length > 3 ? ', …' : ''})` : ''}`;
 }
 
-/** One finding: severity, subject, message, location and rule; then acknowledgement, if any. */
-export function findingLine(f: Finding, c: Paint, opts: { subject?: boolean; width?: number; indent?: string; label?: boolean } = {}): string[] {
+/**
+ * One finding: severity, subject, message, location and rule (and, with `id`,
+ * the finding ID an acknowledgement needs); then acknowledgement, if any.
+ */
+export function findingLine(f: Finding, c: Paint, opts: { subject?: boolean; width?: number; indent?: string; label?: boolean; id?: boolean } = {}): string[] {
   const loc = where(f.revision ?? f.base);
   const subject = opts.subject === false ? '' : `${f.subject.padEnd(opts.width ?? 0)}  `;
-  const tail = c(DIM, loc ? `${loc} · ${f.rule}` : f.rule);
+  const tail = c(DIM, [loc, f.rule, opts.id ? `id ${f.id}` : ''].filter(Boolean).join(' · '));
   const label = opts.label === false ? '-' : c(COLOR[f.severity], LABEL[f.severity]);
   const out = [`${opts.indent ?? ''}${label}  ${subject}${f.message}  ${tail}`];
   if (f.acknowledged) {

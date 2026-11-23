@@ -63,10 +63,12 @@ jobs:
             --report changelog:html:api-diff-out/changelog.html \
             --report explore:html:api-diff-out/explore.html
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}     # keep the reports when the check fails too
         with:
           name: api-diff-reports
           path: api-diff-out/
       - name: Post the review report on the pull request
+        if: ${{ !cancelled() }}     # post it when the check fails too
         run: node .api-diff-tool/tools/api-diff/ci/github-comment.ts --file api-diff-out/review.txt --key "$SPEC"
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -81,6 +83,8 @@ What each part does:
 - **`--base "origin/$BASE..."`** compares with the commit where the PR's branch left the base branch, so the report shows only this PR's changes. `fetch-depth: 0` makes sure that commit is present; on a shallow clone `api-diff` says how to fix it.
 - **`--report ci`** prints a short list to the job log. `review` (text, HTML and JSON), `summary` (JSON), `changelog` (HTML, for release notes) and `explore` (interactive HTML with every finding and the source side by side) go to files that are kept as the `api-diff-reports` artifact.
 - **The comment step** posts `review.txt` inside a code block, with a hidden marker so the next push edits the same comment. It only creates a comment when the spec changed, and always updates an existing one. Each spec gets its own comment (`--key`), so a repository with several specs can run the step once per spec.
+- **A spec that can't be read** (broken YAML, Swagger 2.0, not OpenAPI) fails the job (exit code 2) whatever `--fail-on` says, since nothing could be compared. The reports are still written, and the comment shows why under "Problems with the inputs"; that's why the last two steps run with `if: ${{ !cancelled() }}`. The same goes for a failing gate with `--fail-on`.
+- **Each finding line ends with its ID** (`· id 7266a0a41492`), so an author can accept an intended breaking change by adding that ID to `api-diff.ack.yaml` (below) without opening the JSON.
 - **Fork PRs**: GitHub gives them a read-only token, so the comment step warns instead of failing, and the report is still in the job log and artifacts.
 - **`--cache-dir`** (optional) keeps the base's parsed documents between runs; it saves about half a second on an 8 MB spec.
 

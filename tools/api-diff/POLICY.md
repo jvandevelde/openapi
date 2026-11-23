@@ -292,7 +292,7 @@ The docs should come from the code, not be written separately:
 
 - Each rule is defined once in code with its metadata: ID, kind, paired or not, default severities, options (name, type, default, description), explanation and fix text. RULES.md tables and section 4 of this file are **generated** from that metadata.
 - `api-diff rules` lists every rule (`--format json|txt|html`). `api-diff rules <id>` prints one rule with its options, defaults and an example.
-- `api-diff schema policy` prints a JSON Schema for the policy file, for editor validation and autocomplete.
+- `api-diff schema` prints the JSON Schema of the result. A JSON Schema for the policy file, for editor validation and autocomplete, isn't built yet (`api-diff schema policy` says so); it's a backlog item, [Policy file JSON Schema](feature-backlog/policy-json-schema.md).
 - A test fails if any rule has no description, no test case, or an option without a default.
 
 ## 14. Owners

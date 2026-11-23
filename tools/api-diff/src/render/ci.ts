@@ -1,6 +1,7 @@
 // The ci report (PLAN.md section 5): short, for CI logs. Lists the findings
 // at or above the --fail-on threshold (warn and above when nothing gates),
-// leaving out acknowledged ones, and says whether the run fails.
+// leaving out acknowledged ones, and says whether the run fails. Each line
+// ends with the finding's ID, for acknowledging it.
 
 import type { Result, Severity } from '../types.ts';
 import { BOLD, countsLine, findingLine, header, painter, type TxtOptions } from './common.ts';
@@ -18,7 +19,7 @@ export function renderCi(r: Result, opts: TxtOptions): string {
   if (shown.length === 0) out.push(`No findings at ${threshold} or above${r.counts.total ? ` (${r.counts.total} below it, or acknowledged)` : ''}.`);
   else {
     const width = Math.min(48, Math.max(...shown.map((f) => f.subject.length)));
-    for (const f of shown) out.push(...findingLine(f, c, { width }));
+    for (const f of shown) out.push(...findingLine(f, c, { width, id: true }));
   }
   const failing = opts.failOn !== undefined && opts.failOn !== 'never' && shown.length > 0;
   out.push('', c(BOLD, countsLine(r, opts)));

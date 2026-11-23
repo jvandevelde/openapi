@@ -2,7 +2,9 @@
 
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { main, splitSubcommand, type Io } from '../../src/cli/main.ts';
@@ -112,4 +114,66 @@ test('stops quietly when the reader closes the pipe early', async () => {
   const code = await new Promise<number | null>((done) => child.on('close', done));
   assert.equal(err, '');
   assert.equal(code, 0);
+});
+
+test('review and ci text show each finding ID, for acknowledging it', async () => {
+  const ids = JSON.parse((await run(...inCase('security-scheme-changed'), '-f', 'json')).out).findings.map((f: { id: string }) => f.id);
+  const review = (await run(...inCase('security-scheme-changed'))).out;
+  const ci = (await run(...inCase('security-scheme-changed'), '--report', 'ci')).out;
+  for (const id of ids) {
+    assert.match(review, new RegExp(` · id ${id}$`, 'm'));
+    assert.match(ci, new RegExp(` · id ${id}$`, 'm'));
+  }
+});
+
+test('report files: missing folders are created; a file that cannot be written exits 2', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'api-diff-out-'));
+  try {
+    const ok = await run(...inCase('operation-removed'), '--report', `review:html:${dir}/a/b/review.html`, '--report', `ci:txt:${dir}/a/ci.txt`);
+    assert.equal(ok.code, 0);
+    assert.match(readFileSync(join(dir, 'a/b/review.html'), 'utf8'), /<html/);
+    assert.match(readFileSync(join(dir, 'a/ci.txt'), 'utf8'), /operation removed/);
+    writeFileSync(join(dir, 'file'), '');
+    const bad = await run(...inCase('operation-removed'), '-o', `${dir}/file/review.txt`);
+    assert.equal(bad.code, 2);
+    assert.match(bad.err, /^api-diff: can't write .*file\/review\.txt: /);
+    assert.doesNotMatch(bad.err, /\n\s+at /); // no stack trace
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('an unreadable document exits 2 whatever --fail-on says, after printing the report', async () => {
+  for (const name of ['spec-invalid-yaml', 'spec-invalid-swagger']) {
+    const r = await run(...inCase(name));
+    assert.equal(r.code, 2, name);
+    assert.match(r.out, /Problems with the inputs/);
+    assert.match(r.err, /couldn't be read as OpenAPI 3\.x, so nothing was compared/);
+    const json = JSON.parse((await run(...inCase(name), '-f', 'json')).out);
+    assert.ok(json.compared.base.unreadable || json.compared.revision.unreadable, name);
+  }
+  // Smaller problems in a document that was read keep the usual exit code.
+  for (const name of ['path-template-clash', 'stability-level-invalid']) {
+    const r = await run(...inCase(name));
+    assert.equal(r.code, 0, name);
+    const json = JSON.parse((await run(...inCase(name), '-f', 'json')).out);
+    assert.equal(json.compared.base.unreadable ?? json.compared.revision.unreadable, undefined, name);
+  }
+});
+
+test('schema prints the result schema; other schema names are usage errors', async () => {
+  assert.equal((await run('schema', 'result')).out, (await run('schema')).out);
+  const policy = await run('schema', 'policy');
+  assert.equal(policy.code, 2);
+  assert.match(policy.err, /no JSON Schema for the policy file yet/);
+  assert.equal((await run('schema', 'nope')).code, 2);
+});
+
+test('an unknown command is reported as one, not as a missing file', async () => {
+  const r = await run('-C', cases, 'explain', '1fcf7e50b775');
+  assert.equal(r.code, 2);
+  assert.match(r.err, /'explain' isn't a command or a file\. Commands: rules, history, schema/);
+  assert.match((await run('-C', cases, 'histroy', 'a..b', 'x.yaml')).err, /'histroy' isn't a command or a file \(did you mean history\?\)/);
+  // Real files still work, and paths that look like paths keep the file-not-found message.
+  assert.match((await run('-C', cases, 'nope.yaml', 'nope2.yaml')).err, /file not found: nope.yaml/);
 });

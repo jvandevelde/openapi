@@ -787,6 +787,7 @@ Each idea has its own file in [feature-backlog/](feature-backlog/README.md) with
 | [**Rule plugins**](feature-backlog/rule-plugins.md) | Custom TypeScript rules against the change-record API, tested with the golden-case format. | high / medium | Idea |
 | [**Lint only what changed**](feature-backlog/lint-only-what-changed.md) | Let plugin rules declare `scope: changed` so house rules apply only to new and changed parts. | high / low | Idea |
 | [**Watch mode**](feature-backlog/watch-mode.md) | `api-diff --watch` re-runs on save. | low / low | Idea |
+| [**Policy file JSON Schema**](feature-backlog/policy-json-schema.md) | `api-diff schema policy` prints a JSON Schema for `api-diff.yaml`, so editors validate and autocomplete the policy file instead of authors finding typos only when they run the tool. | medium / medium | Idea |
 
 ### Enterprise operation
 

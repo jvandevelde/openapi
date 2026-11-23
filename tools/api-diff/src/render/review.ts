@@ -6,6 +6,9 @@
 // changes are often intended (decision record "The PR check reports changes
 // and doesn't fail by default").
 //
+// Each finding line ends with its ID, so an author can acknowledge it
+// (api-diff.ack.yaml) straight from the PR comment.
+//
 // The text stays under `maxChars` (a GitHub comment holds 65,536): once the
 // budget is reached, the remaining groups are listed one line each.
 
@@ -109,14 +112,14 @@ export function renderReview(r: Result, opts: ReviewOptions): string {
   const notes = notices.filter((f) => f.severity === 'info');
   if (problems.length) {
     out.push(c(BOLD, 'Problems with the inputs'));
-    for (const f of problems) out.push(...findingLine(f, c, { indent: '  ' }));
+    for (const f of problems) out.push(...findingLine(f, c, { indent: '  ', id: true }));
     out.push('');
   }
 
   const versions = r.findings.filter(isVersion);
   if (versions.length) {
     out.push(c(BOLD, 'Version'));
-    for (const f of versions) out.push(...findingLine(f, c, { subject: false, indent: '  ' }));
+    for (const f of versions) out.push(...findingLine(f, c, { subject: false, indent: '  ', id: true }));
     out.push('');
   }
 
@@ -131,7 +134,7 @@ export function renderReview(r: Result, opts: ReviewOptions): string {
       const meta = [g.operations.length && by !== 'operation' ? affects(g.operations) : '', ownersText(g, by)].filter(Boolean).join(' · ');
       const block = [`${c(COLOR[g.severity], LABEL[g.severity])}  ${c(BOLD, g.subject)}${meta ? `  ${c(DIM, meta)}` : ''}`];
       const mixed = g.findings.some((f) => f.severity !== g.severity);
-      for (const f of g.findings) block.push(...findingLine(f, c, { subject: by !== 'root-cause', indent: '       ', label: mixed }));
+      for (const f of g.findings) block.push(...findingLine(f, c, { subject: by !== 'root-cause', indent: '       ', label: mixed, id: true }));
       const text = block.join('\n');
       if (size + text.length + 200 > max && shown > 0) break;
       out.push(...block);
@@ -156,7 +159,7 @@ export function renderReview(r: Result, opts: ReviewOptions): string {
 
   if (notes.length) {
     out.push(c(BOLD, 'Notes'));
-    for (const f of notes) out.push(...findingLine(f, c, { indent: '  ' }));
+    for (const f of notes) out.push(...findingLine(f, c, { indent: '  ', id: true }));
     out.push('');
   }
 

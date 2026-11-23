@@ -99,7 +99,8 @@
         "commit": { "type": "string", "description": "Resolved commit SHA for git inputs." },
         "title": { "type": "string", "description": "info.title." },
         "versionSource": { "type": "string", "description": "Where version came from, e.g. info.version, x-api-version or command line." },
-        "labels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Version labels from the policy or the command line; commit for git inputs." }
+        "labels": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Version labels from the policy or the command line; commit for git inputs." },
+        "unreadable": { "const": true, "description": "The document couldn't be read as OpenAPI 3.x (a spec-invalid finding says why), so nothing was compared. The CLI exits 2." }
       }
     },
     "location": {

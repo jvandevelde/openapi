@@ -542,7 +542,7 @@ versions:
 Each side also records the file name, a SHA-256 of the file, and where its version came from, along with the tool version and a hash of the policy. This makes every report reproducible:
 
 ```
-api-diff 0.1.0 · policy 3fa2c1e
+api-diff 0.10.0 · policy 3fa2c1e
 base      orders.yaml  v1.4.0 (x-api-version)  build 812  commit 9d4a736
 revision  orders.yaml  v1.5.0 (x-api-version)  build 845  commit c7f3e1a
 advice    major bump needed (2 breaking changes); revision is a minor bump

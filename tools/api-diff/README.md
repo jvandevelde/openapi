@@ -63,7 +63,7 @@ Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` fi
 
 ```
 $ api-diff base.yaml revision.yaml
-api-diff 0.1.0 · profile wire
+api-diff 0.10.0 · profile wire
 base      base.yaml  (OpenAPI 3.1.0, version 1.0.0)
 revision  revision.yaml  (OpenAPI 3.1.0, version 1.1.0)
 

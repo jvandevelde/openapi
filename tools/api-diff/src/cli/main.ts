@@ -22,6 +22,8 @@ import { inputsFromArgs } from '../sources/input.ts';
 import { SourceError } from '../sources/source.ts';
 import type { FailOn, Profile } from '../types.ts';
 import { VERSION } from '../version.ts';
+// Imported rather than read from disk, so the release bundle carries it.
+import resultSchema from '../../schema/result-v0.schema.json' with { type: 'json' };
 
 const HELP = `api-diff ${VERSION}: compare two OpenAPI documents and report what changed.
 
@@ -102,7 +104,7 @@ export async function main(argv: string[], io: Io = { stdout: process.stdout, st
     if (argv[0] === 'rules') return rulesCommand(argv.slice(1), io.stdout);
     if (argv[0] === 'history') return await historyCommand(argv.slice(1), io);
     if (argv[0] === 'schema') {
-      io.stdout.write(readFileSync(new URL('../../schema/result-v0.schema.json', import.meta.url), 'utf8'));
+      io.stdout.write(`${JSON.stringify(resultSchema, null, 2)}\n`);
       return 0;
     }
     return await diffCommand(argv, io);

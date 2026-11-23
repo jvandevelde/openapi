@@ -46,6 +46,8 @@ interface Eff {
   required: Map<string, Pos>;
   types: { set: Set<string> | undefined; at: Pos | undefined };
   union: { kind: 'oneOf' | 'anyOf'; branches: Pos[]; at: Pos } | undefined;
+  /** Every oneOf/anyOf merged in (`union` is the first); a value must match one branch of each. */
+  unions: { kind: 'oneOf' | 'anyOf'; branches: Pos[]; at: Pos }[];
 }
 
 const LIMITS: [kw: string, kind: 'max' | 'min', up: string, down: string][] = [
@@ -297,7 +299,7 @@ export class SchemaEngine {
 
   /** Effective schema: the schema at `p` with `allOf` members (and 3.1 `$ref` siblings) merged in. */
   #effective(which: 'b' | 'r', p: Pos): Eff {
-    const eff: Eff = { at: p, kw: new Map(), properties: new Map(), required: new Map(), types: { set: undefined, at: undefined }, union: undefined };
+    const eff: Eff = { at: p, kw: new Map(), properties: new Map(), required: new Map(), types: { set: undefined, at: undefined }, union: undefined, unions: [] };
     const seen = new Set<string>();
     const merge = (q: Pos, depth: number): void => {
       const id = `${q.node.id}|${q.path.join('/')}`;
@@ -330,7 +332,9 @@ export class SchemaEngine {
           continue;
         }
         if ((k === 'oneOf' || k === 'anyOf') && Array.isArray(v[k])) {
-          eff.union ??= { kind: k, branches: (v[k] as unknown[]).map((_, i) => ({ node: q.node, path: [...q.path, k, String(i)] })), at };
+          const u: NonNullable<Eff['union']> = { kind: k, branches: (v[k] as unknown[]).map((_, i) => ({ node: q.node, path: [...q.path, k, String(i)] })), at };
+          eff.union ??= u;
+          eff.unions.push(u);
           continue;
         }
         const existing = eff.kw.get(k);
@@ -384,20 +388,23 @@ export class SchemaEngine {
    * `undefined` means any type (some branch has no type).
    */
   #typeSet(which: 'b' | 'r', eff: Eff, depth = 0): Set<string> | undefined {
-    const own = eff.types.set;
-    if (!eff.union || depth > 10) return own;
-    let branches: Set<string> | undefined = new Set();
-    for (const p of eff.union.branches) {
-      const t = this.#typeSet(which, this.#effective(which, p), depth + 1);
-      if (!t) {
-        branches = undefined;
-        break;
+    let set = eff.types.set;
+    if (depth > 10) return set;
+    const meet = (a: Set<string>, b: Set<string>): Set<string> => new Set([...a].filter((x) => b.has(x) || (x === 'integer' && b.has('number'))));
+    // Each union (allOf can merge in several) limits the types to those of its branches.
+    for (const u of eff.unions) {
+      let branches: Set<string> | undefined = new Set();
+      for (const p of u.branches) {
+        const t = this.#typeSet(which, this.#effective(which, p), depth + 1);
+        if (!t) {
+          branches = undefined;
+          break;
+        }
+        for (const x of t) branches.add(x);
       }
-      for (const x of t) branches.add(x);
+      if (branches) set = set ? new Set([...meet(set, branches), ...meet(branches, set)]) : branches;
     }
-    if (!branches) return own;
-    if (!own) return branches;
-    return new Set([...own].filter((x) => branches.has(x) || (x === 'integer' && branches.has('number'))));
+    return set;
   }
 
   #types(eb: Eff, er: Eff, dir: Direction): void {

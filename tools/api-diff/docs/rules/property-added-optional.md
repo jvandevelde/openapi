@@ -40,12 +40,13 @@ Findings:
 
 ## Test cases
 
-3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+4 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`property-added-optional`](../../test/cases/property-added-optional/) | `property-added-optional-in-response` · info · #/components/schemas/Pet | A new optional property in a response: tolerant clients ignore it. |
 | [`type-narrowed-union`](../../test/cases/type-narrowed-union/) | `property-added-optional-in-request` · info · #/components/schemas/Pet | A oneOf of an object and a string replaced by an inline object: the union's types are its branches' types, so string was dropped. |
+| [`type-union-composed`](../../test/cases/type-union-composed/) | `property-added-optional-in-request` · info · #/components/schemas/Pet | An allOf of two unions (branches built with allOf chains) replaced by an inline object: a value must match a branch of each union, so the type is object on both sides and there is no type-narrowed. |
 | [`type-union-to-inline-object`](../../test/cases/type-union-to-inline-object/) | `property-added-optional-in-request` · info · #/components/schemas/Pet | A oneOf of object schemas (one through allOf) replaced by an inline object: the type is object on both sides, so no type-narrowed. The union's removal is still reported. |
 
 ## Policy options

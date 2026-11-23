@@ -742,57 +742,57 @@ Still open (not needed before M8):
 
 Ideas aimed at large enterprise specs. None of the tools in section 1 document these, as far as we found. Each idea has a rough value/effort rating so we can pick from it later. **★** marks the ones I'd do first.
 
-Bigger proposals are written up in [feature-backlog/](feature-backlog/README.md). This section keeps only a short entry for each: what it is, why it's worth having, and a link to the details.
+Each idea has its own file in [feature-backlog/](feature-backlog/README.md) with the details: what it does, related records, options and open questions. This section keeps only a short entry per idea, what it is and why it's worth having, so the plan stays readable as ideas are worked out. New proposals follow the same pattern (see [the decision record](decision-records/2026-11-23T0157-feature-proposals-in-feature-backlog.md)).
 
-### Detailed proposals
+### Review and publishing
 
-| Proposal | What it does and why | Value / effort |
-|---|---|---|
-| [**Overlays, a review file and a review loop**](feature-backlog/overlays-and-review-loop.md) | Use OpenAPI Overlays to keep `x-api-diff` hints out of the published spec and to diff what is actually published. Reviewers mark findings in the CLI or HTML report: decisions about a change (ack, note for clients, seen) go to a typed review file, lasting facts about a node ("this enum is open") go to a hints overlay, and later runs pick both up. The published spec stays clean, reviewers' decisions are kept instead of lost in PR threads, and every lowered severity can be traced and owned. | high / high |
+| Idea | What it does and why | Value / effort | Status |
+|---|---|---|---|
+| [**Overlays, a review file and a review loop**](feature-backlog/overlays-and-review-loop.md) | Keep `x-api-diff` hints out of the published spec with OpenAPI Overlays and diff what is actually published; reviewers mark findings in the CLI or HTML report, and their decisions (acks, notes, lasting facts about nodes) feed later runs, so every lowered severity is traced and owned. | high / high | Idea |
 
 ### Evidence and accuracy
 
-| Idea | What it does | Value / effort |
-|---|---|---|
-| **★ Counter-example payloads** | For each `wire` finding, generate a small JSON value that the old schema accepts and the new one rejects (for requests) or the other way round (for responses), e.g. `{"status": "archived"}`. Shown in reports and exportable as test fixtures. Proof that the change really breaks something, instead of only a rule saying so. **Not to be built here until the generator question in section 7 is settled:** the separate spec explorer already generates payloads, and cycles and large nested unions are the hard part either way. | high / medium |
-| **Re-validate examples** | Check every `example`/`examples` in the base against the revision schema. An old example that no longer validates is a concrete breaking change, even if no rule caught it. | high / low |
-| **Constraint maths** | Treat `minimum`/`maximum`/`multipleOf`, `minLength`/`maxLength` and `minItems`/`maxItems` as intervals, so "narrowed" vs "widened" is exact. Compare simple `pattern` regexes by converting them to automata, and fall back to "can't tell" (`warn`) for complex ones. | medium / medium |
-| **Versioning-scheme aware matching** | Match `/v1/orders` in the base with `/v2/orders` in the revision, or match media-type versions (`application/vnd.acme.v2+json`), when a new version is published alongside the old one. Configured with a path or media-type template. | medium / low |
+| Idea | What it does and why | Value / effort | Status |
+|---|---|---|---|
+| [**★ Counter-example payloads**](feature-backlog/counter-example-payloads.md) | For each `wire` finding, a small JSON value the old schema accepts and the new one rejects, as proof the change breaks something. | high / medium | Idea |
+| [**Re-validate examples**](feature-backlog/re-validate-examples.md) | Check every base `example`/`examples` against the revision schema; an example that no longer validates is a concrete breaking change. | high / low | Idea |
+| [**Constraint maths**](feature-backlog/constraint-maths.md) | Compare numeric, length and item-count constraints as intervals, and simple `pattern`s as automata, so narrowed vs widened is exact. | medium / medium | Idea |
+| [**Versioning-scheme aware matching**](feature-backlog/versioning-scheme-matching.md) | Match `/v1/…` with `/v2/…`, or versioned media types, when a new API version is published alongside the old one. | medium / low | Idea |
 
 ### Large specs and noise
 
-| Idea | What it does | Value / effort |
-|---|---|---|
-| **★ Bulk-change collapsing** | The same change made in many places without a shared `$ref` (e.g. a new `X-Request-Id` header added inline to 300 operations) is grouped into **one** finding: "header added to 300 operations (list)". Detected by grouping change records by kind and normalised value. This extends root-cause grouping to copy-pasted specs. | high / low |
-| **★ Cached base index** | Store the parsed base's index and hashes in a content-addressed cache, keyed by the file's SHA-256. In CI the base (main) is usually unchanged between runs, so only the revision is parsed. | high / low |
-| **Spec quality side-report** | The hashes already find identical inline schemas, so list them ("this object appears inline 42 times; consider a component"). They're the root cause of the bulk changes above. | medium / low |
-| **Portfolio mode** | Compare many specs in one run, including shared schema files (`common/errors.yaml`) that several APIs reference. A change to a shared file reports **which APIs** it affects. This needs external file `$ref`s, which are out of scope for now. | high / high |
+| Idea | What it does and why | Value / effort | Status |
+|---|---|---|---|
+| [**★ Bulk-change collapsing**](feature-backlog/bulk-change-collapsing.md) | Group the same change made in many places without a shared `$ref` into one "N operations" finding. | high / low | Built |
+| [**★ Cached base index**](feature-backlog/cached-base-index.md) | Cache the parsed base by content hash so CI only parses the revision. | high / low | Built |
+| [**Spec quality side-report**](feature-backlog/spec-quality-side-report.md) | List identical inline schemas found by the content hashes ("appears inline 42 times; consider a component"). | medium / low | Idea |
+| [**Portfolio mode**](feature-backlog/portfolio-mode.md) | Compare many specs in one run and report which APIs a change to a shared schema file affects. | high / high | Idea |
 
 ### Ownership and governance
 
-| Idea | What it does | Value / effort |
-|---|---|---|
-| **★ Ownership routing** | Read owners from `x-owner` on operations or tags, or from a CODEOWNERS-style file mapping paths to teams. Each finding lists the owning teams, and reports can be split per team ("findings for @payments"). An acknowledgement can require an owner of the affected operations. | high / medium |
-| **Git blame for findings** | Using the source maps, find the commit and author that introduced each change in the revision file. Useful when one PR or release covers many commits. | medium / low |
-| **Deprecation ledger** | A standing report of everything deprecated: since which version, the sunset date, and overdue removals. It also checks that deprecated operations document the `Deprecation` and `Sunset` response headers (RFC 9745 / RFC 8594). | medium / low |
-| **Breaking-change budget** | A policy limit per release or per audience, e.g. "at most 0 breaking changes for `partner`, 3 for `internal`". | low / low |
-| **Usage-weighted severity** | Import call counts per operation (from gateway logs or analytics, as a simple CSV/JSON) and use them to rank findings or lower their severity: "removed operation had 0 calls in 30 days". | high / medium |
+| Idea | What it does and why | Value / effort | Status |
+|---|---|---|---|
+| [**★ Ownership routing**](feature-backlog/ownership-routing.md) | Read owners from `x-owner` or a CODEOWNERS-style file, list owning teams on each finding and split reports per team. | high / medium | Planned |
+| [**Git blame for findings**](feature-backlog/git-blame-for-findings.md) | Use the source maps to find the commit and author that introduced each change. | medium / low | Idea |
+| [**Deprecation ledger**](feature-backlog/deprecation-ledger.md) | A standing report of everything deprecated, with sunset dates, overdue removals and `Deprecation`/`Sunset` header checks. | medium / low | Idea |
+| [**Breaking-change budget**](feature-backlog/breaking-change-budget.md) | A policy limit on breaking changes per release or audience. | low / low | Idea |
+| [**Usage-weighted severity**](feature-backlog/usage-weighted-severity.md) | Import call counts per operation to rank findings or lower severity for unused operations. | high / medium | Idea |
 
 ### Developer experience
 
-| Idea | What it does | Value / effort |
-|---|---|---|
-| **Editor integration (LSP)** | Run the engine as a language server against `main`, so breaking changes show up as editor warnings while the spec is edited, before a PR exists. The engine is pure functions, so this is mostly a wrapper. | high / medium |
-| **`api-diff explain <finding-id>`** | Prints the full reasoning for one finding: the rule, the usages, where the severity came from, the counter-example and the fix. | medium / low |
-| **Rule plugins** | Custom rules written in TypeScript against the change-record API, tested with the same `base/revision/expected` corpus format as the built-in rules. Covers house rules such as "every list operation must keep its pagination parameters". | high / medium |
-| **Lint only what changed** | Rule plugins can declare `scope: changed`, so house rules apply only to new and changed parts and legacy parts don't block a PR. | high / low |
-| **Watch mode** | `api-diff --watch` re-runs on save. Cheap with the cached base index. | low / low |
+| Idea | What it does and why | Value / effort | Status |
+|---|---|---|---|
+| [**Editor integration (LSP)**](feature-backlog/editor-integration-lsp.md) | Run the engine as a language server so breaking changes show up in the editor before a PR exists. | high / medium | Idea |
+| [**`api-diff explain <finding-id>`**](feature-backlog/explain-command.md) | Print the full reasoning for one finding: rule, usages, severity source, counter-example and fix. | medium / low | Idea |
+| [**Rule plugins**](feature-backlog/rule-plugins.md) | Custom TypeScript rules against the change-record API, tested with the golden-case format. | high / medium | Idea |
+| [**Lint only what changed**](feature-backlog/lint-only-what-changed.md) | Let plugin rules declare `scope: changed` so house rules apply only to new and changed parts. | high / low | Idea |
+| [**Watch mode**](feature-backlog/watch-mode.md) | `api-diff --watch` re-runs on save. | low / low | Idea |
 
 ### Enterprise operation
 
-| Idea | What it does | Value / effort |
-|---|---|---|
-| **Offline and deterministic** | No network calls, no telemetry, byte-identical output for the same inputs. Works in air-gapped CI. | required / low |
-| **Example value redaction** | `example` values can contain real customer data. A config option masks example values in reports (keeps their type and shape). | medium / low |
-| **Signed reports** | The recorded hashes (files, policy, tool) plus a hash of the report, optionally signed, so audit records can be shown to be unchanged. | low / medium |
-| **Memory-lean index** | Intern strings and store graph edges in typed arrays, so very large specs (50 MB+) fit in CI runners with little memory. | medium / medium |
+| Idea | What it does and why | Value / effort | Status |
+|---|---|---|---|
+| [**Offline and deterministic**](feature-backlog/offline-and-deterministic.md) | No network calls or telemetry, and byte-identical output for the same inputs, so it works in air-gapped CI. | required / low | Idea |
+| [**Example value redaction**](feature-backlog/example-value-redaction.md) | Mask `example` values in reports, keeping their type and shape, since they can hold real customer data. | medium / low | Idea |
+| [**Signed reports**](feature-backlog/signed-reports.md) | Hash (and optionally sign) the inputs and the report so audit records can be shown to be unchanged. | low / medium | Idea |
+| [**Memory-lean index**](feature-backlog/memory-lean-index.md) | Intern strings and store graph edges in typed arrays so 50 MB+ specs fit in small CI runners. | medium / medium | Idea |

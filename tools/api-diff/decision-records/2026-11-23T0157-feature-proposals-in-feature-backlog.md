@@ -22,15 +22,15 @@ PLAN.md section 8 already holds many backlog ideas that may or may not be built.
 
 - Every new feature proposal or design for a tool goes in `tools/<tool>/feature-backlog/<slug>.md`, with a header table (**Status**, **Summary**, **Value / effort**, **Plan entry**) and the background, options, sketches, choices so far and open questions.
 - `feature-backlog/README.md` lists the proposals with their status (*Idea*, *Planned*, *Built*, *Dropped*).
-- PLAN.md section 8, *Detailed proposals*, has one short row per proposal: what it does, why it's worth having, value/effort, and a link.
+- PLAN.md section 8 has one short row per proposal, in the table for its area: what it does, why it's worth having, value/effort, status and a link.
 - A proposal isn't a decision. Choices in it are asked again when work starts and recorded as decision records, which the proposal then links to.
 - The root CLAUDE.md states the convention, so it applies to every tool and every future session.
 
 ## Impacts
 
 - New `feature-backlog/` directory with a README and the first proposal, [overlays and a review loop](../feature-backlog/overlays-and-review-loop.md).
-- PLAN.md section 8 gains a *Detailed proposals* table.
-- Existing backlog rows in PLAN.md stay as they are; any of them can move to its own file when it's worked out in more detail.
+- PLAN.md section 8 gains a *Review and publishing* area for the overlays proposal, and a status column.
+- Every existing backlog row in PLAN.md moved to its own file (2026-11-23, asked and answered), unchanged apart from links, with status *Built* for bulk-change collapsing and the cached base index and *Planned* for ownership routing (M9).
 
 ## References
 

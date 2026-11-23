@@ -5,7 +5,7 @@
 | **Status** | Idea: brainstormed on 2026-11-22 and 2026-11-23, not scheduled |
 | **Summary** | Use OpenAPI Overlays to keep tooling hints out of the published spec and to diff the published view; replace the acknowledgements file with a typed review file; let reviewers annotate findings in the CLI or HTML report and feed their decisions into later runs. |
 | **Value / effort** | high / high (can be built in the steps in [Suggested order](#11-suggested-order)) |
-| **Plan entry** | [PLAN.md section 8, *Detailed proposals*](../PLAN.md#detailed-proposals) |
+| **Plan entry** | [PLAN.md section 8, *Review and publishing*](../PLAN.md#review-and-publishing) |
 
 This page collects a brainstorm. The choices marked **Leaning** were picked during it, but none of them is a decision yet. When work starts, each one is asked again and recorded in [decision-records/](../decision-records/README.md).
 
@@ -280,4 +280,4 @@ Picked during the brainstorm. Each is still to be confirmed and recorded as a de
 - [RFC 9535: JSONPath](https://www.rfc-editor.org/rfc/rfc9535)
 - POLICY.md sections 8, 11 and 12; [docs/spec-authors.md](../docs/spec-authors.md)
 - Decision records: [acknowledgements](../decision-records/2026-11-22T0319-acknowledgements.md), [in-spec hint semantics](../decision-records/2026-11-21T2109-in-spec-hint-semantics.md), [overrides per operation](../decision-records/2026-11-21T1929-overrides-per-operation.md), [exclusion sets](../decision-records/2026-11-21T2138-extension-kinds-and-exclusion-sets.md), [report, not gate](../decision-records/2026-11-22T0653-report-not-gate.md), [YAML positions](../decision-records/2026-11-21T0436-yaml-positions-from-parser-events.md), [rename detection](../decision-records/2026-11-22T1631-rename-detection.md)
-- PLAN.md section 8 backlog items it touches: *Ownership routing*, *Portfolio mode*, *Cached base index*
+- Related backlog ideas: [ownership routing](ownership-routing.md), [portfolio mode](portfolio-mode.md), [cached base index](cached-base-index.md)

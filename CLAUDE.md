@@ -14,6 +14,6 @@ When a reply needs the user's input on one or more decisions (accepting a propos
 A new feature proposal or design for a tool (a brainstorm write-up, a backlog idea worked out in detail) goes in its own file, `tools/<tool>/feature-backlog/<slug>.md`, not in the tool's PLAN.md.
 
 - Give the file a header table (**Status**, **Summary**, **Value / effort**, **Plan entry**) and list it in `tools/<tool>/feature-backlog/README.md`. Create both if the tool has no `feature-backlog/` yet.
-- Add a short entry to the tool's PLAN.md backlog (in api-diff: section 8, *Detailed proposals*): what it does, why it's worth having, value/effort and a link to the file. Keep the details out of PLAN.md.
+- Add a short entry to the tool's PLAN.md backlog (in api-diff: section 8, in the table for its area): what it does, why it's worth having, value/effort and a link to the file. Keep the details out of PLAN.md.
 - A proposal isn't a decision. When work on it starts, ask about its choices again and record them as decision records; then link them from the proposal.
 - See `tools/api-diff/decision-records/2026-11-23T0157-feature-proposals-in-feature-backlog.md`.

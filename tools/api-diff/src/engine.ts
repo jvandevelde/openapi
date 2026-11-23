@@ -24,12 +24,13 @@ import { HintIndex } from './policy/hints.ts';
 import { DEFAULT_OWNERS, OwnerIndex, ownerProblems } from './policy/owners.ts';
 import { parseHintRules } from './policy/policy.ts';
 import type { Policy } from './policy/policy.ts';
-import type { Kind, Location, OperationSummary, Snippet } from './types.ts';
+import type { Kind, OperationSummary } from './types.ts';
 import type { Change, ComparedSide, Counts, FailOn, Finding, Profile, Result, Side, State } from './types.ts';
 import { VERSION } from './version.ts';
 import { isChange } from './render/common.ts';
 import type { Places } from './render/config.ts';
 import { renderTemplate } from './render/template.ts';
+import { snippetsFor } from './snippets.ts';
 
 /** The spec context and owners of each result, for report views (include.extensions, include.owners, --uses). Not part of the JSON. */
 const PLACES = new WeakMap<Result, Places>();
@@ -204,7 +205,7 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   const advice = !unrelated && b.model && r.model ? bumpAdvice(findings, b.compared, r.compared) : undefined;
   if (advice) result.advice = advice;
   if (policy?.file && policy.sha256) result.policy = { file: policy.file, sha256: policy.sha256 };
-  if (opts.snippets) result.snippets = snippetsFor(findings, b.model?.docs, r.model?.docs);
+  if (opts.snippets) Object.assign(result, snippetsFor(findings, b.model?.docs, r.model?.docs));
   if (context) {
     const ops: Record<string, OperationSummary> = {};
     for (const f of findings) {
@@ -221,31 +222,6 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   }
   return result;
 
-}
-
-export const SNIPPET_CONTEXT = 4;
-
-/** A few lines around each finding's base and revision locations. */
-function snippetsFor(findings: Finding[], base: DocumentSet | undefined, rev: DocumentSet | undefined): Result['snippets'] {
-  const files = (docs: DocumentSet | undefined): Map<string, string[]> => new Map([...(docs?.files.values() ?? [])].map((f) => [f.display, f.text.split(/\r?\n/)]));
-  const [bf, rf] = [files(base), files(rev)];
-  const cut = (lines: Map<string, string[]>, l: Location | undefined): Snippet | undefined => {
-    const text = l?.line ? lines.get(l.file) : undefined;
-    if (!l?.line || !text) return undefined;
-    const start = Math.max(1, l.line - SNIPPET_CONTEXT);
-    const end = Math.min(text.length, l.line + SNIPPET_CONTEXT);
-    return { file: l.file, start, line: l.line, lines: text.slice(start - 1, end).map((s) => (s.length > 300 ? `${s.slice(0, 300)}…` : s)) };
-  };
-  const out: NonNullable<Result['snippets']> = {};
-  for (const f of findings) {
-    const s: { base?: Snippet; revision?: Snippet } = {};
-    const b = cut(bf, f.base);
-    const r = cut(rf, f.revision);
-    if (b) s.base = b;
-    if (r) s.revision = r;
-    if (b || r) out[f.id] = s;
-  }
-  return out;
 }
 
 /** A $ref that now points at a renamed component's new name is the rename itself, reported once as component-renamed. */

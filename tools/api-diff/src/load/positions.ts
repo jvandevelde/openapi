@@ -53,9 +53,48 @@ export class PositionIndex {
     return best;
   }
 
+  /**
+   * Offset of whatever follows the node at `segments` in the source: the next
+   * sibling of the node or of its nearest ancestor that has one (keys and
+   * items are recorded in document order). Undefined if the node runs to the
+   * end of the document, or if it can't be found.
+   */
+  endOffsetOf(segments: readonly string[]): number | undefined {
+    let node: unknown = this.root;
+    let next: number | undefined;
+    for (const seg of segments) {
+      if (node === null || typeof node !== 'object') return undefined;
+      const offs = this.#offsets.get(node);
+      if (!offs) return undefined;
+      if (Array.isArray(offs)) {
+        const i = Number(seg);
+        if (offs[i] === undefined) return undefined;
+        if (offs[i + 1] !== undefined) next = offs[i + 1];
+      } else {
+        if (!offs.has(seg)) return undefined;
+        let found = false;
+        for (const [k, off] of offs) {
+          if (found) { next = off; break; }
+          if (k === seg) found = true;
+        }
+      }
+      node = (node as Record<string, unknown>)[seg];
+    }
+    return next;
+  }
+
+  /** Number of lines in the source. */
+  get lineCount(): number {
+    return this.#lineStarts.length;
+  }
+
   /** 1-based line and column of the node at `segments` (or its nearest ancestor). */
   lineCol(segments: readonly string[]): { line: number; column: number } {
-    const off = this.offsetOf(segments);
+    return this.lineColAt(this.offsetOf(segments));
+  }
+
+  /** 1-based line and column of a source offset. */
+  lineColAt(off: number): { line: number; column: number } {
     let lo = 0;
     let hi = this.#lineStarts.length - 1;
     while (lo < hi) {

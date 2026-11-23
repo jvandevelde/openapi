@@ -114,6 +114,8 @@ export interface Result {
   policy?: { file: string; sha256: string };
   /** Source lines around each finding, by finding ID (only when asked for, e.g. by the explore report). */
   snippets?: Record<string, { base?: Snippet; revision?: Snippet }>;
+  /** With snippets: the source lines their scopes and `$ref` targets cover, by side, file and line number. */
+  sourceLines?: { base: Record<string, Record<number, string>>; revision: Record<string, Record<number, string>> };
   /** The operations findings mention (as subject or impact), for grouping and labels; the revision's details win. */
   operations?: Record<string, OperationSummary>;
   /** --uses: the consumer's operations the reports were narrowed to, and the entries that matched no operation. */
@@ -130,6 +132,20 @@ export interface Snippet {
   /** The line the finding points at. */
   line: number;
   lines: string[];
+  /** The pointer's steps from the document root, each with its line (the breadcrumb). */
+  path?: { key: string; line: number }[];
+  /** The enclosing schema or operation (or the outermost node on the path that fits), in `file`; its lines are in `sourceLines`. */
+  scope?: SnippetBlock;
+  /** When the node is a `$ref`: the node it points at; its lines are in `sourceLines`, under `file`. */
+  ref?: SnippetBlock & { file: string; name: string };
+}
+
+/** A node's lines: `start` to `end`, with `line` the one to highlight. */
+export interface SnippetBlock {
+  pointer: string;
+  start: number;
+  end: number;
+  line: number;
 }
 
 export interface OperationSummary {

@@ -4,6 +4,8 @@ Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, 
 
 > **Status: milestone M10.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (all 133 rules implemented, including rename detection). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions, owners), acknowledgements and in-spec `x-api-diff` hints. Each finding lists the teams that own it (`x-owner` or the policy). Reports: `review` (the default), `ci`, `summary`, `changelog` (with migration notes for clients), `sdk`, `explore` (interactive HTML) and `audit` (for governance), custom reports with Mustache templates, consumer views (`--uses`), plus a step-by-step `history` timeline and a ready-to-copy PR workflow. Released as one file, `api-diff.mjs`, on [GitHub releases](https://github.com/jvandevelde/openapi/releases) tagged `api-diff-v<version>`.
 
+**New to it?** Start with [docs/getting-started.md](docs/getting-started.md): how to download it, each command and report with its default behaviour, and where to change the defaults.
+
 ## Requirements
 
 Node.js 22.18 or later. The release file has every dependency bundled; from the sources, Node runs the TypeScript directly, with no build step.

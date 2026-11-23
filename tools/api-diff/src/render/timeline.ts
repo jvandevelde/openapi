@@ -3,7 +3,7 @@
 
 import type { History, RevertLink } from '../history.ts';
 import type { Finding, Result, Severity } from '../types.ts';
-import { directionOf, isChange, isVersion, mergeDirections, type Entry } from './common.ts';
+import { asciiHtml, directionOf, isChange, isVersion, mergeDirections, type Entry } from './common.ts';
 import { scriptJson } from './explore.ts';
 import { explorerLink } from './config.ts';
 
@@ -174,7 +174,7 @@ export function renderTimelineHtml(h: History, explorerUrl?: string): string {
   }
   const net = counts(shown(h.net));
   const title = `${h.spec}: ${h.range.start.rev} → ${h.range.end.rev}`;
-  return `<!doctype html>
+  return asciiHtml(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -198,5 +198,5 @@ export function renderTimelineHtml(h: History, explorerUrl?: string): string {
 <script>${SCRIPT}</script>
 </body>
 </html>
-`;
+`);
 }

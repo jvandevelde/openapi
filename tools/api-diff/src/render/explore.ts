@@ -16,7 +16,7 @@
 
 import { clientNote } from '../rules/notes.ts';
 import type { Finding, Result } from '../types.ts';
-import { adviceLine, isNotice, isVersion, mergeDirections } from './common.ts';
+import { adviceLine, asciiHtml, isNotice, isVersion, mergeDirections } from './common.ts';
 import { explorerLink } from './config.ts';
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
@@ -296,7 +296,7 @@ export function renderExplore(r: Result, explorerUrl?: string): string {
   const title = r.compared.revision.title ?? r.compared.base.title ?? 'API';
   const n = r.counts;
   const check = (name: string, value: string, label: string): string => `<label><input type="checkbox" name="${name}" value="${value}" checked> ${label}</label>`;
-  return `<!doctype html>
+  return asciiHtml(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -327,5 +327,5 @@ export function renderExplore(r: Result, explorerUrl?: string): string {
 <script>${SCRIPT}</script>
 </body>
 </html>
-`;
+`);
 }

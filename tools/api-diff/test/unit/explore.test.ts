@@ -198,3 +198,10 @@ test('the page embeds the source lines for expanding', async () => {
   const data = JSON.parse(renderExplore(r).match(/id="data">([\s\S]*?)<\/script>/)![1]!);
   assert.equal(data.sourceLines.revision['b.yaml']['15'], '    Node:');
 });
+
+import { asciiHtml } from '../../src/render/common.ts';
+test('HTML pages are pure ASCII, so a wrong charset guess cannot garble them', () => {
+  const html = '<p title="café">🦄 · é</p><style>a::before { content: \'▸\'; }</style><script>const s = "→🦄";</script>';
+  assert.equal(asciiHtml(html), '<p title="caf&#xe9;">&#x1f984; &#xb7; &#xe9;</p><style>a::before { content: \'\\0025b8\'; }</style><script>const s = "\\u2192\\ud83e\\udd84";</script>');
+  assert.equal(eval(asciiHtml('<script>"→🦄"</script>').slice(8, -9)), '→🦄');
+});

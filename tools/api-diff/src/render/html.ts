@@ -3,7 +3,7 @@
 // locally. Light and dark themes follow the viewer's settings.
 
 import type { Finding, Result, Severity } from '../types.ts';
-import { ackText, adviceLine, directionOf, isChange, isNotice, isVersion, mergeDirections, ruleWithoutDirection, usesLine, where, type Entry } from './common.ts';
+import { ackText, adviceLine, asciiHtml, directionOf, isChange, isNotice, isVersion, mergeDirections, ruleWithoutDirection, usesLine, where, type Entry } from './common.ts';
 import { docsSummary, GROUP_NOUN, groupFindings, ownersText, type Group, type GroupBy } from './review.ts';
 import { summaryData } from './summary.ts';
 import { auditData, type AuditOptions } from './audit.ts';
@@ -42,7 +42,7 @@ table.grid { border-collapse: collapse; } .grid th, .grid td { border: 1px solid
 `;
 
 function page(title: string, body: string): string {
-  return `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${esc(title)}</title>\n<style>${CSS}</style>\n</head>\n<body>\n<main>\n${body}\n</main>\n</body>\n</html>\n`;
+  return asciiHtml(`<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${esc(title)}</title>\n<style>${CSS}</style>\n</head>\n<body>\n<main>\n${body}\n</main>\n</body>\n</html>\n`);
 }
 
 const sev = (s: Severity): string => `<span class="sev ${s}">${s}</span>`;

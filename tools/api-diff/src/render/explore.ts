@@ -65,6 +65,10 @@ details.g > .rows { padding:0 8px 4px; } .rows.in-place .subj { display:none; }
 .side h4 { margin:0; padding:4px 8px; font-size:12px; font-weight:600; border-bottom:1px solid var(--line); color:var(--muted); }
 pre { margin:0; padding:4px 0; } .ln { display:inline-block; width:44px; padding-right:8px; text-align:right; color:var(--muted); user-select:none; }
 .hit { background:var(--hl); display:block; }
+details.ops > summary { cursor:pointer; color:var(--info); width:max-content; }
+details.ops ul { margin:4px 0 0; padding:4px 8px; list-style:none; width:max-content; max-width:100%; max-height:16em; overflow:auto; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
+details.ops li { white-space:nowrap; }
+.g-ops { display:flex; gap:8px; align-items:baseline; margin:0 10px 6px; }
 @media (max-width:700px) { .sides { grid-template-columns:1fr; } .body { padding-left:10px; } details.f > summary, details.g > summary { grid-template-columns:1fr; } }
 `;
 
@@ -88,11 +92,20 @@ const RANK = { error: 0, warn: 1, info: 2 };
 const worst = (fs) => fs.reduce((a, b) => (RANK[b.severity] < RANK[a.severity] ? b : a));
 const dirOf = (f) => (/-in-request$/.test(f.rule) ? 'request' : /-in-response$/.test(f.rule) ? 'response' : '');
 const noteEl = (note) => el('div', { class: 'note' }, ...note.split(String.fromCharCode(96)).map((part, i) => (i % 2 ? el('code', {}, part) : part)));
+// A list of operations: up to 3 inline; more fold into a count that expands to one per line.
+function opsList(ops) {
+  if (ops.length <= 3) return el('span', { class: 'mono' }, ops.join(', '));
+  const d = el('details', { class: 'ops' }, el('summary', {}, ops.length + ' operations'));
+  const ul = el('ul', { class: 'mono' });
+  for (const o of ops) ul.append(el('li', {}, o));
+  d.append(ul);
+  return d;
+}
 // The per-finding facts: rule (and kind), severity source, ID, affected operations, acknowledgement, exclusions, links.
 function facts(dl, f, withKind) {
   const row = (k, v) => { if (v) dl.append(el('dt', {}, k), el('dd', {}, v)); };
   row('rule', f.rule); if (withKind) row('kind', f.kind); row('severity from', f.severitySource); row('finding id', f.id);
-  row('affects', (f.impact || []).join(', '));
+  if ((f.impact || []).length) row('affects', opsList(f.impact));
   if (f.acknowledged) row('acknowledged', 'until ' + f.acknowledged.expires + (f.acknowledged.owner ? ' by ' + f.acknowledged.owner : '') + ': ' + f.acknowledged.reason);
   if (f.exclusions) row('exclusion sets', f.exclusions.join(', '));
   if (f.links) {
@@ -161,8 +174,11 @@ function groupNode(g, section) {
   const count = el('span', { class: 'muted' });
   const ops = [...new Set(g.rows.flatMap((r) => r.parts.flatMap((p) => p.f.impact || [])))].sort();
   const head = el('div', {}, el('span', { class: 'subj' }, g.key), ' ', count);
-  if (section === 'changes' && ops.length) head.append(el('span', { class: 'muted' }, ' · affects ' + ops.length + ' operation' + (ops.length === 1 ? '' : 's') + ': ' + ops.slice(0, 5).join(', ') + (ops.length > 5 ? ', …' : '')));
+  // The header gives only the count (a toggle can't sit inside a summary); the list is at the top of the group.
+  const showOps = section === 'changes' && ops.length > 0;
+  if (showOps) head.append(el('span', { class: 'muted' }, ' · affects ' + ops.length + ' operation' + (ops.length === 1 ? '' : 's')));
   const d = el('details', { class: 'g' }, el('summary', {}, badge, head));
+  if (showOps) d.append(el('div', { class: 'g-ops' }, el('span', { class: 'muted' }, 'affects'), opsList(ops)));
   // Rows in a schema or operation group don't repeat its name.
   const inner = el('div', { class: section === 'changes' ? 'rows in-place' : 'rows' });
   d.append(inner);

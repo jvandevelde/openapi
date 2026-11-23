@@ -259,6 +259,8 @@ A template for a partner changelog, as `./templates/changelog.html` above:
 
 `finding`, `reason` and `expires` are required; unknown keys, a malformed ID (12 hex characters, the `id` of a finding in any report) or the same finding twice are errors.
 
+**Adding an entry from the command line:** `api-diff ack <finding-id> --reason <text> --expires <YYYY-MM-DD> [--owner <team>]` appends a checked entry to `api-diff.ack.yaml` (or `--acknowledgements <file>`; `-C <dir>` as for a comparison), creating the file if needed. Existing entries and comments are kept as written. It refuses a malformed ID, an empty reason, an expiry date that has passed, and a finding that's already acknowledged. It doesn't run a comparison, so a mistyped ID shows up on the next run as `acknowledgement-stale`. Every text report shows each finding's ID (`· id 1e04c5d74301`), and the `review` and `ci` reports end with a reminder of this command while a change at `warn` or above is open.
+
 - **Effect:** an acknowledged finding is still reported with its severity, marked `acknowledged` in JSON and "acknowledged until …" in text, but it doesn't fail CI (`--fail-on`) and doesn't make the `state` `breaking`. `counts.acknowledged` says how many there are.
 - **Expiry:** `expires` is the last day it applies, checked against today (UTC) or `--as-of`. After that the finding counts again, and `acknowledgement-expired` (`info`) says why it's back.
 - **Stale:** an acknowledgement whose finding no longer appears (fixed, or changed so it has a new ID) is `acknowledgement-stale` (`info`), so the file can be cleaned up.

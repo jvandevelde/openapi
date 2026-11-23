@@ -54,10 +54,11 @@ node "$HOME/bin/api-diff.mjs" HEAD:"$spec" :"$spec" --report ci --fail-on error 
 A blocked commit looks like this:
 
 ```
-ERROR  #/components/schemas/NewPet  maxLength decreased (50 → 20) at /properties/name/maxLength  :openapi.yaml:87 · max-length-decreased-in-request
+ERROR  #/components/schemas/NewPet  maxLength decreased (50 → 20) at /properties/name/maxLength  :openapi.yaml:87 · max-length-decreased-in-request · id 8b48ac001f7e
 
 3 findings: 1 error, 1 warn, 1 info · state: breaking · fails CI at error and above
 FAIL: 1 finding at error or above
+To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-MM-DD> (POLICY.md section 11)
 api-diff: breaking changes in openapi.yaml (see above). Commit with --no-verify to override.
 ```
 
@@ -137,14 +138,21 @@ Every report then keeps only the changes that reach those operations. The exit c
 
 ## 8. Accepting a breaking change
 
-If a breaking change is intended and its consumers have been told, record that decision so the change stops failing checks. Every finding has a stable 12-character ID, shown in `audit`, `explore` and the JSON result:
+If a breaking change is intended and its consumers have been told, record that decision so the change stops failing checks. Every finding has a stable 12-character ID, shown at the end of its line in every report (the PR comment and CI log included):
 
-```sh
-api-diff --base main openapi.yaml -f json | jq -r '.findings[] | select(.severity == "error") | "\(.id)  \(.rule)  \(.message)"'
-# 1e04c5d74301  operation-removed  operation removed
+```
+ERROR  DELETE /pets/{petId}  operation removed  v1.0.0:openapi.yaml:63 · operation-removed · id 1e04c5d74301
 ```
 
-Add the ID to `api-diff.ack.yaml` next to the spec, with a reason and an expiry date:
+Accept it with `api-diff ack`, run next to the spec, and commit the file it writes with your change:
+
+```sh
+api-diff ack 1e04c5d74301 --reason "deletePet was beta; the two partners using it have moved to archiving." \
+  --owner @pets-team --expires 2027-03-31
+# Created api-diff.ack.yaml: 1e04c5d74301 acknowledged until 2027-03-31. Commit it with your change; …
+```
+
+It checks the entry (ID format, a reason, an expiry date in the future, not already acknowledged) and appends it, keeping the rest of the file as written. Or edit `api-diff.ack.yaml` by hand:
 
 ```yaml
 # api-diff.ack.yaml

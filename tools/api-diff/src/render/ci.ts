@@ -3,7 +3,7 @@
 // leaving out acknowledged ones, and says whether the run fails.
 
 import type { Result, Severity } from '../types.ts';
-import { BOLD, countsLine, findingLine, header, painter, type TxtOptions } from './common.ts';
+import { ackHint, BOLD, countsLine, findingLine, header, painter, type TxtOptions } from './common.ts';
 import { severityAtLeast } from '../classify/classify.ts';
 
 export function ciThreshold(failOn: Severity | 'never' | undefined): Severity {
@@ -23,6 +23,6 @@ export function renderCi(r: Result, opts: TxtOptions): string {
   const failing = opts.failOn !== undefined && opts.failOn !== 'never' && shown.length > 0;
   out.push('', c(BOLD, countsLine(r, opts)));
   if (failing) out.push(c(BOLD, `FAIL: ${shown.length} finding${shown.length === 1 ? '' : 's'} at ${threshold} or above`));
-  out.push('');
+  out.push(...ackHint(r, c), '');
   return out.join('\n');
 }

@@ -10,7 +10,7 @@
 // budget is reached, the remaining groups are listed one line each.
 
 import type { Finding, Result, Severity } from '../types.ts';
-import { affects, BOLD, COLOR, countsLine, DIM, findingLine, header, isChange, isNotice, isVersion, LABEL, painter, plural, type TxtOptions } from './common.ts';
+import { ackHint, affects, BOLD, COLOR, countsLine, DIM, findingLine, header, isChange, isNotice, isVersion, LABEL, painter, plural, type TxtOptions } from './common.ts';
 
 export interface ReviewOptions extends TxtOptions {
   maxChars?: number;
@@ -160,6 +160,6 @@ export function renderReview(r: Result, opts: ReviewOptions): string {
     out.push('');
   }
 
-  out.push(c(BOLD, countsLine(r, opts)), '');
+  out.push(c(BOLD, countsLine(r, opts)), ...ackHint(r, c), '');
   return out.join('\n');
 }

@@ -75,11 +75,11 @@ export function usesLine(r: Result): string | undefined {
   return `only changes that reach ${plural(u.operations.length, 'operation')} listed in ${u.file}${u.unmatched.length ? ` (${u.unmatched.length} ${u.unmatched.length === 1 ? 'entry' : 'entries'} matched nothing: ${u.unmatched.slice(0, 3).join(', ')}${u.unmatched.length > 3 ? ', …' : ''})` : ''}`;
 }
 
-/** One finding: severity, subject, message, location and rule; then acknowledgement, if any. */
+/** One finding: severity, subject, message, location, rule and ID; then acknowledgement, if any. */
 export function findingLine(f: Finding, c: Paint, opts: { subject?: boolean; width?: number; indent?: string; label?: boolean } = {}): string[] {
   const loc = where(f.revision ?? f.base);
   const subject = opts.subject === false ? '' : `${f.subject.padEnd(opts.width ?? 0)}  `;
-  const tail = c(DIM, loc ? `${loc} · ${f.rule}` : f.rule);
+  const tail = c(DIM, `${loc ? `${loc} · ` : ''}${f.rule} · id ${f.id}`);
   const label = opts.label === false ? '-' : c(COLOR[f.severity], LABEL[f.severity]);
   const out = [`${opts.indent ?? ''}${label}  ${subject}${f.message}  ${tail}`];
   if (f.acknowledged) {
@@ -94,6 +94,16 @@ export function countsLine(r: Result, opts: TxtOptions): string {
   const n = r.counts;
   const gate = opts.failOn === undefined ? '' : opts.failOn === 'never' ? ' · not failing CI (--fail-on never)' : ` · fails CI at ${opts.failOn} and above`;
   return `${plural(n.total, 'finding')}: ${n.bySeverity.error} error, ${n.bySeverity.warn} warn, ${n.bySeverity.info} info${n.acknowledged ? ` (${n.acknowledged} acknowledged)` : ''} · state: ${r.state}${gate}`;
+}
+
+/**
+ * How to accept a change, for the review and ci reports: shown when a change
+ * at warn or above isn't acknowledged, since those are the ones that can fail CI.
+ */
+export function ackHint(r: Result, c: Paint): string[] {
+  // Version findings are fixed by bumping the version, not by accepting them.
+  const open = r.findings.some((f) => !f.acknowledged && f.severity !== 'info' && !isNotice(f) && !isVersion(f));
+  return open ? [c(DIM, 'To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-MM-DD> (POLICY.md section 11)')] : [];
 }
 
 export function affects(ops: string[], max = 5): string {

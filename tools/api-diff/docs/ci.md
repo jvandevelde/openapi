@@ -100,6 +100,8 @@ reports:
 #   fail-on: error           # uncomment to fail the check on breaking changes
 ```
 
+**Accepting a change in a PR:** each finding in the comment ends with its `id`. The PR's author runs `api-diff ack <id> --reason "…" --expires <YYYY-MM-DD>` locally (or edits `api-diff.ack.yaml`) and pushes the file with the PR; the next run marks the finding acknowledged, and reviewers see the reason in the comment. Review that file like code: CODEOWNERS on `api-diff.ack.yaml` makes sure the right people approve what is accepted.
+
 To make the check required, add the `api-diff` job to the branch protection rules. With the default `--fail-on never` it always passes, so it guarantees the report is produced without blocking intended changes; with `fail-on` set, it blocks until the changes are fixed or acknowledged.
 
 ## Specs split across files

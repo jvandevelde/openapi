@@ -50,6 +50,14 @@ interface Eff {
   unions: { kind: 'oneOf' | 'anyOf'; branches: Pos[]; at: Pos }[];
 }
 
+/** Keywords that only constrain one type, used to infer the type of an untyped union branch. */
+const TYPE_KEYWORDS: [type: string, kws: string[]][] = [
+  ['object', ['properties', 'required', 'additionalProperties', 'patternProperties', 'minProperties', 'maxProperties', 'propertyNames', 'dependentRequired', 'dependentSchemas', 'unevaluatedProperties']],
+  ['array', ['items', 'prefixItems', 'minItems', 'maxItems', 'uniqueItems', 'contains', 'minContains', 'maxContains', 'unevaluatedItems']],
+  ['string', ['minLength', 'maxLength', 'pattern', 'contentEncoding', 'contentMediaType']],
+  ['number', ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf']],
+];
+
 const LIMITS: [kw: string, kind: 'max' | 'min', up: string, down: string][] = [
   ['maxLength', 'max', 'max-length-increased', 'max-length-decreased'],
   ['minLength', 'min', 'min-length-increased', 'min-length-decreased'],
@@ -391,6 +399,13 @@ export class SchemaEngine {
     let set = eff.types.set;
     if (depth > 10) return set;
     const meet = (a: Set<string>, b: Set<string>): Set<string> => new Set([...a].filter((x) => b.has(x) || (x === 'integer' && b.has('number'))));
+    // A union branch without `type` whose keywords all belong to one type is taken to mean that type
+    // (`{properties: …}` is meant as an object), though JSON Schema would accept any value.
+    if (!set && depth > 0 && !eff.unions.length) {
+      const has = (k: string): boolean => (k === 'properties' ? eff.properties.size > 0 : k === 'required' ? eff.required.size > 0 : eff.kw.has(k));
+      const found = TYPE_KEYWORDS.filter(([, kws]) => kws.some(has)).map(([t]) => t);
+      if (found.length === 1) set = new Set(found);
+    }
     // Each union (allOf can merge in several) limits the types to those of its branches.
     for (const u of eff.unions) {
       let branches: Set<string> | undefined = new Set();

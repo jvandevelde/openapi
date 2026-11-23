@@ -17,7 +17,9 @@ import { createHash } from 'node:crypto';
 import { MemoryParseCache } from './load/cache.ts';
 import { DocumentSet, LoadError } from './load/documents.ts';
 import { compareOpened, type CompareOptions } from './engine.ts';
-import { checkRev, git, GitSource, locate, resolveCommit } from './sources/git.ts';
+import { checkRev, git, GitSource, locate, resolveCommit, tagGlob } from './sources/git.ts';
+
+export { tagGlob };
 import { SourceError } from './sources/source.ts';
 import type { Finding, Result } from './types.ts';
 
@@ -143,26 +145,6 @@ export function linkReverts(steps: { result: Result }[]): RevertLink[] {
     }
   });
   return links;
-}
-
-/** A git-style tag glob (`*` any text, `?` one character, `[…]` a class, `[!…]` its complement) as an anchored regular expression. */
-export function tagGlob(pattern: string): RegExp {
-  let re = '';
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i]!;
-    if (ch === '*') re += '.*';
-    else if (ch === '?') re += '.';
-    else if (ch === '[') {
-      const close = pattern.indexOf(']', i + 2);
-      if (close === -1) re += '\\[';
-      else {
-        const body = pattern.slice(i + 1, close);
-        re += `[${body.startsWith('!') ? `^${body.slice(1)}` : body}]`.replace(/\\/g, '\\\\');
-        i = close;
-      }
-    } else re += ch.replace(/[.+^${}()|\\]/g, '\\$&');
-  }
-  return new RegExp(`^${re}$`);
 }
 
 async function tagsByCommit(toplevel: string): Promise<Map<string, string[]>> {

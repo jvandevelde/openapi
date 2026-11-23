@@ -3,6 +3,7 @@
 // version-bump-too-small checks over the classified findings.
 
 import { isObject } from '../load/documents.ts';
+import { tagGlob } from '../sources/git.ts';
 import { PolicyError } from '../policy/errors.ts';
 import type { Change, ComparedSide, Finding } from '../types.ts';
 
@@ -17,11 +18,32 @@ export const DEFAULT_VERSIONS: VersionSettings = { primary: ['info.version'], la
 
 export type Scheme = 'semver' | 'calver' | 'none';
 
-/** A source is `info.<field>`, an `x-` extension at the root (dots step into it: `x-git.sha`), or a JSON Pointer. */
+/**
+ * A source is `info.<field>`, an `x-` extension at the root (dots step into it: `x-git.sha`),
+ * a JSON Pointer, or `git-tag` / `git-tag:<glob>`: a (matching) tag on the side's commit, for git inputs.
+ */
 function checkSource(s: unknown, where: string): string {
-  if (typeof s !== 'string' || !(/^info\.[^.]+$/.test(s) || /^x-[^.]+(\.[^.]+)*$/.test(s) || s.startsWith('/'))) throw new PolicyError(`${where}: must be info.<field>, an x- extension (x-git.sha steps into x-git) or a JSON Pointer (/info/x-meta/version), got ${JSON.stringify(s)}`);
+  if (typeof s !== 'string' || !(/^info\.[^.]+$/.test(s) || /^x-[^.]+(\.[^.]+)*$/.test(s) || s.startsWith('/') || /^git-tag(:.+)?$/.test(s))) throw new PolicyError(`${where}: must be info.<field>, an x- extension (x-git.sha steps into x-git), a JSON Pointer (/info/x-meta/version) or git-tag[:<glob>] (a tag on the commit, e.g. git-tag:v*), got ${JSON.stringify(s)}`);
   return s;
 }
+
+export const usesGitTags = (v: VersionSettings): boolean => [...v.primary, ...v.labels.values()].some((s) => s.startsWith('git-tag'));
+
+/**
+ * The version a `git-tag[:<glob>]` source gives: the matching tag on the commit, as named.
+ * With several, the highest semver one (tags that aren't semver come after, by name).
+ */
+export function tagVersion(tags: string[] | undefined, source: string): string | undefined {
+  const glob = source.startsWith('git-tag:') ? tagGlob(source.slice('git-tag:'.length)) : undefined;
+  const matching = (tags ?? []).filter((t) => !glob || glob.test(t));
+  const key = (t: string): [number, number, number, number] => {
+    const v = parseSemver(t);
+    return v ? [1, v.major, v.minor, v.patch] : [0, 0, 0, 0];
+  };
+  return matching.sort((a, b) => key(a).map((n, i) => n - key(b)[i]!).find((d) => d !== 0) ?? a.localeCompare(b)).at(-1);
+}
+
+const read = (doc: unknown, source: string, tags: string[] | undefined): string | undefined => (source.startsWith('git-tag') ? tagVersion(tags, source) : readSource(doc, source));
 
 export function parseVersions(raw: Record<string, unknown>, where: string): VersionSettings {
   const v: VersionSettings = { primary: [...DEFAULT_VERSIONS.primary], labels: new Map() };
@@ -54,14 +76,20 @@ export function readSource(doc: unknown, source: string): string | undefined {
   return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? String(v) : undefined;
 }
 
-/** Fills `version`, `versionSource` and `labels` on a side from the document and CLI values. */
-export function recordVersions(side: ComparedSide, doc: unknown, settings: VersionSettings, cli: { version?: string; labels?: Record<string, string> } = {}): void {
+/**
+ * Fills `version`, `versionSource` and `labels` on a side from the document, the tags on its
+ * commit (`tags`, for git inputs) and CLI values. Only the configured sources count: with none
+ * present the version is `unknown`.
+ */
+export function recordVersions(side: ComparedSide, doc: unknown, settings: VersionSettings, cli: { version?: string; labels?: Record<string, string> } = {}, tags?: string[]): void {
+  delete side.versionSource;
   if (cli.version !== undefined) {
     side.version = cli.version;
     side.versionSource = 'command line';
   } else {
+    side.version = 'unknown';
     for (const s of settings.primary) {
-      const v = readSource(doc, s);
+      const v = read(doc, s, tags);
       if (v !== undefined) {
         side.version = v;
         side.versionSource = s;
@@ -74,7 +102,7 @@ export function recordVersions(side: ComparedSide, doc: unknown, settings: Versi
   const labels: Record<string, string> = {};
   if (side.commit) labels.commit = side.commit;
   for (const [name, src] of settings.labels) {
-    const v = readSource(doc, src);
+    const v = read(doc, src, tags);
     if (v !== undefined) labels[name] = v;
   }
   Object.assign(labels, cli.labels ?? {});
@@ -145,10 +173,15 @@ export function bumpAdvice(findings: Finding[], base: ComparedSide, rev: Compare
   return advice;
 }
 
-/** version-unchanged / version-bump-too-small, or a not-compared notice when the versions can't be checked. */
-export function checkVersions(findings: Finding[], base: ComparedSide, rev: ComparedSide, schemes: { unchanged: Scheme; bump: Scheme }): Change[] {
+/**
+ * version-unchanged / version-bump-too-small, or a not-compared notice when the versions can't
+ * be checked (a side has no version from the sources `tried`, or one isn't semver).
+ */
+export function checkVersions(findings: Finding[], base: ComparedSide, rev: ComparedSide, schemes: { unchanged: Scheme; bump: Scheme }, tried: string[] = DEFAULT_VERSIONS.primary): Change[] {
   const changed = findings.filter((f) => !NOTICES.has(f.baseRule));
-  if (!changed.length || base.version === 'unknown' || rev.version === 'unknown') return [];
+  if (!changed.length || (schemes.unchanged === 'none' && schemes.bump === 'none')) return [];
+  const missing = ([['base', base], ['revision', rev]] as const).filter(([, s]) => s.version === 'unknown').map(([n]) => n);
+  if (missing.length) return [{ rule: 'not-compared', subject: 'document', details: { what: `version checks (no version for the ${missing.join(' and ')}; tried ${tried.join(', ')})`, name: 'version-checks' } }];
   const details = { from: base.version, to: rev.version };
   if (base.version === rev.version) {
     return schemes.unchanged === 'none' ? [] : [{ rule: 'version-unchanged', subject: 'document', details: { ...details, changes: changed.length } }];

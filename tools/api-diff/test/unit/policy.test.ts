@@ -62,7 +62,7 @@ test('every YAML example in POLICY.md is a valid policy or acknowledgements file
   const acks = blocks.filter((d) => Array.isArray(d)); // section 11
   const policies = blocks.filter((d) => d && !Array.isArray(d));
   assert.equal(acks.length, 1);
-  assert.equal(policies.length, 9);
+  assert.equal(policies.length, 10);
   for (const d of policies) parsePolicy(d, 'POLICY.md');
   for (const d of acks) parseAcknowledgements(d, 'POLICY.md');
   // The behaviour each example shows is tested in policy, overrides, lifecycle,

@@ -11,6 +11,8 @@ export interface DocumentSource {
   display(path: string): string;
   /** Identity of the source shown in reports. */
   readonly info: { input: string; commit?: string };
+  /** Tags on the source's commit (git sources only), for the `git-tag` version source. */
+  tagsAt?(): Promise<string[]>;
   /** Releases resources (e.g. a git process). */
   close(): void;
 }

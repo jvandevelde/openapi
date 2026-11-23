@@ -537,7 +537,8 @@ versions:
 - `from` takes a list. The first source present in the document wins, so specs without the extension fall back to `info.version`.
 - Any source is either an `x-` extension at the document root, `info.<field>`, or a JSON Pointer (`/info/x-meta/version`).
 - **CLI overrides** take precedence over both, e.g. a git tag from CI: `--base-version v1.4.0 --revision-version v1.5.0` (and `--base-label commit=abc123`).
-- If no source gives a version, the report shows `unknown` and the semver advice is skipped with a notice. It doesn't fail the run.
+- If no source gives a version, the report shows `unknown` and the semver advice is skipped with a notice. It doesn't fail the run. Only the listed sources count: `info.version` isn't a hidden fallback.
+- **`git-tag`** / **`git-tag:<glob>`** reads the version from a (matching) tag on the compared commit, for git inputs and every `history` step; an untagged commit uses the next source (see decision record *Versions from git tags, and only the configured sources*).
 
 Each side also records the file name, a SHA-256 of the file, and where its version came from, along with the tool version and a hash of the policy. This makes every report reproducible:
 
@@ -778,6 +779,7 @@ Each idea has its own file in [feature-backlog/](feature-backlog/README.md) with
 |---|---|---|---|
 | [**★ Ownership routing**](feature-backlog/ownership-routing.md) | Owners from `x-owner` or the policy's `owners.assign` list, listed on each finding, with reports split per team. | high / medium | Built (M9) |
 | [**Release-to-release timelines: tag globs and the unreleased end**](feature-backlog/release-timeline-tag-globs.md) | `history --tags-only=<glob>` keeps only matching release tags, shows every release (even one tagged on a commit that didn't change the spec) and ends with unreleased changes, so release managers see what each release changed and what's waiting to ship. | high / low | Built |
+| [**Versions from git tags**](feature-backlog/versions-from-git-tags.md) | A `git-tag:<glob>` version source reads the release tag on the compared commit, for teams that version by tag rather than in the spec, including in `history` timelines. | high / low | Built |
 | [**Git blame for findings**](feature-backlog/git-blame-for-findings.md) | Use the source maps to find the commit and author that introduced each change. | medium / low | Idea |
 | [**Deprecation ledger**](feature-backlog/deprecation-ledger.md) | A standing report of everything deprecated, with sunset dates, overdue removals and `Deprecation`/`Sunset` header checks. | medium / low | Idea |
 | [**Breaking-change budget**](feature-backlog/breaking-change-budget.md) | A policy limit on breaking changes per release or audience. | low / low | Idea |

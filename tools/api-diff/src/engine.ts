@@ -8,7 +8,7 @@ import { collapseBulk } from './diff/bulk.ts';
 import { diffDocs } from './diff/docs.ts';
 import { diffSchemaEngine } from './diff/schema-engine.ts';
 import { checkUnrelated, unrelatedOptions } from './diff/unrelated.ts';
-import { bumpAdvice, checkVersions, DEFAULT_VERSIONS, recordVersions, schemeOption } from './diff/versions.ts';
+import { bumpAdvice, checkVersions, DEFAULT_VERSIONS, recordVersions, schemeOption, usesGitTags } from './diff/versions.ts';
 import { compareFindings } from './classify/classify.ts';
 import { applyDeprecationPeriod, diffLifecycle, removalOptions, stabilityLevels, today, type LifecycleOptions } from './diff/lifecycle.ts';
 import { DEFAULT_LIFECYCLE } from './policy/context.ts';
@@ -139,8 +139,11 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
   });
   // Versions: recorded for each side, then checked against the findings.
   const vs = policy?.versions ?? DEFAULT_VERSIONS;
-  for (const [s, side, version, labels] of [[b, b.compared, opts.baseVersion, opts.baseLabels], [r, r.compared, opts.revisionVersion, opts.revisionLabels]] as const) {
-    recordVersions(side, s.model?.docs.root.parsed.value, vs, { ...(version !== undefined ? { version } : {}), ...(labels ? { labels } : {}) });
+  // The git-tag source reads the tags on each side's commit, from git sources only.
+  const tagsOf = async (input: OpenedInput): Promise<string[] | undefined> => (usesGitTags(vs) && input.source.tagsAt ? await input.source.tagsAt() : undefined);
+  const [baseTags, revisionTags] = await Promise.all([tagsOf(base), tagsOf(revision)]);
+  for (const [s, side, version, labels, tags] of [[b, b.compared, opts.baseVersion, opts.baseLabels, baseTags], [r, r.compared, opts.revisionVersion, opts.revisionLabels, revisionTags]] as const) {
+    recordVersions(side, s.model?.docs.root.parsed.value, vs, { ...(version !== undefined ? { version } : {}), ...(labels ? { labels } : {}) }, tags);
   }
   if (!unrelated && b.model && r.model) {
     const scheme = (id: string): ReturnType<typeof schemeOption> | undefined => {
@@ -149,7 +152,7 @@ export async function compareOpened(base: OpenedInput, revision: OpenedInput, op
     };
     const chosen = scheme('version-bump-too-small') ?? scheme('version-unchanged') ?? 'semver';
     const set = [scheme('version-bump-too-small'), scheme('version-unchanged')].includes('none') ? 'none' : chosen;
-    const extra = checkVersions(findings, b.compared, r.compared, { unchanged: set, bump: set });
+    const extra = checkVersions(findings, b.compared, r.compared, { unchanged: set, bump: set }, opts.baseVersion !== undefined && opts.revisionVersion !== undefined ? ['command line'] : vs.primary);
     if (extra.length) {
       findings.push(...classify(extra, { profile, ...(policy ? { policy } : {}) }));
       findings.sort(compareFindings);

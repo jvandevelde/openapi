@@ -152,6 +152,26 @@ class CatFile {
 }
 
 /** Reads files at one commit. Paths are repository-root-relative with `/` separators. */
+/** A git-style tag glob (`*` any text, `?` one character, `[…]` a class, `[!…]` its complement) as an anchored regular expression. */
+export function tagGlob(pattern: string): RegExp {
+  let re = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i]!;
+    if (ch === '*') re += '.*';
+    else if (ch === '?') re += '.';
+    else if (ch === '[') {
+      const close = pattern.indexOf(']', i + 2);
+      if (close === -1) re += '\\[';
+      else {
+        const body = pattern.slice(i + 1, close);
+        re += `[${body.startsWith('!') ? `^${body.slice(1)}` : body}]`.replace(/\\/g, '\\\\');
+        i = close;
+      }
+    } else re += ch.replace(/[.+^${}()|\\]/g, '\\$&');
+  }
+  return new RegExp(`^${re}$`);
+}
+
 export class GitSource implements DocumentSource {
   readonly info: { input: string; commit: string };
   readonly #toplevel: string;
@@ -170,6 +190,12 @@ export class GitSource implements DocumentSource {
     this.#label = label;
     this.#commit = commit;
     this.#cwd = cwd;
+  }
+
+  /** Tags pointing at this source's commit; none for the index (staged files). */
+  async tagsAt(): Promise<string[]> {
+    if (!this.#commit) return [];
+    return (await git(this.#toplevel, ['tag', '--points-at', this.#commit])).split('\n').filter(Boolean);
   }
 
   async read(path: string): Promise<string> {

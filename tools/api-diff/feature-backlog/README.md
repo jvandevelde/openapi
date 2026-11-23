@@ -22,6 +22,7 @@ One file per proposed feature or design, including every idea in [PLAN.md sectio
 | [Portfolio mode](portfolio-mode.md) | Large specs and noise | Idea | Compare many specs in one run and report which APIs a change to a shared schema file affects. |
 | [Ownership routing](ownership-routing.md) | Ownership and governance | Built (M9) | Owners from `x-owner` or the policy's `owners.assign` list, listed on each finding, with reports split per team. |
 | [Release-to-release timelines: tag globs and the unreleased end](release-timeline-tag-globs.md) | Ownership and governance | Built | `history --tags-only=<glob>` keeps matching release tags, shows every release (even one tagged on a commit that didn't change the spec) and ends with unreleased changes. |
+| [Versions from git tags](versions-from-git-tags.md) | Ownership and governance | Built | A `git-tag:<glob>` version source reads the release tag on the compared commit, including in `history` timelines. |
 | [Git blame for findings](git-blame-for-findings.md) | Ownership and governance | Idea | Use the source maps to find the commit and author that introduced each change. |
 | [Deprecation ledger](deprecation-ledger.md) | Ownership and governance | Idea | A standing report of everything deprecated, with sunset dates, overdue removals and `Deprecation`/`Sunset` header checks. |
 | [Breaking-change budget](breaking-change-budget.md) | Ownership and governance | Idea | A policy limit on breaking changes per release or audience. |

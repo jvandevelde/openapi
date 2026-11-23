@@ -170,7 +170,7 @@ Net (v1.0.0 → HEAD): 3 error, 2 warn, 2 info
 
 By default there is one step per first-parent commit that changed the file or anything it `$ref`s. Release tags are shown between the steps, changes that a later commit undid are marked as reverted, and the net result comes last. A change reported for both requests and responses is one line, with its worst severity and each direction's in brackets.
 
-- `--tags-only` compares release to release.
+- `--tags-only` compares release to release: one step per tagged commit in the range (even one that didn't change the spec, shown as "no API changes"), then the end of the range, marked as having no matching tag, if the spec changed since the last release. `--tags-only=<glob>` keeps only tags matching a git-style glob (`*` any text, `?` one character, `[0-9]` a class), e.g. `--tags-only='v[0-9].[0-9].[0-9]'` for single-digit releases without pre-release suffixes. `--no-end` stops at the last matching tag.
 - `--all-commits` includes commits from merged branches.
 - `--max-steps <n>` keeps only the latest steps.
 - `--report timeline:html:history.html` writes an interactive timeline. `--report timeline:json` gives each step with its own findings, for scripts.

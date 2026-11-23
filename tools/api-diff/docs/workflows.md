@@ -170,7 +170,8 @@ The finding is still reported, marked `(1 acknowledged)` in the totals, but it n
 
 ```sh
 api-diff history v1.0.0..v2.0.0 openapi.yaml
-api-diff history v1.0.0..HEAD openapi.yaml --tags-only --report timeline:html:history.html   # release to release
+api-diff history v1.0.0..HEAD openapi.yaml --tags-only --report timeline:html:history.html   # release to release, then unreleased changes
+api-diff history v1.0.0..HEAD openapi.yaml --tags-only='v*' --no-end                         # only v… release tags, stop at the last one
 ```
 
 **A governance review** of a release uses the `audit` report. It includes everything the other reports leave out: acknowledgements (who, why, until when), where each severity came from, exclusions, and findings per owning team:

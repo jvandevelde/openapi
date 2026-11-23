@@ -82,7 +82,10 @@ History (api-diff history <start>..<end> <file>):
   it or a file it $refs), plus start → end for the net result, and marks changes reverted later.
       --report timeline[:<format>[:<file>]]   txt (default), json or html
       --all-commits      every commit, not only first-parent ones
-      --tags-only        only tagged commits (release to release)
+      --tags-only[=<glob>]  release to release: one step per tagged commit in the range (any tag, or
+                         tags matching a git-style glob, e.g. --tags-only='v[0-9]*'), whether or not it
+                         changed the spec, then the end of the range if the spec changed after the last one
+      --no-end           with --tags-only: stop at the last matching tag
       --max-steps <n>    keep the latest n steps
   Also: -C, --policy, --no-policy, --rule, --profile, --as-of.
 `;
@@ -325,7 +328,8 @@ async function diffCommand(argv: string[], io: Io): Promise<number> {
 
 async function historyCommand(argv: string[], io: Io): Promise<number> {
   const { values, positionals } = parseArgs({
-    args: argv,
+    // --tags-only takes an optional glob, --tags-only=v*; on its own it means any tag.
+    args: argv.map((a) => (a === '--tags-only' ? '--tags-only=*' : a)),
     allowPositionals: true,
     options: {
       cwd: { type: 'string', short: 'C' },
@@ -336,7 +340,8 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
       profile: { type: 'string' },
       'as-of': { type: 'string' },
       'all-commits': { type: 'boolean' },
-      'tags-only': { type: 'boolean' },
+      'tags-only': { type: 'string' },
+      'no-end': { type: 'boolean' },
       'max-steps': { type: 'string' },
       'explorer-url': { type: 'string' },
       // Accepted for consistency with the other commands; the timeline has no colour.
@@ -370,7 +375,15 @@ async function historyCommand(argv: string[], io: Io): Promise<number> {
   const opts: HistoryOptions = { profile: oneOf<Profile>('profile', values.profile, ['wire', 'sdk'], policy.profile ?? 'wire'), policy };
   if (asOf !== undefined) opts.asOf = asOf;
   if (values['all-commits']) opts.allCommits = true;
-  if (values['tags-only']) opts.tagsOnly = true;
+  const tagsOnly = values['tags-only'];
+  if (tagsOnly !== undefined) {
+    if (!tagsOnly.trim()) throw new UsageError('--tags-only=<glob> needs a pattern, e.g. --tags-only=v*; --tags-only alone means any tag');
+    opts.tagsOnly = tagsOnly === '*' ? true : tagsOnly;
+  }
+  if (values['no-end']) {
+    if (tagsOnly === undefined) throw new UsageError('--no-end only applies with --tags-only');
+    opts.noEnd = true;
+  }
   if (maxSteps !== undefined) opts.maxSteps = maxSteps;
   const links = values['explorer-url'] !== undefined ? explorerUrl(values['explorer-url'], '--explorer-url') : policy.reports.get('explore')?.explorerUrl;
   const h = await history(positionals[0]!, positionals[1]!, cwd, opts);

@@ -88,11 +88,12 @@ To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-
 
 ## History
 
-`api-diff history <start>..<end> <file>` shows how a spec changed step by step between two git revisions: one step per first-parent commit that changed the file or anything it `$ref`s, the release tags between them, which changes a later commit reverted, and the net result. `--report timeline:html:history.html` writes an interactive timeline; `--tags-only`, `--max-steps <n>` and `--all-commits` change which commits count.
+`api-diff history <start>..<end> <file>` shows how a spec changed step by step between two git revisions: one step per first-parent commit that changed the file or anything it `$ref`s, the release tags between them, which changes a later commit reverted, and the net result. `--report timeline:html:history.html` writes an interactive timeline; `--tags-only`, `--max-steps <n>` and `--all-commits` change which commits count. `--tags-only` gives a release-to-release timeline: a step per tagged commit, even one that didn't change the spec, then the end of the range if the spec changed after the last tag. `--tags-only=<glob>` (e.g. `--tags-only='v[0-9]*'`) keeps tags matching a git-style glob, and `--no-end` stops at the last matching tag.
 
 ```sh
 api-diff history v1.4.0..HEAD openapi.yaml
 api-diff history v1.4.0..v2.0.0 openapi.yaml --report timeline:html:history.html
+api-diff history v1.0.0..HEAD openapi.yaml --tags-only='v[0-9]*'   # release to release, then unreleased changes
 ```
 
 ## On pull requests

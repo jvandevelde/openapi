@@ -24,8 +24,14 @@ import type { Finding, Result } from './types.ts';
 export interface HistoryOptions extends CompareOptions {
   /** All commits, not only the first-parent (mainline) ones. */
   allCommits?: boolean;
-  /** Only commits that have a tag. */
-  tagsOnly?: boolean;
+  /**
+   * Release to release: one step per commit in the range with a matching tag (`true`: any
+   * tag; a string: a git-style glob such as `v*`), whether or not that commit changed the
+   * spec, then the end of the range if the spec changed after the last matching tag.
+   */
+  tagsOnly?: boolean | string;
+  /** With `tagsOnly`: stop at the last matching tag, without a step for an untagged end of the range. */
+  noEnd?: boolean;
   /** Keep at most this many steps (the latest ones); the net result still covers the whole range. */
   maxSteps?: number;
 }
@@ -39,6 +45,8 @@ export interface Step {
   tags: string[];
   versions: { base: string; revision: string };
   result: Result;
+  /** Set (to the range's end as given, e.g. `HEAD`) on the last step of a tag timeline when it is the end of the range rather than a matching tag. */
+  end?: string;
 }
 
 export interface RevertLink {
@@ -137,6 +145,26 @@ export function linkReverts(steps: { result: Result }[]): RevertLink[] {
   return links;
 }
 
+/** A git-style tag glob (`*` any text, `?` one character, `[…]` a class, `[!…]` its complement) as an anchored regular expression. */
+export function tagGlob(pattern: string): RegExp {
+  let re = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const ch = pattern[i]!;
+    if (ch === '*') re += '.*';
+    else if (ch === '?') re += '.';
+    else if (ch === '[') {
+      const close = pattern.indexOf(']', i + 2);
+      if (close === -1) re += '\\[';
+      else {
+        const body = pattern.slice(i + 1, close);
+        re += `[${body.startsWith('!') ? `^${body.slice(1)}` : body}]`.replace(/\\/g, '\\\\');
+        i = close;
+      }
+    } else re += ch.replace(/[.+^${}()|\\]/g, '\\$&');
+  }
+  return new RegExp(`^${re}$`);
+}
+
 async function tagsByCommit(toplevel: string): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>();
   const lines = (await git(toplevel, ['for-each-ref', '--format=%(objectname) %(*objectname) %(refname:short)', 'refs/tags'])).split('\n').filter(Boolean);
@@ -179,22 +207,40 @@ export async function history(range: string, spec: string, cwd: string, opts: Hi
   if (!first) throw new SourceError(`${spec} can't be read at ${startRev}`);
   const last = await loadVersion(end);
   const paths = [...new Set([...first.paths, ...(last?.paths ?? [])])];
-  const log = await git(target.toplevel, ['log', ...(opts.allCommits ? [] : ['--first-parent']), '--reverse', '--format=%H%x1f%aI%x1f%an%x1f%s', `${start}..${end}`, '--', ...paths]);
-  const tags = await tagsByCommit(target.toplevel);
-  let candidates = log.split('\n').filter(Boolean).map((l) => {
-    const [commit, date, author, subject] = l.split('\x1f') as [string, string, string, string];
-    return { commit, date: date.slice(0, 10), author, subject };
-  });
-  if (opts.tagsOnly) candidates = candidates.filter((c) => tags.has(c.commit) || c.commit === end);
-
-  // Keep commits whose files differ from the previous kept version.
-  const kept: typeof candidates = [];
-  let prev = first.fingerprint;
-  for (const c of candidates) {
-    const v = await loadVersion(c.commit);
-    if (!v || v.fingerprint === prev) continue;
-    kept.push(c);
-    prev = v.fingerprint;
+  const allTags = await tagsByCommit(target.toplevel);
+  const rows = (out: string): { commit: string; date: string; author: string; subject: string; end?: string }[] =>
+    out.split('\n').filter(Boolean).map((l) => {
+      const [commit, date, author, subject] = l.split('\x1f') as [string, string, string, string];
+      return { commit, date: date.slice(0, 10), author, subject };
+    });
+  const FORMAT = '--format=%H%x1f%aI%x1f%an%x1f%s';
+  const kept: ReturnType<typeof rows> = [];
+  let tags = allTags;
+  if (opts.tagsOnly) {
+    // Release to release: every commit in the range with a matching tag is a step, whether or not
+    // it changed the spec (release tags often sit on a commit that changes something else).
+    const match = opts.tagsOnly === true ? () => true : ((re: RegExp) => (t: string) => re.test(t))(tagGlob(opts.tagsOnly));
+    tags = new Map([...allTags].map(([c, ts]) => [c, ts.filter(match)] as [string, string[]]).filter(([, ts]) => ts.length));
+    let prev = first.fingerprint;
+    for (const c of rows(await git(target.toplevel, ['log', '--reverse', FORMAT, `${start}..${end}`]))) {
+      if (!tags.has(c.commit)) continue;
+      const v = await loadVersion(c.commit);
+      if (!v) continue; // the spec isn't there at this tag
+      kept.push(c);
+      prev = v.fingerprint;
+    }
+    // Then the end of the range, if it isn't a matching tag and the spec changed after the last one.
+    if (!opts.noEnd && !tags.has(end) && last && last.fingerprint !== prev) kept.push({ ...rows(await git(target.toplevel, ['log', '-1', FORMAT, end]))[0]!, end: endRev });
+  } else {
+    // Keep commits whose files differ from the previous kept version.
+    let prev = first.fingerprint;
+    const log = await git(target.toplevel, ['log', ...(opts.allCommits ? [] : ['--first-parent']), '--reverse', FORMAT, `${start}..${end}`, '--', ...paths]);
+    for (const c of rows(log)) {
+      const v = await loadVersion(c.commit);
+      if (!v || v.fingerprint === prev) continue;
+      kept.push(c);
+      prev = v.fingerprint;
+    }
   }
   const omitted = opts.maxSteps !== undefined && kept.length > opts.maxSteps ? kept.length - opts.maxSteps : 0;
   const shown = kept.slice(omitted);

@@ -48,7 +48,9 @@ export function renderTimeline(h: History): string {
       out.push(`            ${LABEL[f.severity]}  ${f.subject}  ${f.message}${directions(e)}${link}`);
     }
     if (docs.length) out.push(`            INFO   ${docs.length} documentation change${docs.length === 1 ? '' : 's'}`);
+    if (!fs.length) out.push('            no API changes');
     for (const t of s.tags) out.push(`── tag ${t} ${'─'.repeat(Math.max(3, 60 - t.length))}`);
+    if (s.end) out.push(`── ${s.end} (end of range, no matching tag) ${'─'.repeat(Math.max(3, 34 - s.end.length))}`);
   });
   const reverted = h.links.length;
   out.push('', `Net (${h.range.start.rev} → ${h.range.end.rev}): ${countText(net)}${reverted ? `   (${reverted} change${reverted === 1 ? '' : 's'} reverted within the range)` : ''}`, '');
@@ -143,11 +145,12 @@ data.steps.forEach((s, i) => {
   b.addEventListener('click', () => { const on = b.getAttribute('aria-pressed') !== 'true'; document.querySelectorAll('.mark').forEach((m) => m.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', String(on)); show(on ? i : undefined); });
   strip.append(b);
   for (const t of s.tags) strip.append(el('span', { class: 'tag' }, t));
+  if (s.end) strip.append(el('span', { class: 'tag' }, s.end));
 });
 function show(only) {
   const list = $('#list'); list.replaceChildren();
   if ($('#net').checked) list.append(card('Net: ' + data.range.start.rev + ' → ' + data.range.end.rev, data.net.counts.total + ' findings', data.net.findings));
-  else data.steps.forEach((s, i) => { if (only === undefined || only === i) list.append(card(s.date + '  ' + s.commit.slice(0, 7) + '  ' + (s.pr ? '#' + s.pr + ' ' + s.subject.replace(/\\s*\\(#\\d+\\)\\s*$/, '') : s.subject), s.author + (s.versions.base !== s.versions.revision ? ' · ' + s.versions.base + ' → ' + s.versions.revision : '') + (s.tags.length ? ' · tag ' + s.tags.join(', ') : ''), s.findings, i)); });
+  else data.steps.forEach((s, i) => { if (only === undefined || only === i) list.append(card(s.date + '  ' + s.commit.slice(0, 7) + '  ' + (s.pr ? '#' + s.pr + ' ' + s.subject.replace(/\\s*\\(#\\d+\\)\\s*$/, '') : s.subject), s.author + (s.versions.base !== s.versions.revision ? ' · ' + s.versions.base + ' → ' + s.versions.revision : '') + (s.tags.length ? ' · tag ' + s.tags.join(', ') : '') + (s.end ? ' · ' + s.end + ' (end of range, no matching tag)' : ''), s.findings, i)); });
   filter();
 }
 function filter() {

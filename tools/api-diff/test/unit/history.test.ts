@@ -90,6 +90,13 @@ test('the CLI', async () => {
   assert.equal((await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--max-steps', '0')).code, 2);
 });
 
+test('options before the subcommand, --no-color and --help', async () => {
+  const plain = (await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml')).out;
+  assert.equal((await run('-C', dir, '--no-color', 'history', 'v1.0.0..HEAD', 'openapi.yaml')).out, plain);
+  assert.equal((await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--no-color')).out, plain);
+  assert.match((await run('history', '--help')).out, /^api-diff \S+: compare two OpenAPI documents/);
+});
+
 test('PR numbers from merge commits and squash subjects', () => {
   assert.equal(prNumber('Merge pull request #42 from me/branch'), 42);
   assert.equal(prNumber('Add refunds (#7)'), 7);

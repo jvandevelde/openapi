@@ -10,7 +10,9 @@ import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { main, type Io } from '../../src/cli/main.ts';
 import { history, prNumber } from '../../src/history.ts';
-import { renderTimeline, timelineData } from '../../src/render/timeline.ts';
+import { renderTimeline, renderTimelineHtml, timelineData } from '../../src/render/timeline.ts';
+import type { History, Step } from '../../src/history.ts';
+import type { Finding, Result } from '../../src/types.ts';
 
 let dir = '';
 const git = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@example.com', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@example.com' } }).trim();
@@ -63,8 +65,8 @@ test('steps, skipped commits, reverts and the net result', async () => {
   assert.match(txt, /#2 Remove delete  1\.1\.0 → 2\.0\.0\n {12}ERROR  DELETE \/pets\/\{id\}  operation removed  ↺ reverted in #3/);
   assert.match(txt, /^── tag v2\.0\.0 /m);
   assert.match(txt, /\(1 change reverted within the range\)/);
-  const data = timelineData(h) as { steps: { findings: string[] }[]; findings: Record<string, unknown> };
-  assert.ok(data.steps.every((s) => s.findings.every((id) => id in data.findings)));
+  const data = timelineData(h) as { steps: { findings: { id: string }[] }[] };
+  assert.deepEqual(data.steps.map((s) => s.findings.length), h.steps.map((s) => s.result.findings.length));
 });
 
 test('options: --max-steps keeps the latest steps, --tags-only keeps tagged ones', async () => {
@@ -107,4 +109,28 @@ test('the timeline HTML links findings into the spec explorer when asked', async
   const r = await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--report', 'timeline:html', '--explorer-url', 'https://explorer.test/#{side}{pointer}');
   assert.match(r.out, /"links":\{"base":"https:\/\/explorer\.test\/#base%2Fpaths/);
   assert.equal((await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--explorer-url', 'nope')).code, 2);
+});
+
+// Synthetic steps, for what the timeline shows rather than how history finds steps.
+const finding = (id: string, rule: string, severity: 'error' | 'warn' | 'info', message: string, subject = '#/components/schemas/Pet'): Finding =>
+  ({ id, rule, baseRule: rule.replace(/-in-(request|response)$/, ''), kind: 'wire', severity, severitySource: 'default', subject, message, revision: { file: 'openapi.yaml', pointer: '/components/schemas/Pet/properties/name/maxLength', line: 9 }, details: {} }) as Finding;
+const step = (n: number, findings: Finding[]): Step =>
+  ({ commit: `${n}`.repeat(40), date: `2026-09-0${n}`, author: 't', subject: `Step ${n} (#${n})`, pr: n, tags: [], versions: { base: `1.${n - 1}.0`, revision: `1.${n}.0` }, result: { findings, state: 'breaking' } as unknown as Result });
+const synthetic = (steps: Step[]): History =>
+  ({ report: 'history', spec: 'openapi.yaml', range: { start: { rev: 'v1', commit: 'a'.repeat(40) }, end: { rev: 'HEAD', commit: 'b'.repeat(40) } }, steps, omitted: 0, links: [], net: { findings: [], counts: { total: 0 } } as unknown as Result });
+
+test('each step keeps its own finding records, even when a finding ID comes up in several steps', () => {
+  // A version check has the same ID in every step (same kind, same place), with different details.
+  const h = synthetic([step(1, [finding('fbaf54d000d4', 'version-bump-too-small', 'warn', 'version went from 1.0.0 to 1.1.0', 'document')]), step(2, [finding('fbaf54d000d4', 'version-bump-too-small', 'warn', 'version went from 1.1.0 to 1.2.0', 'document')])]);
+  const data = timelineData(h) as { steps: { findings: { id: string; message: string }[] }[] };
+  assert.deepEqual(data.steps.map((s) => s.findings.map((f) => f.message)), [['version went from 1.0.0 to 1.1.0'], ['version went from 1.1.0 to 1.2.0']]);
+  const html = renderTimelineHtml(h);
+  for (const m of ['1.0.0 to 1.1.0', '1.1.0 to 1.2.0']) assert.match(html, new RegExp(m));
+});
+
+test('a change reported for requests and responses is one timeline line, with its worst severity', () => {
+  const h = synthetic([step(1, [finding('aaaaaaaaaaaa', 'max-length-decreased-in-request', 'error', 'maxLength decreased (100 → 50)'), finding('bbbbbbbbbbbb', 'max-length-decreased-in-response', 'info', 'maxLength decreased (100 → 50)')])]);
+  const txt = renderTimeline(h);
+  assert.equal(txt.match(/maxLength decreased/g)!.length, 1);
+  assert.match(txt, /ERROR {2}#\/components\/schemas\/Pet {2}maxLength decreased \(100 → 50\) {2}\(request ERROR, response INFO\)/);
 });

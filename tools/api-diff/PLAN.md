@@ -608,13 +608,15 @@ One self-contained file, like the `explore` report:
   "steps": [
     { "commit": "a1b2c3d…", "date": "2026-09-02", "author": "…", "subject": "Add refunded status",
       "pr": 412, "tags": [], "versions": { "base": "1.4.0", "revision": "1.4.1" },
-      "counts": { "error": 0, "warn": 1, "info": 3 }, "findings": ["f-91c2…", "…"] }
+      "counts": { "error": 0, "warn": 1, "info": 3 },
+      "findings": [ { "id": "f-91c2…", /* change record, as in a normal report */ } ] }
   ],
-  "findings": { "f-91c2…": { /* change record, as in a normal report */ } },
-  "links": [ { "finding": "f-77aa…", "revertedBy": "f-3b10…" } ],
+  "links": [ { "finding": "f-77aa…", "step": 1, "revertedBy": "f-3b10…", "revertedIn": 3 } ],
   "net": { /* the normal start → end result object */ }
 }
 ```
+
+Each step carries its own finding records: an ID names a kind of change at a place, so the same ID can come up in several steps with different details (a version check, a property edited twice). A revert link names a finding by its ID and step.
 
 ### Output formats
 

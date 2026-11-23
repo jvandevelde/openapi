@@ -23,6 +23,8 @@ This proposal shows each such pair as **one entry**:
 
 - **`explore`:** one row, badged with the worst severity and labelled `request error · response info`. Opened, it shows the shared rule and kind, then a section per direction (rule, severity source, finding ID, affected operations, acknowledgement), then the source side by side once. A row stays visible while any of its findings matches the filters, and its badge shows the worst severity among those that match. The count reads `61 of 61 changes (73 of 73 findings)`.
 
+The `history` timeline (text and HTML) does the same since [a later decision](../decision-records/2026-11-23T0410-timeline-per-step-findings-and-directions.md).
+
 Only the display is merged. The JSON result, finding IDs, acknowledgements, overrides and the exit code stay per finding, so existing `api-diff.ack.yaml` files keep working and each direction can still be accepted on its own.
 
 ## Options considered

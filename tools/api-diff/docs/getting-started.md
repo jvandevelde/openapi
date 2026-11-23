@@ -157,7 +157,7 @@ api-diff history  openapi.yaml  v1.0.0 (39ca1cd) → HEAD (4bb2cce)
 2 steps · net: 3 error, 2 warn, 2 info
 
 2026-11-23  12bac85  1.1.0: adopted status, limit required, shorter names  1.0.0 → 1.1.0
-            ERROR  #/components/schemas/NewPet  maxLength decreased (100 → 50) at /properties/name/maxLength
+            ERROR  #/components/schemas/NewPet  maxLength decreased (100 → 50) at /properties/name/maxLength  (request ERROR, response INFO)
             ERROR  GET /pets  query parameter 'limit' became required
             …
 ── tag v1.1.0 ──────────────────────────────────────────────────────
@@ -168,12 +168,12 @@ api-diff history  openapi.yaml  v1.0.0 (39ca1cd) → HEAD (4bb2cce)
 Net (v1.0.0 → HEAD): 3 error, 2 warn, 2 info
 ```
 
-By default there is one step per first-parent commit that changed the file or anything it `$ref`s. Release tags are shown between the steps, changes that a later commit undid are marked as reverted, and the net result comes last.
+By default there is one step per first-parent commit that changed the file or anything it `$ref`s. Release tags are shown between the steps, changes that a later commit undid are marked as reverted, and the net result comes last. A change reported for both requests and responses is one line, with its worst severity and each direction's in brackets.
 
 - `--tags-only` compares release to release.
 - `--all-commits` includes commits from merged branches.
 - `--max-steps <n>` keeps only the latest steps.
-- `--report timeline:html:history.html` writes an interactive timeline.
+- `--report timeline:html:history.html` writes an interactive timeline. `--report timeline:json` gives each step with its own findings, for scripts.
 
 ### `rules`: what each rule does
 

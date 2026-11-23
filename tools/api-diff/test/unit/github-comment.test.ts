@@ -17,7 +17,7 @@ function fakeGitHub(comments: { id: number; body: string }[], writeStatus = 200)
 }
 
 const env = { GITHUB_TOKEN: 't', GITHUB_REPOSITORY: 'o/r', PR_NUMBER: '7', RUN_URL: 'https://example.test/run/1' };
-const REPORT = 'api-diff 0.1.0\n\nChanges (1 place)\nERROR  GET /pets\n';
+const REPORT = 'api-diff 0.10.0\n\nChanges (1 place)\nERROR  GET /pets\n';
 const quiet = (): void => {};
 
 test('creates a comment when there are changes and none exists yet', async () => {
@@ -26,7 +26,7 @@ test('creates a comment when there are changes and none exists yet', async () =>
   const post = gh.calls.find((c) => c.method === 'POST')!;
   assert.equal(post.url, 'https://api.github.com/repos/o/r/issues/7/comments');
   const body = JSON.parse(post.body!).body as string;
-  assert.ok(body.startsWith(`${marker('openapi.yaml')}\n### API changes\n\n\`\`\`\`text\napi-diff 0.1.0`));
+  assert.ok(body.startsWith(`${marker('openapi.yaml')}\n### API changes\n\n\`\`\`\`text\napi-diff 0.10.0`));
   assert.match(body, /\[Full report \(HTML and JSON\) in the workflow run's artifacts\]\(https:\/\/example\.test\/run\/1\)/);
 });
 

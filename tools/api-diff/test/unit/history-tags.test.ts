@@ -96,3 +96,11 @@ test('the CLI: --tags-only alone or with =<glob>, and --no-end', async () => {
   assert.equal((await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--no-end')).code, 2);
   assert.equal((await run('history', '-C', dir, 'v1.0.0..HEAD', 'openapi.yaml', '--tags-only=')).code, 2);
 });
+
+test('git-tag versions: each tagged step is versioned by its tag; the untagged end is unknown and not checked', async () => {
+  const { parsePolicy } = await import('../../src/policy/policy.ts');
+  const policy = parsePolicy({ versions: { primary: { from: ['git-tag:v[0-9]*'] } } });
+  const h = await history('v1.0.0..HEAD', 'openapi.yaml', dir, { tagsOnly: true, policy });
+  assert.deepEqual(h.steps.map((s) => `${s.versions.base}→${s.versions.revision}`), ['v1.0.0→v1.1.0', 'v1.1.0→v1.1.1', 'v1.1.1→v1.2.0-rc.1', 'v1.2.0-rc.1→unknown']);
+  assert.ok(!h.steps[3]!.result.findings.some((f) => f.baseRule.startsWith('version-')), 'no version check against an unreleased end');
+});

@@ -53,7 +53,7 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 | `--state` | Print only `no-changes`, `compatible` or `breaking` |
 | `--profile <name>` | `wire` (default) or `sdk`: raises rules that break generated SDKs, such as `operation-id-changed` |
 | `--policy <file>`, `--no-policy` | The policy file: `api-diff.yaml` in the working directory by default, if present. See [POLICY.md](POLICY.md) |
-| `--base-version <v>`, `--revision-version <v>` | The versions to record and check, instead of reading them from the documents |
+| `--base-version <v>`, `--revision-version <v>` | The versions to record and check, instead of reading them from the documents (by default `info.version`; the policy's `versions` section can read an `x-` extension, any JSON Pointer or the release tag on the commit, `git-tag:v*`: [POLICY.md](POLICY.md) section 9) |
 | `--base-label <k=v>`, `--revision-label <k=v>` | Extra version labels, e.g. `build=8812`. Repeatable |
 | `--explorer-url <url>` | For `explore` and `history`: link each finding into a spec explorer. A URL template with `{pointer}` (and optionally `{file}`, `{side}`); also `reports.explore.explorer-url` in the policy |
 | `--uses <file>` | Keep only the changes that reach these operations, in every report and in the exit code: one per line, `METHOD /path` or an operationId (e.g. from an SDK or access logs). The changelog then says how many changes affect that consumer |

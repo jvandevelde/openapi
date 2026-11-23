@@ -191,13 +191,21 @@ versions:
     commit: x-git.sha
 ```
 
-Sources: an `x-` extension at the document root (dots step into it: `x-git.sha` is `sha` inside `x-git`), `info.<field>`, or a JSON Pointer (`/info/x-meta/version`). The CLI options `--base-version`, `--revision-version` and `--base-label`/`--revision-label key=value` take precedence. For git inputs, `commit` is filled in automatically. Each side's `version`, `versionSource` and `labels` are in the JSON result's `compared` section.
+Sources: an `x-` extension at the document root (dots step into it: `x-git.sha` is `sha` inside `x-git`), `info.<field>`, a JSON Pointer (`/info/x-meta/version`), or **`git-tag`** / **`git-tag:<glob>`**: a tag on the commit being compared (any tag, or one matching a git-style glob), for git inputs, including every step of `api-diff history`. Only a tag on that exact commit counts, so an untagged commit (or the working tree) uses the next source. The tag name is the version as is (`v1.2.0` is semver; `orders-api-v1.2.0` isn't, so bump checks are skipped for it). With several matching tags, the highest semver one is used. Quote a glob with brackets in a YAML list:
+
+```yaml
+versions:
+  primary:
+    from: ["git-tag:v[0-9]*", info.version]   # the release tag, else the spec's own version
+```
+
+**Only the listed sources count:** when none is present, the version is `unknown`, the version checks are skipped and a `not-compared` notice names the sources tried. `info.version` is used only if it's listed (it is the default when `versions` isn't set). The CLI options `--base-version`, `--revision-version` and `--base-label`/`--revision-label key=value` take precedence. For git inputs, `commit` is filled in automatically. Each side's `version`, `versionSource` and `labels` are in the JSON result's `compared` section.
 
 The recorded versions are checked against the findings:
 
 - **`version-unchanged`** (`warn`): the spec changed but the version didn't. Notices (`spec-invalid`, `ref-unresolved`, `not-compared`, `cycle-not-productive`, `documents-unrelated`) don't count as changes.
 - **`version-bump-too-small`** (`warn`, semver only): any `error` finding needs a major bump, any other `wire` or `sdk` finding a minor bump, `docs`-only changes a patch bump. Below 1.0.0, each need is one level lower (breaking changes need a minor bump, as semver allows). Findings turned `off` or below `min-severity` don't count; lowered severities do. A lower version counts as no bump.
-- **`scheme`** (option on either rule): `semver` (default), `calver` (only `version-unchanged` applies), or `none` (both off). A version that isn't semver under `semver` gives a `not-compared` notice rather than a guess.
+- **`scheme`** (option on either rule): `semver` (default), `calver` (only `version-unchanged` applies), or `none` (both off). A version that isn't semver under `semver` gives a `not-compared` notice rather than a guess, and so does a side with no version (`unknown`).
 
 ## 10. Reports
 

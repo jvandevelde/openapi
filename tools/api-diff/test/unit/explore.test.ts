@@ -109,3 +109,92 @@ test('the page has the group-by control, and keeps working without browser stora
   const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]!;
   for (const use of script.match(/[^\n]*localStorage[^\n]*/g)!) assert.match(use, /try \{/);
 });
+
+// Expanding to the enclosing schema, the breadcrumb and $ref targets
+// (decision record: explore expands to the enclosing schema)
+
+import { SCOPE_MAX_LINES } from '../../src/snippets.ts';
+
+const nested = (max: number, ref = 'Node'): string => `openapi: 3.1.0
+info: { title: Pets, version: 1.0.0 }
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/${ref}'
+components:
+  schemas:
+    Node:
+      type: object
+      properties:
+        a: { type: string }
+        b: { type: string }
+        c: { type: string }
+        d: { type: string }
+        e: { type: string }
+        name:
+          type: string
+          maxLength: ${max}
+        child:
+          $ref: '#/components/schemas/Node'
+
+    Other:
+      type: object
+`;
+
+async function nestedResult(a: string, b: string) {
+  return compareOpened({ source: new MemorySource({ 'a.yaml': a }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': b }), root: 'b.yaml' }, { snippets: true });
+}
+
+test('a snippet has its path from the root and the enclosing schema, whose lines are kept once', async () => {
+  const r = await nestedResult(nested(100), nested(50));
+  const f = r.findings.find((x) => x.rule.startsWith('max-length-decreased'))!;
+  const s = r.snippets![f.id]!.revision!;
+  assert.deepEqual(s.path!.map((p) => p.key), ['components', 'schemas', 'Node', 'properties', 'name', 'maxLength']);
+  assert.deepEqual(s.path!.map((p) => p.line), [13, 14, 15, 17, 23, 25]);
+  // The schema's name (line 15) is outside the 4-line window, but inside the scope.
+  assert.ok(s.start > 15);
+  assert.deepEqual(s.scope, { pointer: '/components/schemas/Node', start: 15, end: 27, line: 25 }); // the blank line after it is dropped
+  const lines = r.sourceLines!.revision['b.yaml']!;
+  assert.equal(lines[15], '    Node:');
+  assert.equal(lines[27], "          $ref: '#/components/schemas/Node'");
+  assert.equal(lines[29], undefined); // Other isn't any finding's scope
+});
+
+test('a $ref finding links to the node it points at; an operation is the scope of its parts', async () => {
+  const r = await nestedResult(nested(100), nested(100, 'Other'));
+  const f = r.findings.find((x) => x.rule === 'ref-target-changed')!;
+  const s = r.snippets![f.id]!;
+  assert.equal(s.revision!.scope!.pointer, '/paths/~1pets/get');
+  assert.deepEqual(s.revision!.ref, { pointer: '/components/schemas/Other', start: 29, end: 30, line: 29, file: 'b.yaml', name: '#/components/schemas/Other' });
+  assert.equal(s.base!.ref!.pointer, '/components/schemas/Node');
+  assert.equal(r.sourceLines!.revision['b.yaml']![29], '    Other:');
+});
+
+test('a scope too long to embed narrows to the outermost node on the path that fits', async () => {
+  const many = Array.from({ length: SCOPE_MAX_LINES }, (_, i) => `        p${i}: { type: string }`).join('\n');
+  const big = (max: number): string => nested(max).replace('        a: { type: string }', many);
+  const r = await nestedResult(big(100), big(50));
+  const s = r.snippets![r.findings.find((x) => x.rule.startsWith('max-length-decreased'))!.id]!.revision!;
+  assert.equal(s.scope!.pointer, '/components/schemas/Node/properties/name');
+  assert.equal(s.path![2]!.key, 'Node'); // the breadcrumb still names the schema
+});
+
+test('JSON specs and files of their own: the scope is the node or the whole file', async () => {
+  const json = (max: number): string => JSON.stringify({ openapi: '3.1.0', info: { title: 'P', version: '1' }, paths: { '/p': { get: { responses: { '200': { description: 'ok', content: { 'application/json': { schema: { $ref: 'node.yaml' } } } } } } } } }, null, 2);
+  const node = (max: number): string => `type: object\nproperties:\n  name:\n    type: string\n    maxLength: ${max}\n`;
+  const r = await compareOpened({ source: new MemorySource({ 'a.json': json(1), 'node.yaml': node(100) }), root: 'a.json' }, { source: new MemorySource({ 'b.json': json(1), 'node.yaml': node(50) }), root: 'b.json' }, { snippets: true });
+  const s = r.snippets![r.findings.find((x) => x.rule.startsWith('max-length-decreased'))!.id]!.revision!;
+  assert.deepEqual(s.scope, { pointer: '', start: 1, end: 5, line: 5 });
+});
+
+test('the page embeds the source lines for expanding', async () => {
+  const r = await nestedResult(nested(100), nested(50));
+  const data = JSON.parse(renderExplore(r).match(/id="data">([\s\S]*?)<\/script>/)![1]!);
+  assert.equal(data.sourceLines.revision['b.yaml']['15'], '    Node:');
+});

@@ -58,6 +58,14 @@
         "properties": { "base": { "$ref": "#/$defs/snippet" }, "revision": { "$ref": "#/$defs/snippet" } }
       }
     },
+    "sourceLines": {
+      "description": "With snippets: the source lines that their scopes and $ref targets cover, by side, file and line number.",
+      "type": "object",
+      "properties": {
+        "base": { "$ref": "#/$defs/sourceLines" },
+        "revision": { "$ref": "#/$defs/sourceLines" }
+      }
+    },
     "operations": {
       "description": "The operations findings mention, by subject (e.g. GET /pets), for grouping and labels.",
       "type": "object",
@@ -85,7 +93,34 @@
     "snippet": {
       "type": "object",
       "required": ["file", "start", "line", "lines"],
-      "properties": { "file": { "type": "string" }, "start": { "type": "integer" }, "line": { "type": "integer" }, "lines": { "type": "array", "items": { "type": "string" } } }
+      "properties": {
+        "file": { "type": "string" },
+        "start": { "type": "integer" },
+        "line": { "type": "integer" },
+        "lines": { "type": "array", "items": { "type": "string" } },
+        "path": {
+          "description": "The pointer's steps from the document root, each with its line (the breadcrumb).",
+          "type": "array",
+          "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" } } }
+        },
+        "scope": { "description": "The enclosing schema or operation, or the outermost node on the path that fits; its lines are in sourceLines.", "$ref": "#/$defs/snippetBlock" },
+        "ref": {
+          "description": "When the node is a $ref: the node it points at; its lines are in sourceLines under file.",
+          "allOf": [{ "$ref": "#/$defs/snippetBlock" }],
+          "required": ["file", "name"],
+          "properties": { "file": { "type": "string" }, "name": { "type": "string", "description": "The $ref as written." } }
+        }
+      }
+    },
+    "snippetBlock": {
+      "type": "object",
+      "required": ["pointer", "start", "end", "line"],
+      "properties": { "pointer": { "type": "string" }, "start": { "type": "integer" }, "end": { "type": "integer" }, "line": { "type": "integer" } }
+    },
+    "sourceLines": {
+      "type": "object",
+      "description": "By file display name, then by 1-based line number.",
+      "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } }
     },
     "side": {
       "type": "object",

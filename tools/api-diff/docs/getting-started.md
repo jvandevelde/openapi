@@ -113,7 +113,7 @@ api-diff --base main... openapi.yaml \
 | **`summary`** | Release or product managers | Size and risk: counts by kind and severity, the version advice, the 5 most serious findings | `--report summary:json:summary.json` |
 | **`changelog`** | API consumers, release notes | What changed per tag and operation, in plain language, with **what clients need to do**. Docs-only changes are left out | see below |
 | **`sdk`** | SDK maintainers | Changes by generated method and type, renamed methods, arguments and types, and the SDK version bump (judged with `--profile sdk`) | `--report sdk` |
-| **`explore`** | Anyone digging in | One self-contained HTML page with every finding, filters, search, and the base and revision source side by side | `--report explore:html:explore.html` |
+| **`explore`** | Anyone digging in | One self-contained HTML page with every finding, filters, search, and the base and revision source side by side (with a breadcrumb, expandable to the whole schema or operation) | `--report explore:html:explore.html` |
 | **`audit`** | API governance | Everything, including what other reports leave out: acknowledgements, where each severity came from, exclusions, findings per owner, finding IDs | `--report audit` |
 | `-f json` | Scripts | The full result ([schema](../schema/result-v0.schema.json), also printed by `api-diff schema`) | `-f json -o result.json` |
 

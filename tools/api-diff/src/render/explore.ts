@@ -64,7 +64,11 @@ details.g > .rows { padding:0 8px 4px; } .rows.in-place .subj { display:none; }
 .side { border:1px solid var(--line); border-radius:6px; overflow:auto; background:var(--bg); }
 .side h4 { margin:0; padding:4px 8px; font-size:12px; font-weight:600; border-bottom:1px solid var(--line); color:var(--muted); }
 pre { margin:0; padding:4px 0; } .ln { display:inline-block; width:44px; padding-right:8px; text-align:right; color:var(--muted); user-select:none; }
-.hit { background:var(--hl); display:block; }
+.hit { background:var(--hl); display:block; } .at { outline:2px solid var(--info); outline-offset:-2px; display:block; }
+.side { max-height:70vh; } .side h4 { position:sticky; top:0; background:var(--bg); z-index:1; }
+.crumbs { padding:4px 8px; font:12px ui-monospace, SFMono-Regular, Menlo, monospace; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+button.link { background:none; border:0; padding:0; font:inherit; color:var(--info); cursor:pointer; text-decoration:underline; text-decoration-color:color-mix(in srgb, currentColor 40%, transparent); }
+.side h4 button.link { font-weight:400; } button.link.ref { margin-left:6px; }
 details.ops > summary { cursor:pointer; color:var(--info); width:max-content; }
 details.ops ul { margin:4px 0 0; padding:4px 8px; list-style:none; width:max-content; max-width:100%; max-height:16em; overflow:auto; border:1px solid var(--line); border-radius:6px; background:var(--bg); }
 details.ops li { white-space:nowrap; }
@@ -80,12 +84,49 @@ const opsOf = (f) => (/^[A-Z]+ \\//.test(f.subject) ? [f.subject] : []).concat(f
 const tagsOf = (f) => [...new Set(opsOf(f).flatMap((o) => (data.operations[o] || {}).tags || []))];
 const tags = [...new Set(data.findings.flatMap(tagsOf))].sort();
 for (const t of tags) $('#tag').append(el('option', { value: t }, t));
-function side(title, s) {
-  const box = el('div', { class: 'side' }, el('h4', {}, title + (s ? ' · ' + s.file + ':' + s.line : '')));
+// One side of a finding: the lines around it, the path to it (each step jumps to its line), a
+// toggle that shows all of the enclosing schema or operation, and a jump to a $ref's target.
+function side(name, s) {
+  const box = el('div', { class: 'side' });
+  const head = el('h4', {}, name + (s ? ' · ' + s.file + ':' + s.line : ''));
   const pre = el('pre');
-  if (!s) pre.append(el('span', { class: 'muted' }, '  (not in this version)'));
-  else s.lines.forEach((line, i) => { const n = s.start + i; const row = el('span', n === s.line ? { class: 'hit' } : {}, el('span', { class: 'ln' }, String(n)), line + '\\n'); pre.append(row); });
+  box.append(head);
+  if (!s) { pre.append(el('span', { class: 'muted' }, '  (not in this version)')); box.append(pre); return box; }
+  const src = ((data.sourceLines || {})[name] || {});
+  const rows = (lines, start, hit) => { pre.textContent = ''; const at = {}; lines.forEach((line, i) => { const n = start + i; const row = el('span', n === hit ? { class: 'hit' } : {}, el('span', { class: 'ln' }, String(n)), line + '\\n'); at[n] = row; pre.append(row); }); return at; };
+  const block = (file, b) => { const f = src[file] || {}; const out = []; for (let n = b.start; n <= b.end; n++) out.push(f[n] === undefined ? '' : f[n]); return out; };
+  const scope = s.scope && (s.scope.start < s.start || s.scope.end > s.start + s.lines.length - 1) ? s.scope : undefined;
+  const unesc = (k) => k.replace(/~1/g, '/').replace(/~0/g, '~');
+  const last = (p) => { const segs = p.split('/').slice(1).map(unesc); const op = /^(paths|webhooks)$/.test(segs[0]) && segs.length === 3; return op ? segs[2].toUpperCase() + ' ' + segs[1] : segs.length ? segs[segs.length - 1] : s.file; };
+  let view = 'window', at = rows(s.lines, s.start, s.line), toggle, back;
+  const show = (v) => {
+    view = v;
+    if (v === 'window') at = rows(s.lines, s.start, s.line);
+    else if (v === 'scope') at = rows(block(s.file, scope), scope.start, s.line);
+    else at = rows(block(s.ref.file, s.ref), s.ref.start, s.ref.line);
+    if (toggle) toggle.hidden = v === 'ref';
+    if (toggle) toggle.textContent = v === 'scope' ? 'show less' : 'show all of ' + last(scope.pointer) + ' (' + (scope.end - scope.start + 1) + ' lines)';
+    if (back) back.textContent = v === 'ref' ? '← back' : '→ ' + s.ref.name;
+    head.firstChild.textContent = name + ' · ' + (v === 'ref' ? s.ref.file + ':' + s.ref.line + ' (' + s.ref.name + ')' : s.file + ':' + s.line);
+  };
+  const jump = (n) => { const row = at[n]; if (!row) return; pre.querySelectorAll('.at').forEach((x) => x.classList.remove('at')); row.classList.add('at'); box.scrollTop += row.getBoundingClientRect().top - box.getBoundingClientRect().top - 70; };
+  if (scope) { toggle = el('button', { type: 'button', class: 'link' }); toggle.addEventListener('click', () => { show(view === 'scope' ? 'window' : 'scope'); jump(s.line); }); head.append(' ', toggle); }
+  if (s.path && s.path.length) {
+    const crumbs = el('div', { class: 'crumbs' });
+    s.path.forEach((p, i) => {
+      if (i) crumbs.append(el('span', { class: 'muted' }, ' › '));
+      const inWindow = p.line >= s.start && p.line < s.start + s.lines.length;
+      const reachable = inWindow || (scope && p.line >= scope.start && p.line <= scope.end);
+      if (!reachable) { crumbs.append(el('span', { title: 'line ' + p.line }, p.key)); return; }
+      const b = el('button', { type: 'button', class: 'link', title: 'line ' + p.line }, p.key);
+      b.addEventListener('click', () => { if (view === 'ref' || (!inWindow && view !== 'scope')) show(inWindow ? 'window' : 'scope'); jump(p.line); });
+      crumbs.append(b);
+    });
+    if (s.ref) { back = el('button', { type: 'button', class: 'link ref' }); back.addEventListener('click', () => show(view === 'ref' ? 'window' : 'ref')); crumbs.append(' ', back); }
+    box.append(crumbs);
+  }
   box.append(pre);
+  show('window');
   return box;
 }
 const RANK = { error: 0, warn: 1, info: 2 };
@@ -249,7 +290,7 @@ export function renderExplore(r: Result, explorerUrl?: string): string {
   const index = new Map(r.findings.map((f, i) => [f, i]));
   const sectionOf = (f: Finding): string => (isNotice(f) ? (f.severity === 'info' ? 'notes' : 'problems') : isVersion(f) ? 'version' : f.kind === 'docs' ? 'docs' : 'changes');
   const rows = mergeDirections(r.findings).map((e) => ({ parts: e.parts.map((f) => index.get(f)!), section: sectionOf(e.finding) }));
-  const data = { findings, rows, operations: r.operations ?? {}, snippets: r.snippets ?? {} };
+  const data = { findings, rows, operations: r.operations ?? {}, snippets: r.snippets ?? {}, sourceLines: r.sourceLines ?? {} };
   const side = (s: Result['compared']['base']): string => `<code>${esc(s.file)}</code>${s.commit ? ` <span class="mono">@ ${esc(s.commit.slice(0, 7))}</span>` : ''} · version ${esc(s.version)}`;
   const advice = adviceLine(r);
   const title = r.compared.revision.title ?? r.compared.base.title ?? 'API';

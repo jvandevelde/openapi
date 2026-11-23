@@ -26,11 +26,13 @@ export const FINDING: Shape = {
 };
 const COUNTS: Shape = { total: 1, bySeverity: BY_SEVERITY, byKind: { wire: 1, sdk: 1, docs: 1 }, byRule: { '*': 1 }, acknowledged: 1 };
 const COMPARED: Shape = { base: SIDE, revision: SIDE };
-const SNIPPET: Shape = { file: 1, start: 1, line: 1, lines: [1] };
+const BLOCK = { pointer: 1, start: 1, end: 1, line: 1 } as const;
+const SNIPPET: Shape = { file: 1, start: 1, line: 1, lines: [1], path: [{ key: 1, line: 1 }], scope: BLOCK, ref: { ...BLOCK, file: 1, name: 1 } };
+const SOURCE_LINES: Shape = { '*': { '*': 1 } };
 const RESULT: Shape = {
   schemaVersion: 1, tool: { name: 1, version: 1 }, profile: 1, compared: COMPARED, state: 1, counts: COUNTS,
   advice: { needed: 1, actual: 1, ok: 1, because: 1, breaking: 1 }, policy: { file: 1, sha256: 1 },
-  snippets: { '*': { base: SNIPPET, revision: SNIPPET } }, operations: { '*': { operationId: 1, tags: [1], summary: 1, owners: [1] } },
+  snippets: { '*': { base: SNIPPET, revision: SNIPPET } }, sourceLines: { base: SOURCE_LINES, revision: SOURCE_LINES }, operations: { '*': { operationId: 1, tags: [1], summary: 1, owners: [1] } },
   uses: { file: 1, operations: [1], unmatched: [1] }, findings: [FINDING],
 };
 const ENTRY: Shape = { kind: 1, breaking: 1, text: 1, note: 1, rule: 1, id: 1 };

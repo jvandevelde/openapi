@@ -65,7 +65,7 @@ test('audit shows what other reports leave out, with acknowledgements, sources, 
     assert.equal(html.code, 0);
     const page = readFileSync(join(dir, 'audit.html'), 'utf8');
     assert.match(page, /<h1>API governance audit<\/h1>/);
-    assert.match(page, /severity ← policy api-diff\.yaml: overrides #1 \(rule version-unchanged\)/);
+    assert.match(page, /severity &#x2190; policy api-diff\.yaml: overrides #1 \(rule version-unchanged\)/);
     assert.doesNotMatch(page, /<script/);
   } finally {
     rmSync(dir, { recursive: true, force: true });

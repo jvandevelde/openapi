@@ -4,7 +4,7 @@ Compares two OpenAPI documents (a *base* and a *revision*), finds what changed, 
 
 > **Status: milestone M10.** Operation-level changes (paths, operations, security, parameters, request bodies, responses), schema changes (properties, types, enums, limits, unions, discriminators, `allOf`), reference, lifecycle, version and docs changes are classified with direction-aware rules (all 133 rules implemented, including rename detection). Teams configure it with a policy file (rules, overrides, lifecycle, extensions, exclusions, versions, owners), acknowledgements and in-spec `x-api-diff` hints. Each finding lists the teams that own it (`x-owner` or the policy). Reports: `review` (the default), `ci`, `summary`, `changelog` (with migration notes for clients), `sdk`, `explore` (interactive HTML) and `audit` (for governance), custom reports with Mustache templates, consumer views (`--uses`), plus a step-by-step `history` timeline and a ready-to-copy PR workflow. Released as one file, `api-diff.mjs`, on [GitHub releases](https://github.com/jvandevelde/openapi/releases) tagged `api-diff-v<version>`.
 
-**New to it?** Start with [docs/getting-started.md](docs/getting-started.md): how to download it, each command and report with its default behaviour, and where to change the defaults.
+**New to it?** Start with [docs/getting-started.md](docs/getting-started.md): how to download it, each command and report with its default behaviour, and where to change the defaults. [docs/workflows.md](docs/workflows.md) has recipes for using it on your machine and for releases: a pre-commit hook, reviewing a PR locally, release notes, consumer impact and more.
 
 ## Requirements
 
@@ -14,7 +14,7 @@ Node.js 22.18 or later. The release file has every dependency bundled; from the 
 
 ```sh
 # The release file: download a pinned version once, check it, run it anywhere
-url=https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.0
+url=https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.1
 curl -fsSLO "$url/api-diff.mjs" -O "$url/api-diff.mjs.sha256" && sha256sum -c api-diff.mjs.sha256
 node api-diff.mjs main:openapi.yaml openapi.yaml
 
@@ -70,7 +70,7 @@ Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` fi
 
 ```
 $ api-diff base.yaml revision.yaml
-api-diff 0.10.0 · profile wire
+api-diff 0.10.1 · profile wire
 base      base.yaml  (OpenAPI 3.1.0, version 1.0.0)
 revision  revision.yaml  (OpenAPI 3.1.0, version 1.1.0)
 

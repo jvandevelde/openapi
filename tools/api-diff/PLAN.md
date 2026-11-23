@@ -168,7 +168,7 @@ The tool never assumes it's inside this tools repo. Git commands run **in the re
 **Getting the tool into another repo's CI.** **Decided: a single release file, no package registry.** Each release builds `api-diff.mjs` (all dependencies bundled with esbuild, so no `npm install`) and attaches it to a GitHub release of this repo, tagged `api-diff-v<version>` (tags are per tool, since the repo holds several). This repo is public, so downloads need no token.
 
 ```sh
-curl -fsSLo api-diff.mjs https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.0/api-diff.mjs
+curl -fsSLo api-diff.mjs https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.1/api-diff.mjs
 node api-diff.mjs main:openapi.yaml openapi.yaml
 ```
 
@@ -204,7 +204,7 @@ jobs:
   api-diff:
     runs-on: ubuntu-latest
     env:
-      API_DIFF: https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.0
+      API_DIFF: https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.10.1
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }            # the base commit must be present
@@ -542,7 +542,7 @@ versions:
 Each side also records the file name, a SHA-256 of the file, and where its version came from, along with the tool version and a hash of the policy. This makes every report reproducible:
 
 ```
-api-diff 0.10.0 · policy 3fa2c1e
+api-diff 0.10.1 · policy 3fa2c1e
 base      orders.yaml  v1.4.0 (x-api-version)  build 812  commit 9d4a736
 revision  orders.yaml  v1.5.0 (x-api-version)  build 845  commit c7f3e1a
 advice    major bump needed (2 breaking changes); revision is a minor bump

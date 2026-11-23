@@ -230,6 +230,7 @@ Unknown keys and rule IDs are errors that come with a suggestion, so typos don't
 
 ## Where next
 
+- [workflows.md](workflows.md): recipes for using it outside CI: before committing, a pre-commit hook, reviewing a PR locally, release notes and version numbers, consumer impact, accepting a breaking change, governance reviews, scripting
 - [README](../README.md#usage): every command-line option
 - [docs/rules/](rules/README.md): one page per rule, with a tested example
 - [POLICY.md](../POLICY.md): the full policy file reference

@@ -378,18 +378,44 @@ export class SchemaEngine {
     this.#other(eb, er, dir, depth);
   }
 
+  /**
+   * The types a schema accepts, counting its `oneOf`/`anyOf`: a union without a `type` of its own
+   * accepts the types of its branches (through `$ref`, `allOf` and nested unions), not any type.
+   * `undefined` means any type (some branch has no type).
+   */
+  #typeSet(which: 'b' | 'r', eff: Eff, depth = 0): Set<string> | undefined {
+    const own = eff.types.set;
+    if (!eff.union || depth > 10) return own;
+    let branches: Set<string> | undefined = new Set();
+    for (const p of eff.union.branches) {
+      const t = this.#typeSet(which, this.#effective(which, p), depth + 1);
+      if (!t) {
+        branches = undefined;
+        break;
+      }
+      for (const x of t) branches.add(x);
+    }
+    if (!branches) return own;
+    if (!own) return branches;
+    return new Set([...own].filter((x) => branches.has(x) || (x === 'integer' && branches.has('number'))));
+  }
+
   #types(eb: Eff, er: Eff, dir: Direction): void {
     const strip = (s: Set<string> | undefined): Set<string> | undefined => (s ? new Set([...s].filter((t) => t !== 'null')) : undefined);
-    const bNull = !eb.types.set || eb.types.set.has('null');
-    const rNull = !er.types.set || er.types.set.has('null');
-    const bAt = eb.types.at ?? eb.at;
-    const rAt = er.types.at ?? er.at;
-    if (eb.types.set && er.types.set) {
+    // With a union on both sides, branch changes are reported by #union; compare only the own `type`.
+    const both = !!eb.union && !!er.union;
+    const bSet = both ? eb.types.set : this.#typeSet('b', eb);
+    const rSet = both ? er.types.set : this.#typeSet('r', er);
+    const bNull = !bSet || bSet.has('null');
+    const rNull = !rSet || rSet.has('null');
+    const bAt = eb.types.at ?? (bSet ? eb.union?.at : undefined) ?? eb.at;
+    const rAt = er.types.at ?? (rSet ? er.union?.at : undefined) ?? er.at;
+    if (bSet && rSet) {
       if (!bNull && rNull) this.#emit('nullable-added', dir, bAt, rAt, {}, ['type']);
       if (bNull && !rNull) this.#emit('nullable-removed', dir, bAt, rAt, {}, ['type']);
     }
-    const bt = strip(eb.types.set);
-    const rt = strip(er.types.set);
+    const bt = strip(bSet);
+    const rt = strip(rSet);
     const covers = (big: Set<string> | undefined, small: Set<string> | undefined): boolean => !big || (!!small && [...small].every((t) => big.has(t) || (t === 'integer' && big.has('number'))));
     const same = (!bt && !rt) || (bt && rt && bt.size === rt.size && [...bt].every((t) => rt.has(t)));
     if (same || (bt?.size === 0 && rt?.size === 0)) return;

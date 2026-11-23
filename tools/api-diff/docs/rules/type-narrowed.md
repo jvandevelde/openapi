@@ -40,8 +40,12 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`type-narrowed`](../../test/cases/type-narrowed/) | `type-narrowed-in-request` · error · #/components/schemas/Pet | number → integer in a request. |
+| [`type-narrowed-union`](../../test/cases/type-narrowed-union/) | `type-narrowed-in-request` · error · #/components/schemas/Pet | A oneOf of an object and a string replaced by an inline object: the union's types are its branches' types, so string was dropped. |
 
 ## Policy options
 

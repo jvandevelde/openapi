@@ -37,6 +37,7 @@ ul.findings li.plain { grid-template-columns: 1fr; }
 .ack { color: var(--muted); font-size: 13px; }
 table.grid { border-collapse: collapse; } .grid th, .grid td { border: 1px solid var(--line); padding: 4px 12px; text-align: right; }
 .grid th:first-child, .grid td:first-child { text-align: left; }
+.grid.text th, .grid.text td { text-align: left; } .nowrap { white-space: nowrap; }
 .counts { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line); font-weight: 600; }
 `;
 
@@ -165,9 +166,9 @@ export function renderAuditHtml(r: Result, opts: AuditOptions = {}): string {
   const d = auditData(r, opts);
   const byId = new Map(r.findings.map((f) => [f.id, f]));
   const parts = [header(r, 'API governance audit')];
-  const table = (head: string[], rows: string[][]): string => `<table class="grid"><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('\n')}</table>`;
+  const table = (head: string[], rows: string[][], cls = 'grid'): string => `<table class="${cls}"><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join('')}</tr>`).join('\n')}</table>`;
   const a = d.acknowledgements;
-  if (a.active.length) parts.push(`<h2>Acknowledged <span class="muted">(${a.active.length})</span></h2>`, table(['Finding', 'Severity', 'Owner', 'Until', 'Reason'], a.active.map((x) => [`<strong>${esc(x.subject)}</strong> <code>${esc(x.rule)}</code> <code>${esc(x.finding)}</code>`, sev(x.severity), esc(x.owner ?? '—'), esc(x.expires), esc(x.reason)])));
+  if (a.active.length) parts.push(`<h2>Acknowledged <span class="muted">(${a.active.length})</span></h2>`, table(['Finding', 'Severity', 'Owner', 'Until', 'Reason'], a.active.map((x) => [`<strong>${esc(x.subject)}</strong> <code>${esc(x.rule)}</code> <code>${esc(x.finding)}</code>`, sev(x.severity), `<span class="nowrap">${esc(x.owner ?? '—')}</span>`, `<span class="nowrap">${esc(x.expires)}</span>`, esc(x.reason)]), 'grid text'));
   const problems = [...a.expired, ...a.notOwner, ...a.stale].map((id) => byId.get(id)!);
   if (problems.length) parts.push(`<h2>Acknowledgement problems <span class="muted">(${problems.length})</span></h2><ul class="findings">${problems.map((f) => findingItem(f, true)).join('\n')}</ul>`);
   if (d.unclassified.length) parts.push(`<h2>Not classified by any rule <span class="muted">(${d.unclassified.length})</span></h2><ul class="findings">${d.unclassified.map((id) => findingItem(byId.get(id)!, true)).join('\n')}</ul>`);

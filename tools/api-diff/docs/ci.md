@@ -84,7 +84,6 @@ What each part does:
 - **`--report ci`** prints a short list to the job log. `review` (text, HTML and JSON), `summary` (JSON), `changelog` (HTML, for release notes) and `explore` (interactive HTML with every finding and the source side by side) go to files that are kept as the `api-diff-reports` artifact.
 - **The comment step** posts `review.txt` inside a code block, with a hidden marker so the next push edits the same comment. It only creates a comment when the spec changed, and always updates an existing one. Each spec gets its own comment (`--key`), so a repository with several specs can run the step once per spec.
 - **A spec that can't be read** (broken YAML, Swagger 2.0, not OpenAPI) fails the job (exit code 2) whatever `--fail-on` says, since nothing could be compared. The reports are still written, and the comment shows why under "Problems with the inputs"; that's why the last two steps run with `if: ${{ !cancelled() }}`. The same goes for a failing gate with `--fail-on`.
-- **Each finding line ends with its ID** (`· id 7266a0a41492`), so an author can accept an intended breaking change by adding that ID to `api-diff.ack.yaml` (below) without opening the JSON.
 - **Fork PRs**: GitHub gives them a read-only token, so the comment step warns instead of failing, and the report is still in the job log and artifacts.
 - **`--cache-dir`** (optional) keeps the base's parsed documents between runs; it saves about half a second on an 8 MB spec.
 
@@ -103,6 +102,8 @@ reports:
 # defaults:
 #   fail-on: error           # uncomment to fail the check on breaking changes
 ```
+
+**Accepting a change in a PR:** each finding in the comment ends with its `id`. The PR's author runs `api-diff ack <id> --reason "…" --expires <YYYY-MM-DD>` locally (or edits `api-diff.ack.yaml`) and pushes the file with the PR; the next run marks the finding acknowledged, and reviewers see the reason in the comment. Review that file like code: CODEOWNERS on `api-diff.ack.yaml` makes sure the right people approve what is accepted.
 
 To make the check required, add the `api-diff` job to the branch protection rules. With the default `--fail-on never` it always passes, so it guarantees the report is produced without blocking intended changes; with `fail-on` set, it blocks until the changes are fixed or acknowledged.
 

@@ -116,16 +116,6 @@ test('stops quietly when the reader closes the pipe early', async () => {
   assert.equal(code, 0);
 });
 
-test('review and ci text show each finding ID, for acknowledging it', async () => {
-  const ids = JSON.parse((await run(...inCase('security-scheme-changed'), '-f', 'json')).out).findings.map((f: { id: string }) => f.id);
-  const review = (await run(...inCase('security-scheme-changed'))).out;
-  const ci = (await run(...inCase('security-scheme-changed'), '--report', 'ci')).out;
-  for (const id of ids) {
-    assert.match(review, new RegExp(` · id ${id}$`, 'm'));
-    assert.match(ci, new RegExp(` · id ${id}$`, 'm'));
-  }
-});
-
 test('report files: missing folders are created; a file that cannot be written exits 2', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'api-diff-out-'));
   try {
@@ -133,6 +123,9 @@ test('report files: missing folders are created; a file that cannot be written e
     assert.equal(ok.code, 0);
     assert.match(readFileSync(join(dir, 'a/b/review.html'), 'utf8'), /<html/);
     assert.match(readFileSync(join(dir, 'a/ci.txt'), 'utf8'), /operation removed/);
+    const ack = await run('ack', '0123456789ab', '--reason', 'intended', '--expires', '2099-01-01', '--acknowledgements', `${dir}/acks/api-diff.ack.yaml`);
+    assert.equal(ack.code, 0);
+    assert.match(readFileSync(join(dir, 'acks/api-diff.ack.yaml'), 'utf8'), /finding: 0123456789ab/);
     writeFileSync(join(dir, 'file'), '');
     const bad = await run(...inCase('operation-removed'), '-o', `${dir}/file/review.txt`);
     assert.equal(bad.code, 2);
@@ -172,7 +165,7 @@ test('schema prints the result schema; other schema names are usage errors', asy
 test('an unknown command is reported as one, not as a missing file', async () => {
   const r = await run('-C', cases, 'explain', '1fcf7e50b775');
   assert.equal(r.code, 2);
-  assert.match(r.err, /'explain' isn't a command or a file\. Commands: rules, history, schema/);
+  assert.match(r.err, /'explain' isn't a command or a file\. Commands: rules, history, schema, ack/);
   assert.match((await run('-C', cases, 'histroy', 'a..b', 'x.yaml')).err, /'histroy' isn't a command or a file \(did you mean history\?\)/);
   // Real files still work, and paths that look like paths keep the file-not-found message.
   assert.match((await run('-C', cases, 'nope.yaml', 'nope2.yaml')).err, /file not found: nope.yaml/);

@@ -267,6 +267,8 @@ Picked during the brainstorm. Each is still to be confirmed and recorded as a de
 
 ## 11. Suggested order
 
+A first, smaller step is built: text reports show finding IDs, and `api-diff ack <id> --reason … --expires …` appends a checked entry to `api-diff.ack.yaml` ([decision record](../decision-records/2026-11-23T0313-ack-command-and-ids-in-text.md)). The steps below are still ideas.
+
 1. **`overlay strip`** (low effort, useful alone).
 2. **Overlays as input:** `--overlay`, roles, the JSONPath subset, positions, `overlay-target-unmatched`, cache key. The foundation for the rest.
 3. **Typed review file**, with back-compat for `api-diff.ack.yaml`.

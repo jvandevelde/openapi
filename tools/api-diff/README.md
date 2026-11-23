@@ -64,31 +64,27 @@ Git inputs read the root file **and every file it references with `$ref`** at th
 
 Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` findings at or above it, `2` usage or input error (missing file, unknown revision, invalid policy, a report file that can't be written, or a document that can't be read as OpenAPI 3.x, such as broken YAML or Swagger 2.0; the report is still printed). Missing folders in a report's file path are created.
 
+`api-diff ack <finding-id> --reason <text> --expires <YYYY-MM-DD> [--owner <team>]` accepts a finding: it appends a checked entry to `api-diff.ack.yaml`, which you commit with the change. Every report shows each finding's `id`. See [POLICY.md](POLICY.md) section 11.
+
 `api-diff rules` lists the implemented rules with their default severities (`--all` includes planned ones, `--format json` for scripts). `api-diff rules <id>` explains one rule. The full reference, one page per rule, is in [docs/rules/](docs/rules/README.md).
 
 ### Example
 
 ```
-$ api-diff base.yaml revision.yaml
+$ api-diff --base v1.0.0 openapi.yaml --report ci
 api-diff 0.10.1 · profile wire
-base      base.yaml  (OpenAPI 3.1.0, version 1.0.0)
-revision  revision.yaml  (OpenAPI 3.1.0, version 1.1.0)
+base      v1.0.0:openapi.yaml @ 39ca1cd  (OpenAPI 3.1.0, version 1.0.0)
+revision  openapi.yaml  (OpenAPI 3.1.0, version 1.1.0)
 advice    major bump needed (2 breaking changes); revision is a minor bump (too small)
 
-Version
-  WARN   version went from 1.0.0 to 1.1.0 (a minor bump), but the changes need a major bump (…)  version-bump-too-small · id fbaf54d000d4
+ERROR  #/components/schemas/NewPet     maxLength decreased (100 → 50) at /properties/name/maxLength  openapi.yaml:94 · max-length-decreased-in-request · id 8b48ac001f7e
+ERROR  GET /pets                       query parameter 'limit' became required  openapi.yaml:17 · query-parameter-became-required · id 7266a0a41492
+WARN   #/components/schemas/PetStatus  enum value added: 'adopted' at /enum  openapi.yaml:89 · enum-value-added-in-response · id 0d553c2a7a3a
+WARN   document                        version went from 1.0.0 to 1.1.0 (a minor bump), but the changes need a major bump (…)  version-bump-too-small · id fbaf54d000d4
 
-Changes (2 places, 2 with breaking changes)
-ERROR  GET /pets
-       ERROR  query parameter 'limit' became required  revision.yaml:8 · query-parameter-became-required · id 7266a0a41492
-       WARN   success response 202 added  revision.yaml:11 · response-success-status-added · id 55d8d6ebd2d7
-ERROR  securitySchemes/apiKey  affects 2 operations: GET /cats, GET /pets
-       -  security scheme 'apiKey' changed: name  revision.yaml:19 · security-scheme-changed · id 3c133461eee7
-
-4 findings: 2 error, 2 warn, 0 info · state: breaking · not failing CI (--fail-on never)
+6 findings: 2 error, 2 warn, 2 info · state: breaking · not failing CI (--fail-on never)
+To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-MM-DD> (POLICY.md section 11)
 ```
-
-Each line ends with the file and line, the rule ID and the finding ID. To accept a breaking change on purpose, put its ID in `api-diff.ack.yaml` ([POLICY.md](POLICY.md) section 11).
 
 ## History
 

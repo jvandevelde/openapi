@@ -47,7 +47,7 @@ Here a branch made three changes to the example pet store: `limit` became requir
 ```
 $ api-diff --base main openapi.yaml
 api-diff 0.10.1 · profile wire
-base      main:openapi.yaml @ c4700ce  (OpenAPI 3.1.0, version 1.0.0)
+base      main:openapi.yaml @ 39ca1cd  (OpenAPI 3.1.0, version 1.0.0)
 revision  openapi.yaml  (OpenAPI 3.1.0, version 1.1.0)
 advice    major bump needed (2 breaking changes); revision is a minor bump (too small)
 
@@ -65,6 +65,7 @@ WARN   #/components/schemas/PetStatus  affects 3 operations: GET /pets, GET /pet
        INFO   enum value added: 'adopted' at /enum  openapi.yaml:89 · enum-value-added-in-request · id 6f4a9cb185dc
 
 6 findings: 2 error, 2 warn, 2 info · state: breaking · not failing CI (--fail-on never)
+To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-MM-DD> (POLICY.md section 11)
 ```
 
 ### Reading the result
@@ -75,7 +76,7 @@ WARN   #/components/schemas/PetStatus  affects 3 operations: GET /pets, GET /pet
   - **`INFO`** is safe.
 - **Severity depends on direction.** The same schema change is judged separately for data clients **send** (requests) and data they **receive** (responses). That's why the shorter `maxLength` is an `ERROR` for requests and only `INFO` for responses.
 - **A shared component's change is shown once,** with the operations it affects.
-- **Each line ends with the file and line, the rule ID and the finding ID.** `api-diff rules <rule-id>` explains a rule, and [docs/rules/](rules/README.md) has a page for each rule with an example. The finding ID (`id 8b48ac001f7e`) is what you put in `api-diff.ack.yaml` to accept a breaking change on purpose ([workflows.md recipe 8](workflows.md#8-accepting-a-breaking-change)); it stays the same while the change does.
+- **Each line ends with the file and line, the rule ID and the finding's `id`.** The `id` is what you use to accept a change ([section 5](#5-customise-it)). `api-diff rules <rule-id>` explains a rule, and [docs/rules/](rules/README.md) has a page for each rule with an example.
 - **`advice`** compares the version bump in `info.version` with the changes. It warns when the bump is too small, or when the spec changed but the version didn't.
 - **`state`** is `no-changes`, `compatible` or `breaking`. `api-diff --state …` prints only the state, for scripts.
 
@@ -220,7 +221,7 @@ Unknown keys and rule IDs are errors that come with a suggestion, so typos don't
 | Change what a report shows, or add your own report | [Reports, §10](../POLICY.md#10-reports) |
 | Route findings to the teams that own them | [Owners, §14](../POLICY.md#14-owners) |
 
-**Accepting a breaking change.** If a breaking change is intended, list its finding ID (shown in `audit`, `explore` and the JSON) in `api-diff.ack.yaml`, with a reason and an expiry date. The finding is still reported, but it no longer fails CI ([POLICY.md §11](../POLICY.md#11-acknowledgements-file)).
+**Accepting a breaking change.** If a breaking change is intended, run `api-diff ack <finding-id> --reason "…" --expires <YYYY-MM-DD>` (every report shows each finding's `id`) and commit the `api-diff.ack.yaml` it writes; or edit that file by hand. The finding is still reported, but it no longer fails CI ([POLICY.md §11](../POLICY.md#11-acknowledgements-file)).
 
 **Hints in the spec itself.** Spec authors can steer `api-diff` from the spec, for example with `x-api-diff: { enum: open }` on an enum that will grow, or `x-stability-level: beta` on an operation that may still change. See [spec-authors.md](spec-authors.md).
 

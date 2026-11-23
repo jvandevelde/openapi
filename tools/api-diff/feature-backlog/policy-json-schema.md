@@ -13,7 +13,7 @@
 
 ## Background
 
-POLICY.md section 13 promised this command, but until 2026-11-23 `api-diff schema policy` ignored its argument and printed the result schema. The command now prints the result schema only for `api-diff schema` or `api-diff schema result`, and `schema policy` exits 2 saying there's no policy schema yet ([decision record](../decision-records/2026-11-23T0331-adoption-fixes-ids-outputs-unreadable-inputs.md)).
+POLICY.md section 13 promised this command, but until 2026-11-23 `api-diff schema policy` ignored its argument and printed the result schema. The command now prints the result schema only for `api-diff schema` or `api-diff schema result`, and `schema policy` exits 2 saying there's no policy schema yet ([decision record](../decision-records/2026-11-23T0331-adoption-fixes-outputs-unreadable-inputs.md)).
 
 The policy is validated by hand-written code in `src/policy/policy.ts`, with "did you mean" suggestions that a JSON Schema validator can't give. So the schema would sit beside that code, not replace it.
 

@@ -25,7 +25,7 @@ jobs:
     env:
       SPEC: openapi.yaml            # path of the spec in this repository
       BASE: ${{ github.base_ref }}
-      API_DIFF_VERSION: 0.10.1      # pin the tool's version
+      API_DIFF_VERSION: 0.11.0      # pin the tool's version
     steps:
       - uses: actions/checkout@v4
         with:

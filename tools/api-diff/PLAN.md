@@ -482,7 +482,7 @@ The engine produces one **result object** (JSON with a versioned schema): findin
 | **`sdk`** | SDK maintainers | Which generated types or methods change? | sdk findings, a table of old → new type and method names, the SDK semver bump | Generated type / operationId | text, JSON | SDK release PR |
 | **`summary`** | Release or product manager | How big and how risky is this release? | Counts by kind and severity, the semver advice, the 5 most serious findings | — | text, JSON | Release checklist, chat |
 | **`audit`** | API governance | Are we following our own rules? | Everything, including acknowledged findings (who, why, expiry), expired acknowledgements, `unclassified-change`, and which policy entry set each severity | Rule | JSON, HTML | Governance reviews, dashboards (trends across releases) |
-| **`explore`** | Anyone investigating | Show me every change | All findings, the changed source fragment of each side, filters (kind, severity, tag, path), search, recursive schemas shown as `↻`, and links into the spec explorer. A diff view, not a spec browser | Interactive | Self-contained HTML (one file, works offline) | CI artifact linked from the `review` comment |
+| **`explore`** | Anyone investigating | Show me every change | All findings, the changed source fragment of each side, filters (kind, severity, tag, path), search, recursive schemas shown as `↻`, and links into the spec explorer. A diff view, not a spec browser | Sections as in `review`; changes by schema or operation (or flat), docs changes by rule | Self-contained HTML (one file, works offline) | CI artifact linked from the `review` comment |
 
 ### Spec browsing and payloads
 
@@ -766,6 +766,7 @@ Each idea has its own file in [feature-backlog/](feature-backlog/README.md) with
 | [**★ Bulk-change collapsing**](feature-backlog/bulk-change-collapsing.md) | Group the same change made in many places without a shared `$ref` into one "N operations" finding. | high / low | Built |
 | [**★ Cached base index**](feature-backlog/cached-base-index.md) | Cache the parsed base by content hash so CI only parses the revision. | high / low | Built |
 | [**One entry per change in requests and responses**](feature-backlog/merge-request-response-findings.md) | Show a schema change's `…-in-request` and `…-in-response` findings as one entry in `review` and `explore`, with each direction's severity and ID, so reviewers don't read every schema change twice. IDs and acknowledgements stay per finding. | high / low | Built |
+| [**Explore page: sections, grouping and folded documentation changes**](feature-backlog/explore-sections-and-grouping.md) | Lay the `explore` page out like `review`: changes grouped by schema or operation (or flat, by a remembered control) and documentation changes folded into one group per rule, so a reviewer sees each schema once and docs edits as a line each. | high / low | Built |
 | [**Spec quality side-report**](feature-backlog/spec-quality-side-report.md) | List identical inline schemas found by the content hashes ("appears inline 42 times; consider a component"). | medium / low | Idea |
 | [**Portfolio mode**](feature-backlog/portfolio-mode.md) | Compare many specs in one run and report which APIs a change to a shared schema file affects. | high / high | Idea |
 

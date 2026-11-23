@@ -4,6 +4,10 @@
 // box, and for each finding its details, client note, affected operations
 // and the base and revision source side by side. A schema change's request
 // and response findings share one row, with each direction's details inside.
+// Rows are in sections as in the review report: input problems, version,
+// changes (grouped by schema or operation, or a flat list: the 'group by'
+// control, remembered in the browser), documentation changes (one group per
+// rule) and notes.
 // Findings inside recursive schemas are marked ↻.
 //
 // The page embeds the result as JSON (with `<` escaped, so it can't close the
@@ -11,8 +15,8 @@
 // is inserted as text, never as HTML.
 
 import { clientNote } from '../rules/notes.ts';
-import type { Result } from '../types.ts';
-import { adviceLine, mergeDirections } from './common.ts';
+import type { Finding, Result } from '../types.ts';
+import { adviceLine, isNotice, isVersion, mergeDirections } from './common.ts';
 import { explorerLink } from './config.ts';
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
@@ -48,6 +52,11 @@ details.f > summary::-webkit-details-marker { display:none; }
 .subj { font-weight:600; overflow-wrap:anywhere; } .msg { overflow-wrap:anywhere; }
 .body { padding:0 10px 10px 78px; }
 .body dl { display:grid; grid-template-columns:max-content 1fr; gap:2px 12px; margin:6px 0; } .body dt { color:var(--muted); } .body dd { margin:0; overflow-wrap:anywhere; }
+.sec h2 { font-size:15px; margin:18px 0 6px; } .sec h2 .muted { font-weight:400; }
+details.g { border:1px solid var(--line); border-radius:8px; margin:8px 0; }
+details.g > summary { cursor:pointer; padding:8px 10px; display:grid; grid-template-columns:60px minmax(0,1fr); gap:8px; list-style:none; }
+details.g > summary::-webkit-details-marker { display:none; }
+details.g > .rows { padding:0 8px 4px; } .rows.in-place .subj { display:none; }
 .dirs { color:var(--muted); font-size:12.5px; white-space:nowrap; }
 .part { margin:8px 0 0; padding-top:6px; border-top:1px solid var(--line); } .part h4 { margin:0; font-size:13px; font-weight:600; } .part h4 .sev { margin-left:6px; }
 .note { margin:6px 0; padding:6px 10px; border-left:3px solid var(--info); background:var(--bg); }
@@ -56,7 +65,7 @@ details.f > summary::-webkit-details-marker { display:none; }
 .side h4 { margin:0; padding:4px 8px; font-size:12px; font-weight:600; border-bottom:1px solid var(--line); color:var(--muted); }
 pre { margin:0; padding:4px 0; } .ln { display:inline-block; width:44px; padding-right:8px; text-align:right; color:var(--muted); user-select:none; }
 .hit { background:var(--hl); display:block; }
-@media (max-width:700px) { .sides { grid-template-columns:1fr; } .body { padding-left:10px; } details.f > summary { grid-template-columns:1fr; } }
+@media (max-width:700px) { .sides { grid-template-columns:1fr; } .body { padding-left:10px; } details.f > summary, details.g > summary { grid-template-columns:1fr; } }
 `;
 
 const SCRIPT = `
@@ -97,7 +106,7 @@ function item(parts) {
   const f = worst(parts);
   const d = el('details', { class: 'f' });
   const badge = el('span', { class: 'sev ' + f.severity }, f.severity);
-  const head = el('div', {}, el('span', { class: 'subj' }, f.subject + (f.details.recursive ? ' ↻' : '')), ' ', el('span', { class: 'msg' }, f.message));
+  const head = el('div', {}, el('span', { class: 'subj' }, f.subject), f.details.recursive ? ' ↻' : '', ' ', el('span', { class: 'msg' }, f.message));
   if (parts.length > 1) head.append(' ', el('span', { class: 'dirs' }, parts.map((p) => dirOf(p) + ' ' + p.severity).join(' · ')));
   d.append(el('summary', {}, badge, head));
   d.addEventListener('toggle', () => {
@@ -123,13 +132,64 @@ function item(parts) {
   return { node: d, badge };
 }
 const items = data.rows.map((row) => {
-  const parts = row.map((n) => data.findings[n]);
+  const parts = row.parts.map((n) => data.findings[n]);
   const { node, badge } = item(parts);
-  return { node, badge, parts: parts.map((f) => ({ f, text: (f.subject + ' ' + f.message + ' ' + f.rule + ' ' + (f.note || '')).toLowerCase(), tags: tagsOf(f), paths: opsOf(f).map((o) => o.split(' ')[1]) })) };
+  const f = parts[0];
+  return { node, badge, section: row.section, key: row.section === 'docs' ? f.rule : f.subject, parts: parts.map((f) => ({ f, text: (f.subject + ' ' + f.message + ' ' + f.rule + ' ' + (f.note || '')).toLowerCase(), tags: tagsOf(f), paths: opsOf(f).map((o) => o.split(' ')[1]) })) };
 });
-const list = $('#list');
-for (const i of items) list.append(i.node);
+// Sections, as in the review report: input problems and version checks first, then changes
+// (grouped by schema or operation, or a flat list), documentation changes (one group per rule), then notes.
+const SECTIONS = [['problems', 'Problems with the inputs'], ['version', 'Version'], ['changes', 'Changes'], ['docs', 'Documentation changes'], ['notes', 'Notes']];
+const sections = {};
+for (const [id, title] of SECTIONS) {
+  const count = el('span', { class: 'muted' });
+  const box = el('section', { class: 'sec' }, el('h2', {}, title + ' ', count));
+  const body = el('div');
+  box.append(body);
+  $('#list').append(box);
+  sections[id] = { box, body, count, groups: new Map() };
+}
+// A group: a schema or operation (changes) or a rule (docs), with its rows inside. Worst first, then largest.
+function groupsFor(section) {
+  const by = new Map();
+  for (const i of items) if (i.section === section) (by.get(i.key) || by.set(i.key, []).get(i.key)).push(i);
+  return [...by].map(([key, rows]) => ({ key, rows, sev: worst(rows.flatMap((r) => r.parts.map((p) => p.f))).severity }))
+    .sort((a, b) => RANK[a.sev] - RANK[b.sev] || b.rows.length - a.rows.length || a.key.localeCompare(b.key, undefined, { numeric: true }));
+}
+function groupNode(g, section) {
+  const badge = el('span', { class: 'sev ' + g.sev }, g.sev);
+  const count = el('span', { class: 'muted' });
+  const ops = [...new Set(g.rows.flatMap((r) => r.parts.flatMap((p) => p.f.impact || [])))].sort();
+  const head = el('div', {}, el('span', { class: 'subj' }, g.key), ' ', count);
+  if (section === 'changes' && ops.length) head.append(el('span', { class: 'muted' }, ' · affects ' + ops.length + ' operation' + (ops.length === 1 ? '' : 's') + ': ' + ops.slice(0, 5).join(', ') + (ops.length > 5 ? ', …' : '')));
+  const d = el('details', { class: 'g' }, el('summary', {}, badge, head));
+  // Rows in a schema or operation group don't repeat its name.
+  const inner = el('div', { class: section === 'changes' ? 'rows in-place' : 'rows' });
+  d.append(inner);
+  // Error and warn groups start open; info-only groups and documentation rules start closed.
+  if (section === 'changes' && g.sev !== 'info') d.open = true;
+  return { node: d, inner, badge, count, rows: g.rows };
+}
+const grouped = {};
+for (const section of ['changes', 'docs']) grouped[section] = groupsFor(section).map((g) => groupNode(g, section));
+let groupBy = 'place';
+try { groupBy = localStorage.getItem('api-diff-explore-group-by') || 'place'; } catch (e) {}
+$('#group').value = groupBy === 'none' ? 'none' : 'place';
+// Puts every row in its place: in its group, or straight in its section (no grouping; docs always grouped).
+function layout() {
+  groupBy = $('#group').value;
+  try { localStorage.setItem('api-diff-explore-group-by', groupBy); } catch (e) {}
+  for (const [id] of SECTIONS) sections[id].body.textContent = '';
+  for (const i of items) if (!(i.section === 'docs' || (i.section === 'changes' && groupBy === 'place'))) sections[i.section].body.append(i.node);
+  for (const section of ['changes', 'docs']) {
+    if (section === 'changes' && groupBy !== 'place') continue;
+    for (const g of grouped[section]) { for (const r of g.rows) g.inner.append(r.node); sections[section].body.append(g.node); }
+  }
+}
+$('#group').addEventListener('input', () => { layout(); apply(); });
+layout();
 // A row is shown while any of its findings matches; its badge shows the worst severity among those that match.
+// A group is shown while any of its rows is, with the worst severity and number of its shown rows.
 function apply() {
   const sev = new Set([...document.querySelectorAll('input[name=sev]:checked')].map((x) => x.value));
   const kind = new Set([...document.querySelectorAll('input[name=kind]:checked')].map((x) => x.value));
@@ -140,9 +200,25 @@ function apply() {
     i.node.hidden = hits.length === 0;
     if (hits.length) { shown++; shownFindings += hits.length; const w = worst(hits.map((h) => h.f)).severity; i.badge.className = 'sev ' + w; i.badge.textContent = w; }
   }
+  const typing = !!(q || path);
+  for (const section of ['changes', 'docs']) for (const g of grouped[section]) {
+    const shownRows = g.rows.filter((r) => !r.node.hidden);
+    g.node.hidden = shownRows.length === 0;
+    if (shownRows.length) {
+      const w = worst(shownRows.map((r) => r.badge.textContent).map((severity) => ({ severity }))).severity;
+      g.badge.className = 'sev ' + w; g.badge.textContent = w;
+      g.count.textContent = '×' + shownRows.length;
+      if (typing) g.node.open = true; // show what a search or path filter found
+    }
+  }
+  for (const [id] of SECTIONS) {
+    const n = items.filter((i) => i.section === id && !i.node.hidden).length;
+    sections[id].box.hidden = n === 0;
+    sections[id].count.textContent = '(' + n + ')';
+  }
   $('#count').textContent = items.length === data.findings.length ? shown + ' of ' + items.length + ' findings' : shown + ' of ' + items.length + ' changes (' + shownFindings + ' of ' + data.findings.length + ' findings)';
 }
-document.querySelectorAll('.bar input, .bar select').forEach((x) => x.addEventListener('input', apply));
+document.querySelectorAll('.bar input, .bar select:not(#group)').forEach((x) => x.addEventListener('input', apply));
 apply();
 `;
 
@@ -152,9 +228,11 @@ export function renderExplore(r: Result, explorerUrl?: string): string {
     const links = { base: explorerLink(explorerUrl, 'base', f.base), revision: explorerLink(explorerUrl, 'revision', f.revision) };
     return { ...f, ...(note ? { note } : {}), ...(links.base || links.revision ? { links } : {}) };
   });
-  // Rows: a schema change's request and response findings share one row.
+  // Rows: a schema change's request and response findings share one row. Each row's
+  // section is where the page puts it: input problems, version checks, changes, docs or notes.
   const index = new Map(r.findings.map((f, i) => [f, i]));
-  const rows = mergeDirections(r.findings).map((e) => e.parts.map((f) => index.get(f)!));
+  const sectionOf = (f: Finding): string => (isNotice(f) ? (f.severity === 'info' ? 'notes' : 'problems') : isVersion(f) ? 'version' : f.kind === 'docs' ? 'docs' : 'changes');
+  const rows = mergeDirections(r.findings).map((e) => ({ parts: e.parts.map((f) => index.get(f)!), section: sectionOf(e.finding) }));
   const data = { findings, rows, operations: r.operations ?? {}, snippets: r.snippets ?? {} };
   const side = (s: Result['compared']['base']): string => `<code>${esc(s.file)}</code>${s.commit ? ` <span class="mono">@ ${esc(s.commit.slice(0, 7))}</span>` : ''} · version ${esc(s.version)}`;
   const advice = adviceLine(r);
@@ -181,6 +259,7 @@ export function renderExplore(r: Result, explorerUrl?: string): string {
 <label>tag <select id="tag"><option value="">all</option></select></label>
 <label>path <input id="path" type="search" placeholder="/pets" style="min-width:120px;flex:0"></label>
 <input id="q" type="search" placeholder="Search findings, rules and notes" aria-label="Search">
+<label>group by <select id="group"><option value="place">schema or operation</option><option value="none">none</option></select></label>
 </div>
 <main>
 <div id="count" class="count"></div>

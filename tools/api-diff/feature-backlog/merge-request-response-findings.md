@@ -33,10 +33,9 @@ Only the display is merged. The JSON result, finding IDs, acknowledgements, over
 
 Related ideas raised at the same time, not part of this proposal:
 
-- **Group `explore` rows under their schema or operation**, as `review` does.
-- **Collapse the same edit made in several schemas** ("in 7 schemas").
-- **Fold docs-only changes in `explore`** into one row per rule, as `review` does.
+- **Group `explore` rows under their schema or operation**, and **fold docs-only changes in `explore`** into one group per rule: built next, see [Explore page: sections, grouping and folded documentation changes](explore-sections-and-grouping.md).
+- **Collapse the same edit made in several schemas** ("in 7 schemas"): still an idea.
 
 ## Open questions
 
-- Should the three related ideas above become proposals of their own?
+- Should collapsing the same edit across schemas become a proposal of its own?

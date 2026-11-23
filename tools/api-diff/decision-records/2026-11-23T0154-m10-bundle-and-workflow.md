@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-23 01:54 UTC |
 | **Summary** | esbuild is pinned exactly and the bundle is deterministic and tested against the sources on every golden case; the result schema is imported, not read from disk; releases are never replaced, aren't marked Latest, and a suffixed version is a pre-release. |
 | **Milestone** | M10 |

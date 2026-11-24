@@ -207,5 +207,14 @@ test('HTML reports are self-contained and escape everything from the spec', asyn
   assert.match(review, /<h2>Documentation changes/);
   assert.match(renderSummaryHtml(r), /<h2>Size and risk<\/h2><p>2 places changed, 2 with breaking changes; 3 operations affected\.<\/p>/);
   assert.match((await run('-C', `${cases}operation-removed`, '-f', 'html', 'base.yaml', 'revision.yaml')).out, /<title>api-diff review<\/title>/);
+  // Up to 3 affected operations are listed in a group's header; more fold into a count with one per line.
+  assert.match(review, /<span class="aside muted">affects 2 operations: GET \/orders, GET \/orders\/\{id\}<\/span>/);
+  const many = Array.from({ length: 5 }, (_, i) => `  /shops/${i}: { get: { responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } } } } }`).join('\n');
+  const wide = renderReviewHtml(await compareOpened(
+    { source: new MemorySource({ 'a.yaml': shop('a', many) }), root: 'a.yaml' },
+    { source: new MemorySource({ 'b.yaml': shop('a, b', many) }), root: 'b.yaml' },
+  ));
+  assert.match(wide, /<span class="aside muted">affects 7 operations<\/span><\/summary><div class="g-ops"><span class="muted">affects<\/span><details class="ops"><summary>7 operations<\/summary><ul class="mono"><li>GET \/orders<\/li>/);
+  assert.equal(wide.match(/<details class="ops">[\s\S]*?<\/details>/)![0].match(/<li>/g)!.length, 7);
   assert.equal((await run('-C', `${cases}operation-removed`, '--report', 'ci:html', 'base.yaml', 'revision.yaml')).code, 2);
 });

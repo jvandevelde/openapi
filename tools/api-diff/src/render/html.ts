@@ -58,6 +58,12 @@ ul.findings li + li { border-top:1px solid var(--border); }
 ul.findings li.plain { grid-template-columns:minmax(0,1fr); }
 ul.findings li > .sev { margin-top:1px; min-width:0; width:72px; }
 .where { color:var(--muted); font-size:12.5px; margin-top:3px; overflow-wrap:anywhere; }
+.g-ops { display:flex; gap:8px; align-items:baseline; padding:0 16px 12px 44px; font-size:13px; }
+details.ops > summary { color:var(--accent); width:max-content; display:inline-flex; align-items:center; gap:4px; }
+details.ops > summary::before { content:""; width:5px; height:5px; margin:0 3px 0 1px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:rotate(-45deg); transition:transform .15s ease; }
+details.ops[open] > summary::before { transform:rotate(45deg); }
+details.ops ul { margin:6px 0 0; padding:6px 10px; list-style:none; width:max-content; max-width:100%; max-height:16em; overflow:auto; border:1px solid var(--border); border-radius:8px; background:var(--bg-elev); }
+details.ops li { white-space:nowrap; }
 .where code { background:none; border:0; padding:0; color:var(--fg-2); }
 .where .sev { min-width:0; height:18px; font-size:10px; padding:0 7px 0 6px; vertical-align:1px; }
 .ack { margin-top:6px; padding:6px 10px; border-left:2px solid var(--ok); background:var(--ok-bg); border-radius:0 6px 6px 0; color:var(--fg-2); font-size:12.5px; }
@@ -74,7 +80,7 @@ table.grid { border-collapse:separate; border-spacing:0; width:100%; font-size:1
 @media (max-width:640px) {
   main { padding:4px 16px 40px; } h1 { font-size:22px; }
   .compare { grid-template-columns:minmax(0,1fr); } .arrow { justify-self:center; transform:rotate(90deg); }
-  ul.findings li { grid-template-columns:minmax(0,1fr); gap:6px; } summary .aside { padding-left:0; }
+  ul.findings li { grid-template-columns:minmax(0,1fr); gap:6px; } summary .aside { padding-left:0; } .g-ops { padding-left:16px; }
 }
 `;
 
@@ -141,11 +147,19 @@ function entryItem(e: Entry, withSubject: boolean, label: boolean): string {
   return `<li${label ? '' : ' class="plain"'}>${label ? sev(f.severity) : ''}<div>${withSubject ? `<strong>${esc(f.subject)}</strong> ` : ''}${esc(f.message)}<div class="where">${loc ? `${esc(loc)} · ` : ''}<code>${esc(ruleWithoutDirection(f.rule))}</code></div><div class="where">${dirs}</div>${acks}</div></li>`;
 }
 
+/** How many affected operations a review group lists in its header before folding them (as in explore). */
+const OPS_INLINE = 3;
+
 function groupBlock(g: Group, by: GroupBy = 'root-cause'): string {
-  const ops = g.operations.length && by !== 'operation' ? `<span class="aside muted">affects ${g.operations.length} operation${g.operations.length === 1 ? '' : 's'}: ${esc(g.operations.join(', '))}</span>` : '';
+  const n = by === 'operation' ? 0 : g.operations.length;
+  const noun = `${n} operation${n === 1 ? '' : 's'}`;
+  // Up to OPS_INLINE operations are listed in the header; more give only the count there, and a
+  // folded list, one per line, at the top of the card (a fold can't sit inside a <summary>).
+  const ops = !n ? '' : n <= OPS_INLINE ? `<span class="aside muted">affects ${noun}: ${esc(g.operations.join(', '))}</span>` : `<span class="aside muted">affects ${noun}</span>`;
+  const opsList = n > OPS_INLINE ? `<div class="g-ops"><span class="muted">affects</span><details class="ops"><summary>${noun}</summary><ul class="mono">${g.operations.map((o) => `<li>${esc(o)}</li>`).join('')}</ul></details></div>` : '';
   const owners = ownersText(g, by) ? `<span class="aside muted">${esc(ownersText(g, by))}</span>` : '';
   const entries = mergeDirections(g.findings);
-  return `<details class="card ${g.severity}"${g.severity === 'info' ? '' : ' open'}><summary>${CHEVRON}${sev(g.severity)}<span class="subject">${esc(g.subject)}</span>${ops}${owners}</summary>
+  return `<details class="card ${g.severity}"${g.severity === 'info' ? '' : ' open'}><summary>${CHEVRON}${sev(g.severity)}<span class="subject">${esc(g.subject)}</span>${ops}${owners}</summary>${opsList}
 <ul class="findings">${entries.map((e) => entryItem(e, by !== 'root-cause', entries.some((x) => x.finding.severity !== g.severity))).join('\n')}</ul></details>`;
 }
 

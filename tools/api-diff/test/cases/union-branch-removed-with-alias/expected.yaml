@@ -1,0 +1,9 @@
+description: 'A oneOf branch removed from a request with its discriminator values (bird, parrot), and an alias (kitty) removed for a branch that stays: the alias is still a mapping finding.'
+milestone: M5
+findings:
+- rule: union-branch-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'
+- rule: discriminator-mapping-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'

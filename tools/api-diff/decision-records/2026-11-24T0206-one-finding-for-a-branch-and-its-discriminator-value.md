@@ -31,7 +31,7 @@ Neither rule can be dropped, because each one catches changes the other misses. 
 ## Impacts
 
 - `#union` (now returns the unmatched branches), `#discriminator` and the new `#branchChanges` in `src/diff/schema-engine.ts`; `schemaMessage` in `src/rules/registry.ts`; the union notes in `src/rules/notes.ts`; the four rule descriptions in `src/rules/docs.ts` and the generated pages.
-- Test cases `union-branch-added-with-discriminator`, `union-branch-removed-with-discriminator` and `union-branch-added-with-alias`.
+- Test cases `union-branch-added-with-discriminator`, `union-branch-removed-with-discriminator` and `union-branch-added-with-alias` and `union-branch-removed-with-alias`.
 - Specs that add or remove a variant with its mapping value get one finding fewer. An acknowledgement for the old `discriminator-mapping-*` finding no longer matches a finding and is reported as stale (`acknowledgement-stale`).
 
 ## References

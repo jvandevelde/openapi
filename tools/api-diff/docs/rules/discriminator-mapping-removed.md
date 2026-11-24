@@ -41,8 +41,12 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`discriminator-mapping-removed`](../../test/cases/discriminator-mapping-removed/) | `discriminator-mapping-removed-in-request` · error · #/components/schemas/Pet | A discriminator value removed from a request. |
+| [`union-branch-removed-with-alias`](../../test/cases/union-branch-removed-with-alias/) | `discriminator-mapping-removed-in-request` · error · #/components/schemas/Pet | A oneOf branch removed from a request with its discriminator values (bird, parrot), and an alias (kitty) removed for a branch that stays: the alias is still a mapping finding. |
 
 ## Policy options
 

@@ -41,11 +41,12 @@ Findings:
 
 ## Test cases
 
-2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
 | Test case | Expects | What it shows |
 |---|---|---|
 | [`union-branch-removed`](../../test/cases/union-branch-removed/) | `union-branch-removed-in-request` · error · #/components/schemas/Pet | A oneOf branch removed from a request. |
+| [`union-branch-removed-with-alias`](../../test/cases/union-branch-removed-with-alias/) | `union-branch-removed-in-request` · error · #/components/schemas/Pet | A oneOf branch removed from a request with its discriminator values (bird, parrot), and an alias (kitty) removed for a branch that stays: the alias is still a mapping finding. |
 | [`union-branch-removed-with-discriminator`](../../test/cases/union-branch-removed-with-discriminator/) | `union-branch-removed-in-request` · error · #/components/schemas/Pet | A oneOf branch removed from a request with its discriminator value: one finding, not a mapping finding as well. |
 
 ## Policy options

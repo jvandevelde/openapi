@@ -17,7 +17,20 @@ sha256sum -c api-diff.mjs.sha256          # macOS: shasum -a 256 -c api-diff.mjs
 node api-diff.mjs --version               # 0.12.0
 ```
 
-Put it anywhere, e.g. `~/bin/api-diff.mjs`, and add `alias api-diff='node ~/bin/api-diff.mjs'` to your shell profile. To update, download a newer version. All releases are listed on the [releases page](https://github.com/jvandevelde/openapi/releases?q=api-diff) (tags `api-diff-v*`).
+In PowerShell (Windows PowerShell 5.1 or PowerShell 7):
+
+```powershell
+$url = "https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.12.0"
+Invoke-WebRequest "$url/api-diff.mjs" -OutFile api-diff.mjs
+Invoke-WebRequest "$url/api-diff.mjs.sha256" -OutFile api-diff.mjs.sha256
+$expected = (Get-Content api-diff.mjs.sha256).Split(" ")[0]
+if ((Get-FileHash api-diff.mjs -Algorithm SHA256).Hash -ne $expected) { throw "checksum mismatch" }
+node api-diff.mjs --version               # 0.12.0
+```
+
+In Windows PowerShell 5.1, run `$ProgressPreference = 'SilentlyContinue'` first: the progress bar makes downloads slow.
+
+Put it anywhere, e.g. `~/bin/api-diff.mjs`, and add `alias api-diff='node ~/bin/api-diff.mjs'` to your shell profile (in PowerShell, `function api-diff { node "$HOME\bin\api-diff.mjs" @args }` in your `$PROFILE`). To update, download a newer version. All releases are listed on the [releases page](https://github.com/jvandevelde/openapi/releases?q=api-diff) (tags `api-diff-v*`).
 
 **From a clone** (to try unreleased changes):
 

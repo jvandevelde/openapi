@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info:
+  title: Pets
+  version: 1.0.0
+paths:
+  '/pets':
+    get:
+      operationId: getPet
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pet:
+                    oneOf:
+                    - $ref: '#/components/schemas/Cat'
+                    - $ref: '#/components/schemas/Dog'
+                    discriminator:
+                      propertyName: kind
+                      mapping:
+                        cat: Cat
+                        dog: '#/components/schemas/Dog'
+                        fish: '#/components/schemas/Fish'
+                  owner:
+                    $ref: '#/components/schemas/Owner'
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        kind:
+          type: string
+    Dog:
+      type: object
+      properties:
+        kind:
+          type: string
+    Owner:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+      discriminator:
+        propertyName: kind
+        mapping:
+          person: '#/components/schemas/Person'
+    Person:
+      allOf:
+      - $ref: '#/components/schemas/Owner'
+      - type: object
+        properties:
+          name:
+            type: string

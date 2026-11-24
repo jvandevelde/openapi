@@ -13,6 +13,7 @@ import { compareFindings } from './classify/classify.ts';
 import { applyDeprecationPeriod, diffLifecycle, removalOptions, stabilityLevels, today, type LifecycleOptions } from './diff/lifecycle.ts';
 import { DEFAULT_LIFECYCLE } from './policy/context.ts';
 import { SchemaIndex } from './index/schema-index.ts';
+import { orphanedMappings } from './index/orphaned-mappings.ts';
 import { DocumentSet, LoadError, type Notice } from './load/documents.ts';
 import type { ParseCacheLike } from './load/cache.ts';
 import { buildModel, InvalidSpecError, type Model, type Operation } from './model/model.ts';
@@ -96,6 +97,8 @@ async function loadSide(input: OpenedInput, side: Side, cache?: ParseCacheLike):
     for (const n of model.schemaIndex.notices) {
       changes.push({ rule: n.rule, subject: n.logical ?? SIDE_NAME[side], [side]: docs.location(n.at), details: { ...n.details, side } });
     }
+    // Spec problems a change can introduce are checked on the revision only: one in base is fixed or still there.
+    if (side === 'revision') changes.push(...orphanedMappings(docs, model.schemaIndex, side));
   } catch (e) {
     if (!(e instanceof InvalidSpecError)) throw e;
     changes.push({ rule: 'spec-invalid', subject: SIDE_NAME[side], [side]: docs.location({ file: docs.root, segs: [] }), details: { reason: `${compared.file}: ${e.message}`, side } });

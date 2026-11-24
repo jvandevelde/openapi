@@ -26,6 +26,8 @@ interface Helpers {
 
 const show = (v: unknown): string => (v === undefined || v === null ? 'none' : typeof v === 'string' ? v : Array.isArray(v) && v.every((x) => typeof x === 'string') ? v.join(' or ') : JSON.stringify(v));
 const code = (s: string): string => `\`${s}\``;
+/** ` (discriminator `bird`)` for a branch added or removed with its discriminator value, else empty. */
+const tagged = (x: Helpers): string => (x.d('discriminatorValues') ? ` (discriminator ${x.d('discriminatorValues').split(' or ').map(code).join(' or ')})` : '');
 
 /** `/properties/a/properties/b/items/maxLength` → `a.b[]`; empty if the path names no property. */
 export function fieldOf(path: unknown): string {
@@ -147,8 +149,8 @@ const NOTES: Record<string, Note> = {
   'pattern-changed': (_f, dir, x) => (dir === 'request' ? `Make sure ${x.field} matches ${code(x.d('to'))} (was ${code(x.d('from'))}).` : `Don't assume ${x.field} matches ${code(x.d('from'))}; it now follows ${code(x.d('to'))}.`),
 
   // Composition
-  'union-branch-added': (_f, dir, x) => (dir === 'response' ? `Handle the new ${code(shortSchema(x.d('branch')))} variant of ${x.field}.` : undefined),
-  'union-branch-removed': (_f, dir, x) => (dir === 'request' ? `Stop sending the ${code(shortSchema(x.d('branch')))} variant of ${x.field}.` : undefined),
+  'union-branch-added': (_f, dir, x) => (dir === 'response' ? `Handle the new ${code(shortSchema(x.d('branch')))} variant of ${x.field}${tagged(x)}.` : undefined),
+  'union-branch-removed': (_f, dir, x) => (dir === 'request' ? `Stop sending the ${code(shortSchema(x.d('branch')))} variant of ${x.field}${tagged(x)}.` : undefined),
   'union-kind-changed': (_f, _dir, x) => `Values of ${x.field} must now match ${x.d('to') === 'oneOf' ? 'exactly one variant' : 'at least one variant'} (${x.d('from')} → ${x.d('to')}); generated SDK types change.`,
   'discriminator-property-changed': (_f, _dir, x) => `Use ${code(x.d('to'))} instead of ${code(x.d('from'))} to tell the variants of ${x.field} apart.`,
   'discriminator-mapping-added': (_f, dir, x) => (dir === 'response' ? `Handle the new ${code(x.d('value'))} variant of ${x.field}.` : undefined),

@@ -166,13 +166,15 @@ An enum marked open in the spec (`x-api-diff: { enum: open }`) makes `enum-value
 
 `allOf` has no rules of its own: we compare the merged (effective) schema, so its changes show up as the property and keyword rules above.
 
+A branch added or removed together with its discriminator value is one `union-branch-*` finding that names the value; the `discriminator-mapping-*` rules report values whose branch stays (aliases) or that have no union beside them ([decision record](decision-records/2026-11-24T0206-one-finding-for-a-branch-and-its-discriminator-value.md)).
+
 | Rule | Meaning | in / out | Phase |
 |---|---|---|---|
-| [`union-branch-added`](docs/rules/union-branch-added.md) | New `oneOf`/`anyOf` branch | info / warn | 2 |
+| [`union-branch-added`](docs/rules/union-branch-added.md) | New `oneOf`/`anyOf` branch (with its discriminator value, if any) | info / warn | 2 |
 | [`union-branch-removed`](docs/rules/union-branch-removed.md) | A branch was removed | error / info | 2 |
 | [`union-kind-changed`](docs/rules/union-kind-changed.md) | `anyOf` ↔ `oneOf`. wire: values that match several branches change validity. sdk: generated union types change | warn / warn · **sdk: error** | 2 |
 | [`discriminator-property-changed`](docs/rules/discriminator-property-changed.md) | `discriminator.propertyName` changed | error / error | 2 |
-| [`discriminator-mapping-added`](docs/rules/discriminator-mapping-added.md) | New mapping value | info / warn | 2 |
+| [`discriminator-mapping-added`](docs/rules/discriminator-mapping-added.md) | New mapping value for an existing branch (alias) or with no union | info / warn | 2 |
 | [`discriminator-mapping-removed`](docs/rules/discriminator-mapping-removed.md) | A mapping value was removed | error / info | 2 |
 | [`discriminator-mapping-changed`](docs/rules/discriminator-mapping-changed.md) | A value now maps to a different schema | error / error | 2 |
 
@@ -220,6 +222,7 @@ Extensions the policy's `extensions` section classifies (POLICY.md section 6) ha
 |---|---|---|---|
 | [`spec-invalid`](docs/rules/spec-invalid.md) | A document failed to load or validate (with location) | error | 1 |
 | [`ref-unresolved`](docs/rules/ref-unresolved.md) | A `$ref` points nowhere | error | 1 |
+| [`discriminator-mapping-orphaned`](docs/rules/discriminator-mapping-orphaned.md) | A `discriminator.mapping` value beside a `oneOf`/`anyOf` points at a schema that isn't a branch, or doesn't exist (a value left behind when its branch was removed). Revision only | warn | 2 |
 | [`cycle-not-productive`](docs/rules/cycle-not-productive.md) | A cycle with no property or `items` step, e.g. `A: allOf [$ref A]` | error | 2 |
 | [`documents-unrelated`](docs/rules/documents-unrelated.md) | The two documents share almost no operations, `operationId`s or schema names, and the title or server hosts differ, so they look like different APIs (usually a wrong path). Measured per signal as shared items ÷ the smaller document's count. The diff stops and this is the only finding; set it to `off` for an intentional rewrite | error | 3 |
 | [`acknowledgement-stale`](docs/rules/acknowledgement-stale.md) | An entry in the acknowledgements file names a finding that no longer appears; clean it up | info | 3 |
@@ -234,7 +237,7 @@ Extensions the policy's `extensions` section classifies (POLICY.md section 6) ha
 | 1. Core fallbacks | 4 |
 | 2–6. Operations, security, parameters, request bodies, responses | 41 (parameter rules count once, not once per location) |
 | 7. Schemas (each one is a request/response pair) | 52 |
-| 8–11. References, lifecycle, docs, notices | 33 |
+| 8–11. References, lifecycle, docs, notices | 34 |
 | **Total** | **about 125** (about 180 counting both directions of each pair) |
 
 Phase 1 builds sections 2–6 and the notices. Phase 2 builds the schema, reference and docs rules.

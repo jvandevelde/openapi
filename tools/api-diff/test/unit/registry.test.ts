@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { defaultSeverity } from '../../src/classify/classify.ts';
-import { allRuleIds, baseRuleId, getRule, RULES, specificRuleId } from '../../src/rules/registry.ts';
+import { allRuleIds, baseRuleId, getRule, isChange, NOTICE_RULES, RULES, specificRuleId, VERSION_RULES } from '../../src/rules/registry.ts';
 import { VERSION } from '../../src/version.ts';
 
 const read = (p: string): string => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -27,6 +27,15 @@ test('RULES.md documents exactly the rules in the registry', () => {
   const registered = new Set(RULES.map((r) => r.id));
   assert.deepEqual([...registered].filter((id) => !documented.has(id)).sort(), [], 'in the registry but not in RULES.md');
   assert.deepEqual([...documented].filter((id) => !registered.has(id)).sort(), [], 'in RULES.md but not in the registry');
+});
+
+test('notices are the section 11 rules, and neither notices nor version checks count as changes', () => {
+  assert.deepEqual([...NOTICE_RULES].sort(), RULES.filter((r) => r.section === 11).map((r) => r.id).sort());
+  for (const id of ['spec-invalid', 'ref-unresolved', 'discriminator-mapping-orphaned', 'acknowledgement-not-owner']) assert.ok(NOTICE_RULES.has(id), id);
+  for (const id of VERSION_RULES) assert.equal(getRule(id).section, 9, id);
+  assert.equal(isChange({ baseRule: 'discriminator-mapping-orphaned' }), false);
+  assert.equal(isChange({ baseRule: 'version-unchanged' }), false);
+  assert.equal(isChange({ baseRule: 'union-branch-added' }), true);
 });
 
 test('rule IDs, including variants, are unique and map back to their base rule', () => {

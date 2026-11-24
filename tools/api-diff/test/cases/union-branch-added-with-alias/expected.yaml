@@ -1,0 +1,9 @@
+description: 'A branch added with its discriminator value, and an alias (kitty) added for an existing branch: the alias is still a mapping finding.'
+milestone: M5
+findings:
+- rule: union-branch-added-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'
+- rule: discriminator-mapping-added-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

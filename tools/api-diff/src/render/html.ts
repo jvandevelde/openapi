@@ -57,6 +57,7 @@ ul.findings li { padding:12px 16px; display:grid; grid-template-columns:72px min
 ul.findings li + li { border-top:1px solid var(--border); }
 ul.findings li.plain { grid-template-columns:minmax(0,1fr); }
 ul.findings li > .sev { margin-top:1px; min-width:0; width:72px; }
+ul.findings.cl li { grid-template-columns:108px minmax(0,1fr); } ul.findings.cl li > .sev { width:108px; }
 .where { color:var(--muted); font-size:12.5px; margin-top:3px; overflow-wrap:anywhere; }
 .g-ops { display:flex; gap:8px; align-items:baseline; padding:0 16px 12px 44px; font-size:13px; }
 details.ops > summary { color:var(--accent); width:max-content; display:inline-flex; align-items:center; gap:4px; }
@@ -147,16 +148,25 @@ function entryItem(e: Entry, withSubject: boolean, label: boolean): string {
   return `<li${label ? '' : ' class="plain"'}>${label ? sev(f.severity) : ''}<div>${withSubject ? `<strong>${esc(f.subject)}</strong> ` : ''}${esc(f.message)}<div class="where">${loc ? `${esc(loc)} · ` : ''}<code>${esc(ruleWithoutDirection(f.rule))}</code></div><div class="where">${dirs}</div>${acks}</div></li>`;
 }
 
-/** How many affected operations a review group lists in its header before folding them (as in explore). */
+/** How many operations a card lists in its header before folding them (as in explore). */
 const OPS_INLINE = 3;
 
+/**
+ * A card's list of operations (`affects …`, `used by …`): up to OPS_INLINE in the header; more give
+ * only the count there, and a folded list, one per line, at the top of the card (a fold can't sit inside a <summary>).
+ */
+function opsFold(verb: string, ops: string[]): { aside: string; list: string } {
+  if (!ops.length) return { aside: '', list: '' };
+  const noun = `${ops.length} operation${ops.length === 1 ? '' : 's'}`;
+  if (ops.length <= OPS_INLINE) return { aside: `<span class="aside muted">${verb} ${noun}: ${esc(ops.join(', '))}</span>`, list: '' };
+  return {
+    aside: `<span class="aside muted">${verb} ${noun}</span>`,
+    list: `<div class="g-ops"><span class="muted">${verb}</span><details class="ops"><summary>${noun}</summary><ul class="mono">${ops.map((o) => `<li>${esc(o)}</li>`).join('')}</ul></details></div>`,
+  };
+}
+
 function groupBlock(g: Group, by: GroupBy = 'root-cause'): string {
-  const n = by === 'operation' ? 0 : g.operations.length;
-  const noun = `${n} operation${n === 1 ? '' : 's'}`;
-  // Up to OPS_INLINE operations are listed in the header; more give only the count there, and a
-  // folded list, one per line, at the top of the card (a fold can't sit inside a <summary>).
-  const ops = !n ? '' : n <= OPS_INLINE ? `<span class="aside muted">affects ${noun}: ${esc(g.operations.join(', '))}</span>` : `<span class="aside muted">affects ${noun}</span>`;
-  const opsList = n > OPS_INLINE ? `<div class="g-ops"><span class="muted">affects</span><details class="ops"><summary>${noun}</summary><ul class="mono">${g.operations.map((o) => `<li>${esc(o)}</li>`).join('')}</ul></details></div>` : '';
+  const { aside: ops, list: opsList } = opsFold('affects', by === 'operation' ? [] : g.operations);
   const owners = ownersText(g, by) ? `<span class="aside muted">${esc(ownersText(g, by))}</span>` : '';
   const entries = mergeDirections(g.findings);
   return `<details class="card ${g.severity}"${g.severity === 'info' ? '' : ' open'}><summary>${CHEVRON}${sev(g.severity)}<span class="subject">${esc(g.subject)}</span>${ops}${owners}</summary>${opsList}
@@ -237,7 +247,7 @@ export function renderChangelogHtml(r: Result, opts: { docs?: boolean } = {}): s
     for (const op of t.operations) {
       const worst = op.entries.some((e) => e.breaking) ? ' error' : '';
       const head = `<summary>${CHEVRON}<span class="subject"><code>${esc(op.operation)}</code></span>${op.summary ? `<span class="muted">${esc(op.summary)}</span>` : ''}</summary>`;
-      html.push(op.operation === 'API-wide' ? panel(op.entries.map(changelogEntry).join('\n')) : `<details class="card${worst}" open>${head}<ul class="findings">${op.entries.map(changelogEntry).join('\n')}</ul></details>`);
+      html.push(op.operation === 'API-wide' ? `<ul class="findings panel cl">${op.entries.map(changelogEntry).join('\n')}</ul>` : `<details class="card${worst}" open>${head}<ul class="findings cl">${op.entries.map(changelogEntry).join('\n')}</ul></details>`);
     }
     list.push({ id: `tag-${i}`, title: t.tag, count: t.operations.reduce((n, op) => n + op.entries.length, 0), html: html.join('\n') });
   });
@@ -245,8 +255,8 @@ export function renderChangelogHtml(r: Result, opts: { docs?: boolean } = {}): s
     const html = ['<h2>Shared types</h2>'];
     for (const c of d.components) {
       const worst = c.entries.some((e) => e.breaking) ? ' error' : '';
-      const used = c.operations.length ? `<span class="aside muted">used by ${esc(c.operations.join(', '))}</span>` : '';
-      html.push(`<details class="card${worst}" open><summary>${CHEVRON}<span class="subject"><code>${esc(c.component)}</code></span>${used}</summary><ul class="findings">${c.entries.map(changelogEntry).join('\n')}</ul></details>`);
+      const used = opsFold('used by', c.operations);
+      html.push(`<details class="card${worst}" open><summary>${CHEVRON}<span class="subject"><code>${esc(c.component)}</code></span>${used.aside}</summary>${used.list}<ul class="findings cl">${c.entries.map(changelogEntry).join('\n')}</ul></details>`);
     }
     list.push({ id: 'shared-types', title: 'Shared types', count: d.components.reduce((n, c) => n + c.entries.length, 0), html: html.join('\n') });
   }

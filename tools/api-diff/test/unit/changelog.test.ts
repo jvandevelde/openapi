@@ -82,4 +82,13 @@ test('text and HTML', async () => {
   assert.match(html, /<h1>Shop 1\.0\.0 &#x2192; 2\.0\.0<\/h1>/);
   assert.match(html, /Handle the new <code>status<\/code> value <code>closed<\/code>\./);
   assert.doesNotMatch(html, /<script/);
+  // Up to 3 operations using a shared type are listed in its header; more fold into a count with one per line.
+  assert.match(html, /<span class="aside muted">used by 2 operations: GET \/orders, GET \/orders\/\{id\}<\/span>/);
+  const many = Array.from({ length: 3 }, (_, i) => `  /shops/${i}: { get: { tags: [orders], responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } } } } }`).join('\n');
+  const wide = renderChangelogHtml(await compareOpened(
+    { source: new MemorySource({ 'a.yaml': doc({ version: '1.0.0', status: 'open', limit: 100, extra: many }) }), root: 'a.yaml' },
+    { source: new MemorySource({ 'b.yaml': doc({ version: '2.0.0', status: 'closed', limit: 100, extra: many }) }), root: 'b.yaml' },
+  ));
+  assert.match(wide, /<span class="aside muted">used by 5 operations<\/span><\/summary><div class="g-ops"><span class="muted">used by<\/span><details class="ops"><summary>5 operations<\/summary><ul class="mono">/);
+  assert.equal(wide.match(/<details class="ops">[\s\S]*?<\/details>/)![0].match(/<li>/g)!.length, 5);
 });

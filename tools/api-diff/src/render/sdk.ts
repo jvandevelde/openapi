@@ -7,7 +7,7 @@
 
 import { getRule } from '../rules/registry.ts';
 import type { BumpLevel, Finding, Result, Severity } from '../types.ts';
-import { isChange } from './common.ts';
+import { directionOf, isChange, mergeDirections, ruleWithoutDirection } from './common.ts';
 
 /** Wire rules that also change generated code's shape: methods, arguments, fields and enum members. */
 const SHAPE = /^(operation-(added|removed|removed-after-deprecation|path-changed)|parameter-(added-required|added-optional|removed|became-required|became-optional|location-changed)|request-body-(added-required|added-optional|removed)|property-(added-required|added-optional|removed|became-required|became-optional)|type-(changed|widened|narrowed)|nullable-(added|removed)|enum-value-(added|removed)|union-branch-(added|removed)|union-kind-changed)$/;
@@ -20,11 +20,32 @@ export interface Rename {
   where: string;
 }
 
+/** One direction of a change judged for both requests and responses. */
+export interface SdkDirection {
+  direction: 'request' | 'response';
+  /** Under --profile sdk, as for the change. */
+  severity: Severity;
+  rule: string;
+  id: string;
+}
+
+export interface SdkChange {
+  /** Under --profile sdk; for a change in both directions, the worse one. */
+  severity: Severity;
+  text: string;
+  /** The rule ID; without its direction when the change is in both directions. */
+  rule: string;
+  /** The finding's ID; for a change in both directions, the worse direction's. */
+  id: string;
+  /** Set when the change is in both requests and responses: each direction's severity, rule and ID, request first. */
+  directions?: SdkDirection[];
+}
+
 export interface SdkGroup {
   /** operationId (or the operation when it has none) for methods; the component name for types. */
   name: string;
   operation?: string;
-  changes: { severity: Severity; text: string; rule: string; id: string }[];
+  changes: SdkChange[];
 }
 
 export interface SdkData {
@@ -59,8 +80,13 @@ export function sdkData(r: Result): SdkData {
     const rank: Record<BumpLevel, number> = { none: 0, patch: 1, minor: 2, major: 3 };
     if (rank[l] > rank[bump]) bump = l;
   };
-  for (const f of relevant) {
-    const sev = sdkSeverity(f);
+  const rank: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
+  // A change in requests and responses is one entry (as in review), so it's counted and listed once.
+  for (const e of mergeDirections(relevant)) {
+    const sevs = e.parts.map(sdkSeverity);
+    const worst = sevs.reduce((w, s, i) => (rank[s] < rank[sevs[w]!] ? i : w), 0);
+    const f = e.parts[worst]!;
+    const sev = sevs[worst]!;
     if (sev === 'error') breaking++;
     raise(sev === 'error' ? 'major' : 'minor');
     const d = (k: string): string => String(f.details[k] ?? '');
@@ -68,8 +94,10 @@ export function sdkData(r: Result): SdkData {
     else if (f.baseRule === 'parameter-renamed' || f.baseRule === 'path-param-renamed') renames.push({ what: 'argument', from: d('from'), to: d('to'), where: f.subject });
     else if (f.baseRule === 'component-renamed') renames.push({ what: 'type', from: short(d('from')), to: short(d('to')), where: short(f.subject) });
     else if (f.baseRule === 'schema-title-changed') renames.push({ what: 'type', from: d('from'), to: d('to'), where: short(f.subject) });
-    const change = { severity: sev, text: f.message, rule: f.rule, id: f.id };
-    const ops = /^[A-Z]+ \//.test(f.subject) ? [f.subject] : f.subject.startsWith('#/components/') ? [] : (f.impact ?? []);
+    const change: SdkChange = { severity: sev, text: f.message, rule: e.parts.length > 1 ? ruleWithoutDirection(f.rule) : f.rule, id: f.id };
+    if (e.parts.length > 1) change.directions = e.parts.map((p, i) => ({ direction: directionOf(p)!, severity: sevs[i]!, rule: p.rule, id: p.id }));
+    // Every operation either direction reaches.
+    const ops = [...new Set(e.parts.flatMap((p) => (/^[A-Z]+ \//.test(p.subject) ? [p.subject] : p.subject.startsWith('#/components/') ? [] : (p.impact ?? []))))];
     if (f.subject.startsWith('#/components/')) {
       const name = short(f.subject);
       const g = types.get(name) ?? { name, changes: [] };
@@ -83,16 +111,7 @@ export function sdkData(r: Result): SdkData {
       methods.set(op, g);
     }
   }
-  const rank: Record<Severity, number> = { error: 0, warn: 1, info: 2 };
-  const sortGroup = (g: SdkGroup): SdkGroup => {
-    // The same change in requests and responses reads the same: one line, with the worse severity.
-    const byText = new Map<string, SdkGroup['changes'][number]>();
-    for (const c of g.changes) {
-      const seen = byText.get(c.text);
-      if (!seen || rank[c.severity] < rank[seen.severity]) byText.set(c.text, c);
-    }
-    return { ...g, changes: [...byText.values()].sort((a, b) => rank[a.severity] - rank[b.severity] || a.text.localeCompare(b.text)) };
-  };
+  const sortGroup = (g: SdkGroup): SdkGroup => ({ ...g, changes: [...g.changes].sort((a, b) => rank[a.severity] - rank[b.severity] || a.text.localeCompare(b.text)) });
   const data: SdkData = {
     report: 'sdk',
     from: r.compared.base.version,
@@ -126,7 +145,10 @@ export function renderSdk(r: Result): string {
     out.push(title);
     for (const g of gs) {
       out.push(`  ${g.name}${g.operation && g.operation !== g.name ? `  (${g.operation})` : ''}`);
-      for (const c of g.changes) out.push(`    ${MARK[c.severity]}  ${c.text}  [${c.rule}]`);
+      for (const c of g.changes) {
+        out.push(`    ${MARK[c.severity]}  ${c.text}  [${c.rule}]`);
+        if (c.directions) out.push(`           ${c.directions.map((x) => `${x.direction} ${x.severity.toUpperCase()} · id ${x.id}`).join('   ')}`);
+      }
     }
     out.push('');
   };

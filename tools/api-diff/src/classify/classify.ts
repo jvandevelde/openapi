@@ -200,6 +200,7 @@ export function classify(changes: Change[], opts: ClassifyOptions): Finding[] {
         id: ops ? findingId(c, rule, ops) : whole,
         rule,
         baseRule: meta.id,
+        ...(meta.variants === 'direction' && c.direction ? { direction: c.direction } : {}),
         kind: meta.kind,
         severity,
         severitySource: source,

@@ -44,6 +44,23 @@ test('the result keeps one finding per direction', async () => {
   for (const rule of ['max-length-decreased-in-request', 'max-length-decreased-in-response', 'enum-value-added-in-request', 'enum-value-added-in-response']) assert.ok(byRule(r, rule), rule);
 });
 
+test('each finding records its direction; rules without direction variants have none', async () => {
+  const r = await compare();
+  for (const f of r.findings) {
+    const expected = f.rule.endsWith('-in-request') ? 'in' : f.rule.endsWith('-in-response') ? 'out' : undefined;
+    assert.equal(f.direction, expected, f.rule);
+  }
+  assert.ok(r.findings.some((f) => f.direction === 'in') && r.findings.some((f) => f.direction === 'out'));
+  assert.ok(r.findings.some((f) => f.direction === undefined), 'e.g. version-unchanged');
+});
+
+test('a readOnly property is judged for responses only', async () => {
+  const spec = (values: string[]): string => doc(100, ['available']).replace('    status:', `    id: { type: string, readOnly: true, enum: [${values.join(', ')}] }\n        status:`);
+  const r = await compareOpened({ source: new MemorySource({ 'a.yaml': spec(['x']) }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': spec(['x', 'y']) }), root: 'b.yaml' });
+  const added = r.findings.filter((f) => f.baseRule === 'enum-value-added');
+  assert.deepEqual(added.map((f) => [f.rule, f.direction]), [['enum-value-added-in-response', 'out']]);
+});
+
 test('mergeDirections pairs request and response findings of one change, worst first, request listed first', async () => {
   const r = await compare();
   const entries = mergeDirections(r.findings);

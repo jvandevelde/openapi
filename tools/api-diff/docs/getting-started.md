@@ -87,7 +87,7 @@ To accept a change on purpose: api-diff ack <id> --reason "…" --expires <YYYY-
   - **`ERROR`** breaks existing clients.
   - **`WARN`** may break some clients, for example a new enum value that a strict client doesn't expect.
   - **`INFO`** is safe.
-- **Severity depends on direction.** The same schema change is judged separately for data clients **send** (requests) and data they **receive** (responses). That's why the shorter `maxLength` is an `ERROR` for requests and only `INFO` for responses. Such a change is listed once, with its worst severity, and the line below it gives each direction's severity and `id` (`request ERROR · id 8b48ac001f7e   response INFO · id c6a8e0868a08`). They are two findings in the JSON result, each accepted separately. The `explore` page shows them as one row too.
+- **Severity depends on direction.** The same schema change is judged separately for data clients **send** (requests) and data they **receive** (responses). That's why the shorter `maxLength` is an `ERROR` for requests and only `INFO` for responses. Such a change is listed once, with its worst severity, and the line below it gives each direction's severity and `id` (`request ERROR · id 8b48ac001f7e   response INFO · id c6a8e0868a08`). They are two findings in the JSON result, each accepted separately, and each has a `direction` field (`in` for requests, `out` for responses). The `explore` page shows them as one row too.
 - **A shared component's change is shown once,** with the operations it affects.
 - **Each line ends with the file and line, the rule ID and the finding's `id`.** The `id` is what you use to accept a change ([section 5](#5-customise-it)). `api-diff rules <rule-id>` explains a rule, and [docs/rules/](rules/README.md) has a page for each rule with an example.
 - **`advice`** compares the version bump in `info.version` with the changes. It warns when the bump is too small, or when the spec changed but the version didn't.
@@ -125,7 +125,7 @@ api-diff --base main... openapi.yaml \
 | **`ci`** | CI logs | One line per `ERROR` and `WARN` finding, worst first, and the totals | `--report ci` |
 | **`summary`** | Release or product managers | Size and risk: counts by kind and severity, the version advice, the 5 most serious findings | `--report summary:json:summary.json` |
 | **`changelog`** | API consumers, release notes | What changed per tag and operation, in plain language, with **what clients need to do**. Docs-only changes are left out | see below |
-| **`sdk`** | SDK maintainers | Changes by generated method and type, renamed methods, arguments and types, and the SDK version bump (judged with `--profile sdk`) | `--report sdk` |
+| **`sdk`** | SDK maintainers | Changes by generated method and type, renamed methods, arguments and types, and the SDK version bump (judged with `--profile sdk`); a change in requests and responses is one line, with each direction's ID | `--report sdk` |
 | **`explore`** | Anyone digging in | One self-contained HTML page with every finding, filters, search, and the base and revision source side by side (with a breadcrumb, expandable to the whole schema or operation) | `--report explore:html:explore.html` |
 | **`audit`** | API governance | Everything, including what other reports leave out: acknowledgements, where each severity came from, exclusions, findings per owner, finding IDs | `--report audit` |
 | `-f json` | Scripts | The full result ([schema](../schema/result-v0.schema.json), also printed by `api-diff schema`) | `-f json -o result.json` |

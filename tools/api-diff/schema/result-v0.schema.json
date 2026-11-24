@@ -155,6 +155,7 @@
         "id": { "type": "string", "description": "Stable ID: the same change in the same place always gets the same ID." },
         "rule": { "type": "string", "description": "Most specific rule ID, e.g. query-parameter-removed." },
         "baseRule": { "type": "string", "description": "Rule ID without location or direction." },
+        "direction": { "enum": ["in", "out"], "description": "The usage direction the severity was judged for: 'in' (data the client sends, rule ending in -in-request) or 'out' (data it receives, rule ending in -in-response). Only on rules with request and response variants." },
         "kind": { "enum": ["wire", "sdk", "docs"] },
         "severity": { "enum": ["error", "warn", "info"] },
         "severitySource": { "type": "string" },

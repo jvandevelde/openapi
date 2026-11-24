@@ -115,6 +115,10 @@ export class SchemaEngine {
   /** Named nodes (base side) reached by some usage walk. */
   readonly #visited = new Set<string>();
   /** Unclassified differences per schema node: node id → pointers. */
+  /** Effective schemas, by side and position: the same position is merged once per comparison. */
+  readonly #effectives = new Map<string, Eff>();
+  /** `#typeSet` results, by effective schema and depth: union branches that reach each other would otherwise be walked exponentially often. */
+  readonly #typeSets = new WeakMap<Eff, Map<number, Set<string> | undefined>>();
   readonly #unclassified = new Map<string, { b: Pos; r: Pos; pointers: Set<string>; pairs: Set<string> }>();
   #pair = '';
 
@@ -310,6 +314,15 @@ export class SchemaEngine {
 
   /** Effective schema: the schema at `p` with `allOf` members (and 3.1 `$ref` siblings) merged in. */
   #effective(which: 'b' | 'r', p: Pos): Eff {
+    const key = `${which}|${p.node.id}|${p.path.join('/')}`;
+    const cached = this.#effectives.get(key);
+    if (cached) return cached;
+    const eff = this.#merged(which, p);
+    this.#effectives.set(key, eff);
+    return eff;
+  }
+
+  #merged(which: 'b' | 'r', p: Pos): Eff {
     const eff: Eff = { at: p, kw: new Map(), properties: new Map(), required: new Map(), types: { set: undefined, at: undefined }, union: undefined, unions: [] };
     const seen = new Set<string>();
     const merge = (q: Pos, depth: number): void => {
@@ -400,6 +413,15 @@ export class SchemaEngine {
    * `undefined` means any type (some branch has no type).
    */
   #typeSet(which: 'b' | 'r', eff: Eff, depth = 0): Set<string> | undefined {
+    let byDepth = this.#typeSets.get(eff);
+    if (!byDepth) this.#typeSets.set(eff, (byDepth = new Map()));
+    if (byDepth.has(depth)) return byDepth.get(depth);
+    const set = this.#computeTypeSet(which, eff, depth);
+    byDepth.set(depth, set);
+    return set;
+  }
+
+  #computeTypeSet(which: 'b' | 'r', eff: Eff, depth: number): Set<string> | undefined {
     let set = eff.types.set;
     if (depth > 10) return set;
     const meet = (a: Set<string>, b: Set<string>): Set<string> => new Set([...a].filter((x) => b.has(x) || (x === 'integer' && b.has('number'))));

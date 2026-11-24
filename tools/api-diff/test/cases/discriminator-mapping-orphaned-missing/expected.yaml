@@ -1,0 +1,9 @@
+description: 'A discriminator value (fish) added to an inline response union for a schema that does not exist. The cat value names its target without a $ref and is fine; Owner has a mapping but no union (Person extends it with allOf), so it is not checked.'
+milestone: M5
+findings:
+- rule: discriminator-mapping-orphaned
+  severity: warn
+  subject: revision document
+- rule: discriminator-mapping-added-in-response
+  severity: warn
+  subject: GET /pets

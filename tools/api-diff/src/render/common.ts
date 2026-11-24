@@ -26,7 +26,7 @@ const RESET = '\x1b[0m';
 export const painter = (color: boolean): Paint => (code, s) => (color ? `${code}${s}${RESET}` : s);
 
 /** Rules about the inputs or the tool rather than the API. */
-export const NOTICE_RULES = new Set(['spec-invalid', 'ref-unresolved', 'cycle-not-productive', 'not-compared', 'documents-unrelated', 'acknowledgement-stale', 'acknowledgement-expired', 'acknowledgement-not-owner']);
+export const NOTICE_RULES = new Set(['spec-invalid', 'ref-unresolved', 'discriminator-mapping-orphaned', 'cycle-not-productive', 'not-compared', 'documents-unrelated', 'acknowledgement-stale', 'acknowledgement-expired', 'acknowledgement-not-owner']);
 export const isNotice = (f: Finding): boolean => NOTICE_RULES.has(f.baseRule);
 /** Rules about the release's version rather than a place in the API. */
 export const VERSION_RULES = new Set(['version-unchanged', 'version-bump-too-small']);

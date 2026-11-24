@@ -112,7 +112,7 @@ export function recordVersions(side: ComparedSide, doc: unknown, settings: Versi
 // --- Checks ----------------------------------------------------------------
 
 /** Findings that are about the tool or the inputs, not the API: they never need a version bump. */
-const NOTICES = new Set(['spec-invalid', 'ref-unresolved', 'cycle-not-productive', 'not-compared', 'documents-unrelated', 'version-unchanged', 'version-bump-too-small', 'acknowledgement-stale', 'acknowledgement-expired']);
+const NOTICES = new Set(['spec-invalid', 'ref-unresolved', 'discriminator-mapping-orphaned', 'cycle-not-productive', 'not-compared', 'documents-unrelated', 'version-unchanged', 'version-bump-too-small', 'acknowledgement-stale', 'acknowledgement-expired']);
 
 export type Level = 'none' | 'patch' | 'minor' | 'major';
 const RANK: Record<Level, number> = { none: 0, patch: 1, minor: 2, major: 3 };

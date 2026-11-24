@@ -2,7 +2,7 @@
 
 # Rule reference
 
-All 133 rules, with their default severities. 133 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
+All 134 rules, with their default severities. 134 are implemented; the rest are planned for the milestone shown. Each rule has its own page with what it detects, why it has its default, an example from its test case, policy options and how to fix it.
 
 The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` prints the same list.
 
@@ -187,6 +187,7 @@ The design behind the rules is in [RULES.md](../../RULES.md). `api-diff rules` p
 |---|---|---|---|---|
 | [`spec-invalid`](spec-invalid.md) | wire | error | M3 ✅ | Document failed to load or validate |
 | [`ref-unresolved`](ref-unresolved.md) | wire | error | M3 ✅ | $ref points nowhere |
+| [`discriminator-mapping-orphaned`](discriminator-mapping-orphaned.md) | wire | warn | M5 ✅ | Discriminator value points at no branch |
 | [`cycle-not-productive`](cycle-not-productive.md) | wire | error | M4 ✅ | Cycle with no property or items step |
 | [`documents-unrelated`](documents-unrelated.md) | wire | error | M6 ✅ | The two documents look like different APIs |
 | [`acknowledgement-stale`](acknowledgement-stale.md) | wire | info | M6 ✅ | An acknowledgement's finding no longer appears |

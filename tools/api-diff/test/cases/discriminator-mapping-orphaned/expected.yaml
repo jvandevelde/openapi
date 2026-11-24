@@ -1,0 +1,9 @@
+description: 'A oneOf branch removed from a request, but its discriminator value (bird) left in the mapping: the value now points at no branch.'
+milestone: M5
+findings:
+- rule: union-branch-removed-in-request
+  severity: error
+  subject: '#/components/schemas/Pet'
+- rule: discriminator-mapping-orphaned
+  severity: warn
+  subject: '#/components/schemas/Pet'

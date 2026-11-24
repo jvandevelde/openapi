@@ -509,6 +509,11 @@ export const RULE_DOCS: Record<string, RuleDoc> = {
     why: "The spec is broken there, and clients generated from it may be too.",
     fix: 'Fix the reference at the reported location.',
   },
+  'discriminator-mapping-orphaned': {
+    description: "A `discriminator.mapping` value beside a `oneOf`/`anyOf` points at a schema that isn't one of its branches, or that doesn't exist: usually a value left behind when its branch was removed. Checked on the revision only, whatever changed. Not checked for a discriminator with no union beside it (a parent schema that children extend with `allOf`), or when a branch is itself a union.",
+    why: 'A payload with that value is routed to a schema the union rejects, so it can never be valid; generated clients may still offer the value.',
+    fix: 'Remove the mapping value, or add its schema back as a branch.',
+  },
   'cycle-not-productive': {
     description: 'A schema cycle that never passes through a property, `items` or `additionalProperties`, e.g. `A: allOf [$ref A]`. It describes no valid value.',
     why: 'Tools that expand it loop forever; the schema is meaningless.',

@@ -14,7 +14,7 @@ Node.js 22.18 or later. The release file has every dependency bundled; from the 
 
 ```sh
 # The release file: download a pinned version once, check it, run it anywhere
-url=https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.13.1
+url=https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.14.0
 curl -fsSLO "$url/api-diff.mjs" -O "$url/api-diff.mjs.sha256" && sha256sum -c api-diff.mjs.sha256
 node api-diff.mjs main:openapi.yaml openapi.yaml
 
@@ -32,7 +32,7 @@ node bin/api-diff.ts base.yaml revision.yaml
 The release file in PowerShell (Windows PowerShell 5.1 or PowerShell 7):
 
 ```powershell
-$url = "https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.13.1"
+$url = "https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.14.0"
 Invoke-WebRequest "$url/api-diff.mjs" -OutFile api-diff.mjs
 Invoke-WebRequest "$url/api-diff.mjs.sha256" -OutFile api-diff.mjs.sha256
 $expected = (Get-Content api-diff.mjs.sha256).Split(" ")[0]
@@ -83,7 +83,7 @@ Exit codes: `0` no findings at or above `--fail-on` (always, by default), `1` fi
 
 ```
 $ api-diff --base v1.0.0 openapi.yaml --report ci
-api-diff 0.13.1 · profile wire
+api-diff 0.14.0 · profile wire
 base      v1.0.0:openapi.yaml @ 39ca1cd  (OpenAPI 3.1.0, version 1.0.0)
 revision  openapi.yaml  (OpenAPI 3.1.0, version 1.1.0)
 advice    major bump needed (2 breaking changes); revision is a minor bump (too small)

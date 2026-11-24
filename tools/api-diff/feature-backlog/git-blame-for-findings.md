@@ -13,6 +13,10 @@ Moved from the PLAN.md backlog table on 2026-11-23, unchanged apart from links. 
 
 Using the source maps, find the commit and author that introduced each change in the revision file. Useful when one PR or release covers many commits.
 
+## Related
+
+- [Changesets: group related changes](changesets.md): uses this to map net findings to the commits that introduced them.
+
 ## Open questions
 
 - None recorded yet.

@@ -197,7 +197,8 @@ test('HTML reports are self-contained and escape everything from the spec', asyn
   for (const html of [renderReviewHtml(r), renderSummaryHtml(r)]) {
     assert.match(html, /^<!doctype html>/);
     assert.doesNotMatch(html, /<script|<link|src=|https?:\/\//);
-    assert.match(html, /prefers-color-scheme: dark/);
+    assert.match(html, /<input type="checkbox" id="theme-light"/); // dark by default, light switch without scripts
+    assert.match(html, /:root:has\(#theme-light:checked\)/);
   }
   const review = renderReviewHtml(r);
   assert.match(review, /&lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; &quot;quotes&quot;/);

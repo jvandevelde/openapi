@@ -20,7 +20,7 @@ const LOCATION: Shape = { file: 1, pointer: 1, line: 1, column: 1 };
 const SIDE: Shape = { input: 1, file: 1, openapi: 1, version: 1, sha256: 1, commit: 1, title: 1, versionSource: 1, labels: { '*': 1 }, unreadable: 1 };
 const BY_SEVERITY: Shape = { error: 1, warn: 1, info: 1 };
 export const FINDING: Shape = {
-  id: 1, rule: 1, baseRule: 1, kind: 1, severity: 1, severitySource: 1, subject: 1, message: 1, note: 1,
+  id: 1, rule: 1, baseRule: 1, direction: 1, kind: 1, severity: 1, severitySource: 1, subject: 1, message: 1, note: 1,
   base: LOCATION, revision: LOCATION, details: { '*': 2 }, impact: [1], owners: [1], exclusions: [1],
   acknowledged: { reason: 1, owner: 1, expires: 1, file: 1 },
 };

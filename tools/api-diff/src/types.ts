@@ -49,6 +49,12 @@ export interface Finding {
   rule: string;
   /** Rule ID without location or direction, e.g. `parameter-removed`. */
   baseRule: string;
+  /**
+   * The usage direction the severity was judged for: `in` (data the client
+   * sends) or `out` (data it receives). Set when the rule has request and
+   * response variants, i.e. `rule` ends in `-in-request` or `-in-response`.
+   */
+  direction?: Direction;
   kind: Kind;
   severity: Severity;
   /** Where the severity came from, e.g. `default` or `profile sdk`. */

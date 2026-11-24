@@ -161,3 +161,31 @@ test('comparing two different random schema graphs terminates and is determinist
     { numRuns: 300 },
   );
 });
+
+test('union branches that reach each other through allOf are compared in polynomial time', async () => {
+  // Found by the random-graph test above: B includes itself through allOf, and A and D are unions inside
+  // allOf whose branches reach each other. Before effective schemas and type sets were cached per comparison,
+  // this took about 20 s, walking union branches exponentially often.
+  const x = {
+    A: { allOf: [{ type: 'array', items: { allOf: [ref('B')] } }] },
+    B: { allOf: [{ type: 'object', properties: {}, required: [] }, ref('B')] },
+    C: { type: 'object', properties: { a: ref('D'), c: { oneOf: [ref('A'), ref('A')] }, b: { allOf: [{ type: 'array', items: ref('B') }] } }, required: [] },
+    D: ref('B'),
+  };
+  const y = {
+    A: { allOf: [{ oneOf: [ref('A'), { type: 'number', maxLength: 3 }, ref('D')] }, ref('D')] },
+    B: { type: 'string', maxLength: 9 },
+    C: ref('A'),
+    D: { allOf: [{ allOf: [{ oneOf: [ref('A'), ref('C')] }, ref('B')] }] },
+  };
+  const spec = (s: Record<string, unknown>) => {
+    const d = doc(s);
+    d.paths['/a'].get = { ...d.paths['/a'].get, requestBody: { content: { 'application/json': { schema: ref('B') } } } } as typeof d.paths['/a']['get'];
+    return dump(d);
+  };
+  const t = performance.now();
+  const r = await compareOpened({ source: new MemorySource({ 'a.yaml': spec(x) }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': spec(y) }), root: 'b.yaml' });
+  const ms = performance.now() - t;
+  assert.ok(r.findings.length > 0);
+  assert.ok(ms < 5000, `took ${Math.round(ms)} ms`);
+});

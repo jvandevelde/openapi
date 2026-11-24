@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-11-24 05:37 UTC |
 | **Summary** | Every HTML report (review, summary, changelog, audit, explore, history timeline) uses one theme from `src/render/theme.ts`: dark by default, with a light switch in a top bar that works without scripts; static reports gain a hero header, count tiles and a section nav, and explore gains filter chips, expand/collapse, an empty state and a `/` shortcut. |
 | **Milestone** | — |

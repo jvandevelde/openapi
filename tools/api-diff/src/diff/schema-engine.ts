@@ -46,7 +46,17 @@ interface Eff {
   required: Map<string, Pos>;
   types: { set: Set<string> | undefined; at: Pos | undefined };
   union: { kind: 'oneOf' | 'anyOf'; branches: Pos[]; at: Pos } | undefined;
+  /** Every oneOf/anyOf merged in (`union` is the first); a value must match one branch of each. */
+  unions: { kind: 'oneOf' | 'anyOf'; branches: Pos[]; at: Pos }[];
 }
+
+/** Keywords that only constrain one type, used to infer the type of an untyped union branch. */
+const TYPE_KEYWORDS: [type: string, kws: string[]][] = [
+  ['object', ['properties', 'required', 'additionalProperties', 'patternProperties', 'minProperties', 'maxProperties', 'propertyNames', 'dependentRequired', 'dependentSchemas', 'unevaluatedProperties']],
+  ['array', ['items', 'prefixItems', 'minItems', 'maxItems', 'uniqueItems', 'contains', 'minContains', 'maxContains', 'unevaluatedItems']],
+  ['string', ['minLength', 'maxLength', 'pattern', 'contentEncoding', 'contentMediaType']],
+  ['number', ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf']],
+];
 
 const LIMITS: [kw: string, kind: 'max' | 'min', up: string, down: string][] = [
   ['maxLength', 'max', 'max-length-increased', 'max-length-decreased'],
@@ -297,7 +307,7 @@ export class SchemaEngine {
 
   /** Effective schema: the schema at `p` with `allOf` members (and 3.1 `$ref` siblings) merged in. */
   #effective(which: 'b' | 'r', p: Pos): Eff {
-    const eff: Eff = { at: p, kw: new Map(), properties: new Map(), required: new Map(), types: { set: undefined, at: undefined }, union: undefined };
+    const eff: Eff = { at: p, kw: new Map(), properties: new Map(), required: new Map(), types: { set: undefined, at: undefined }, union: undefined, unions: [] };
     const seen = new Set<string>();
     const merge = (q: Pos, depth: number): void => {
       const id = `${q.node.id}|${q.path.join('/')}`;
@@ -330,7 +340,9 @@ export class SchemaEngine {
           continue;
         }
         if ((k === 'oneOf' || k === 'anyOf') && Array.isArray(v[k])) {
-          eff.union ??= { kind: k, branches: (v[k] as unknown[]).map((_, i) => ({ node: q.node, path: [...q.path, k, String(i)] })), at };
+          const u: NonNullable<Eff['union']> = { kind: k, branches: (v[k] as unknown[]).map((_, i) => ({ node: q.node, path: [...q.path, k, String(i)] })), at };
+          eff.union ??= u;
+          eff.unions.push(u);
           continue;
         }
         const existing = eff.kw.get(k);
@@ -378,18 +390,54 @@ export class SchemaEngine {
     this.#other(eb, er, dir, depth);
   }
 
+  /**
+   * The types a schema accepts, counting its `oneOf`/`anyOf`: a union without a `type` of its own
+   * accepts the types of its branches (through `$ref`, `allOf` and nested unions), not any type.
+   * `undefined` means any type (some branch has no type).
+   */
+  #typeSet(which: 'b' | 'r', eff: Eff, depth = 0): Set<string> | undefined {
+    let set = eff.types.set;
+    if (depth > 10) return set;
+    const meet = (a: Set<string>, b: Set<string>): Set<string> => new Set([...a].filter((x) => b.has(x) || (x === 'integer' && b.has('number'))));
+    // A union branch without `type` whose keywords all belong to one type is taken to mean that type
+    // (`{properties: …}` is meant as an object), though JSON Schema would accept any value.
+    if (!set && depth > 0 && !eff.unions.length) {
+      const has = (k: string): boolean => (k === 'properties' ? eff.properties.size > 0 : k === 'required' ? eff.required.size > 0 : eff.kw.has(k));
+      const found = TYPE_KEYWORDS.filter(([, kws]) => kws.some(has)).map(([t]) => t);
+      if (found.length === 1) set = new Set(found);
+    }
+    // Each union (allOf can merge in several) limits the types to those of its branches.
+    for (const u of eff.unions) {
+      let branches: Set<string> | undefined = new Set();
+      for (const p of u.branches) {
+        const t = this.#typeSet(which, this.#effective(which, p), depth + 1);
+        if (!t) {
+          branches = undefined;
+          break;
+        }
+        for (const x of t) branches.add(x);
+      }
+      if (branches) set = set ? new Set([...meet(set, branches), ...meet(branches, set)]) : branches;
+    }
+    return set;
+  }
+
   #types(eb: Eff, er: Eff, dir: Direction): void {
     const strip = (s: Set<string> | undefined): Set<string> | undefined => (s ? new Set([...s].filter((t) => t !== 'null')) : undefined);
-    const bNull = !eb.types.set || eb.types.set.has('null');
-    const rNull = !er.types.set || er.types.set.has('null');
-    const bAt = eb.types.at ?? eb.at;
-    const rAt = er.types.at ?? er.at;
-    if (eb.types.set && er.types.set) {
+    // With a union on both sides, branch changes are reported by #union; compare only the own `type`.
+    const both = !!eb.union && !!er.union;
+    const bSet = both ? eb.types.set : this.#typeSet('b', eb);
+    const rSet = both ? er.types.set : this.#typeSet('r', er);
+    const bNull = !bSet || bSet.has('null');
+    const rNull = !rSet || rSet.has('null');
+    const bAt = eb.types.at ?? (bSet ? eb.union?.at : undefined) ?? eb.at;
+    const rAt = er.types.at ?? (rSet ? er.union?.at : undefined) ?? er.at;
+    if (bSet && rSet) {
       if (!bNull && rNull) this.#emit('nullable-added', dir, bAt, rAt, {}, ['type']);
       if (bNull && !rNull) this.#emit('nullable-removed', dir, bAt, rAt, {}, ['type']);
     }
-    const bt = strip(eb.types.set);
-    const rt = strip(er.types.set);
+    const bt = strip(bSet);
+    const rt = strip(rSet);
     const covers = (big: Set<string> | undefined, small: Set<string> | undefined): boolean => !big || (!!small && [...small].every((t) => big.has(t) || (t === 'integer' && big.has('number'))));
     const same = (!bt && !rt) || (bt && rt && bt.size === rt.size && [...bt].every((t) => rt.has(t)));
     if (same || (bt?.size === 0 && rt?.size === 0)) return;

@@ -1,0 +1,11 @@
+description: >-
+  An allOf of two unions (branches built with allOf chains) replaced by an inline object: a value must match a branch of
+  each union, so the type is object on both sides and there is no type-narrowed.
+milestone: M5
+findings:
+  - rule: property-added-optional-in-request
+    severity: info
+    subject: '#/components/schemas/Pet'
+  - rule: schema-widened-in-request
+    severity: info
+    subject: '#/components/schemas/Pet'

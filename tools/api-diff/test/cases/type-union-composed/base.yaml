@@ -1,0 +1,21 @@
+openapi: 3.1.0
+info: {title: Pets, version: 1.0.0}
+paths:
+  /pets:
+    post:
+      operationId: createPet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Pet'}
+      responses: {'201': {description: created}}
+components:
+  schemas:
+    Root: {type: object}
+    Mid: {allOf: [{$ref: '#/components/schemas/Root'}]}
+    Person: {allOf: [{$ref: '#/components/schemas/Mid'}, {properties: {name: {type: string}}}]}
+    Org: {type: object, properties: {id: {type: string}}}
+    Untyped: {properties: {id: {type: string}}}
+    Text: {type: string}
+    Pet: {type: object, properties: {owner: {allOf: [{oneOf: [{$ref: '#/components/schemas/Person'}, {$ref: '#/components/schemas/Text'}]}, {oneOf: [{$ref: '#/components/schemas/Org'}]}]}}}

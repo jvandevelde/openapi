@@ -1,0 +1,11 @@
+description: >-
+  A oneOf of object schemas (one through allOf) replaced by an inline object: the type is object on both sides, so no
+  type-narrowed. The union's removal is still reported.
+milestone: M5
+findings:
+  - rule: property-added-optional-in-request
+    severity: info
+    subject: '#/components/schemas/Pet'
+  - rule: schema-widened-in-request
+    severity: info
+    subject: '#/components/schemas/Pet'

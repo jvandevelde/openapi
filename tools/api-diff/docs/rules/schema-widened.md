@@ -40,8 +40,15 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+5 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`schema-widened`](../../test/cases/schema-widened/) | `schema-widened-in-response` · warn · #/components/schemas/Pet | 'not' removed: the schema accepts more values. |
+| [`type-narrowed-union`](../../test/cases/type-narrowed-union/) | `schema-widened-in-request` · info · #/components/schemas/Pet | A oneOf of an object and a string replaced by an inline object: the union's types are its branches' types, so string was dropped. |
+| [`type-union-composed`](../../test/cases/type-union-composed/) | `schema-widened-in-request` · info · #/components/schemas/Pet | An allOf of two unions (branches built with allOf chains) replaced by an inline object: a value must match a branch of each union, so the type is object on both sides and there is no type-narrowed. |
+| [`type-union-to-inline-object`](../../test/cases/type-union-to-inline-object/) | `schema-widened-in-request` · info · #/components/schemas/Pet | A oneOf of object schemas (one through allOf) replaced by an inline object: the type is object on both sides, so no type-narrowed. The union's removal is still reported. |
+| [`type-union-untyped-branch`](../../test/cases/type-union-untyped-branch/) | `schema-widened-in-request` · info · #/components/schemas/Pet | A oneOf whose second branch has properties but no type, replaced by an inline object: the untyped branch counts as an object, so there is no type-narrowed. |
 
 ## Policy options
 

@@ -112,6 +112,14 @@ jobs:
             echo 'node api-diff.mjs main:openapi.yaml openapi.yaml'
             echo '```'
             echo
+            echo 'In PowerShell:'
+            echo
+            echo '```powershell'
+            echo "Invoke-WebRequest $url/api-diff.mjs -OutFile api-diff.mjs"
+            echo "if ((Get-FileHash api-diff.mjs -Algorithm SHA256).Hash -ne '$sha') { throw 'checksum mismatch' }"
+            echo 'node api-diff.mjs main:openapi.yaml openapi.yaml'
+            echo '```'
+            echo
             echo "SHA-256: \`$sha\`"
             echo
             echo "Setting it up in CI: [docs/ci.md]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$TAG/tools/api-diff/docs/ci.md)."

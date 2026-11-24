@@ -29,6 +29,17 @@ npx ~/src/openapi/tools/api-diff main:openapi.yaml openapi.yaml
 node bin/api-diff.ts base.yaml revision.yaml
 ```
 
+The release file in PowerShell (Windows PowerShell 5.1 or PowerShell 7):
+
+```powershell
+$url = "https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.12.0"
+Invoke-WebRequest "$url/api-diff.mjs" -OutFile api-diff.mjs
+Invoke-WebRequest "$url/api-diff.mjs.sha256" -OutFile api-diff.mjs.sha256
+$expected = (Get-Content api-diff.mjs.sha256).Split(" ")[0]
+if ((Get-FileHash api-diff.mjs -Algorithm SHA256).Hash -ne $expected) { throw "checksum mismatch" }
+node api-diff.mjs main:openapi.yaml openapi.yaml
+```
+
 ## Usage
 
 ```sh

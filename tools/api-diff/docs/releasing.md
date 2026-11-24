@@ -14,7 +14,7 @@ The [release workflow](../../../.github/workflows/api-diff-release.yml) then:
 
 - checks the version is well formed and equals `package.json`'s at that commit, and that neither the tag (for a manual run) nor the release exists yet; **an existing release is never replaced**, so a mistake is fixed with a new version;
 - runs `make test`, builds the bundle (`make bundle`), and runs the bundle on its own (outside the tool's directory, checked against its `.sha256`);
-- creates the tag (manual run only) and the release, with download instructions and the SHA-256 in the release notes.
+- creates the tag (manual run only) and the release, with download instructions (sh and PowerShell) and the SHA-256 in the release notes.
 
 Releases aren't marked *Latest*, since this repository holds several tools; link to a specific tag instead.
 

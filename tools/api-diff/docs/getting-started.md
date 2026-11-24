@@ -11,21 +11,21 @@ You need **Node.js 22.18 or later**. Check with `node --version`.
 **The release file (recommended).** Each release is one file with everything bundled. Download a pinned version and check it:
 
 ```sh
-url=https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.13.1
+url=https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.14.0
 curl -fsSLO "$url/api-diff.mjs" -O "$url/api-diff.mjs.sha256"
 sha256sum -c api-diff.mjs.sha256          # macOS: shasum -a 256 -c api-diff.mjs.sha256
-node api-diff.mjs --version               # 0.13.1
+node api-diff.mjs --version               # 0.14.0
 ```
 
 In PowerShell (Windows PowerShell 5.1 or PowerShell 7):
 
 ```powershell
-$url = "https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.13.1"
+$url = "https://github.com/jvandevelde/openapi/releases/download/api-diff-v0.14.0"
 Invoke-WebRequest "$url/api-diff.mjs" -OutFile api-diff.mjs
 Invoke-WebRequest "$url/api-diff.mjs.sha256" -OutFile api-diff.mjs.sha256
 $expected = (Get-Content api-diff.mjs.sha256).Split(" ")[0]
 if ((Get-FileHash api-diff.mjs -Algorithm SHA256).Hash -ne $expected) { throw "checksum mismatch" }
-node api-diff.mjs --version               # 0.13.1
+node api-diff.mjs --version               # 0.14.0
 ```
 
 In Windows PowerShell 5.1, run `$ProgressPreference = 'SilentlyContinue'` first: the progress bar makes downloads slow.
@@ -59,7 +59,7 @@ Here a branch made three changes to the example pet store: `limit` became requir
 
 ```
 $ api-diff --base main openapi.yaml
-api-diff 0.13.1 · profile wire
+api-diff 0.14.0 · profile wire
 base      main:openapi.yaml @ 39ca1cd  (OpenAPI 3.1.0, version 1.0.0)
 revision  openapi.yaml  (OpenAPI 3.1.0, version 1.1.0)
 advice    major bump needed (2 breaking changes); revision is a minor bump (too small)

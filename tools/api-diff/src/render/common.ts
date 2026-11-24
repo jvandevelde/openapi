@@ -180,3 +180,22 @@ export function affects(ops: string[], max = 5): string {
 }
 
 export { plural };
+
+/**
+ * Makes an HTML page pure ASCII, so it reads the same whatever charset it is decoded with
+ * (a server that sends `charset=iso-8859-1`, PowerShell's `>` redirection, an editor's guess).
+ * Non-ASCII becomes `&#x..;` in markup, `\uXXXX` in scripts (valid in JS strings, regexes,
+ * template literals and JSON) and `\HHHHHH` in styles (CSS's escape; six digits so no space is needed).
+ */
+export function asciiHtml(html: string): string {
+  const markup = (s: string): string => s.replace(/[^\x00-\x7f]/gu, (ch) => `&#x${ch.codePointAt(0)!.toString(16)};`);
+  const script = (s: string): string => s.replace(/[^\x00-\x7f]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  const style = (s: string): string => s.replace(/[^\x00-\x7f]/gu, (ch) => `\\${ch.codePointAt(0)!.toString(16).padStart(6, '0')}`);
+  let out = '';
+  let at = 0;
+  for (const m of html.matchAll(/(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2>)/gi)) {
+    out += markup(html.slice(at, m.index)) + m[1] + (m[2]!.toLowerCase() === 'style' ? style(m[3]!) : script(m[3]!)) + m[4];
+    at = m.index + m[0].length;
+  }
+  return out + markup(html.slice(at));
+}

@@ -60,3 +60,57 @@ test('text', async () => {
   assert.match(txt, /^  method    listOrders → getOrders   \(GET \/orders\)$/m);
   assert.match(txt, /^Methods\n  deleteOrder  \(DELETE \/orders\/\{id\}\)/m);
 });
+
+// Pet is sent (POST) and received (GET): its `age` changes type (an error in
+// both directions) and `status` gains a value (info for requests, warn for responses).
+const pets = (ageType: string, statuses: string): string => `
+openapi: 3.1.0
+info: { title: Pets, version: 1.0.0 }
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Pet' } } } } }
+    post:
+      operationId: addPet
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Pet' } } } }
+      responses: { '201': { description: created } }
+components:
+  schemas:
+    Pet: { type: object, properties: { age: { type: ${ageType} }, status: { type: string, enum: [${statuses}] } } }
+`;
+
+async function petsData() {
+  const r = await compareOpened({ source: new MemorySource({ 'a.yaml': pets('integer', 'available') }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': pets('string', 'available, sold') }), root: 'b.yaml' });
+  return { r, d: sdkData(r) };
+}
+
+test('a change in requests and responses is one entry with each direction, and is counted once', async () => {
+  const { r, d } = await petsData();
+  const pet = d.types.find((t) => t.name === 'Pet')!;
+  const en = pet.changes.find((c) => c.text.includes('enum value added'))!;
+  const req = r.findings.find((f) => f.rule === 'enum-value-added-in-request')!;
+  const res = r.findings.find((f) => f.rule === 'enum-value-added-in-response')!;
+  assert.equal(en.rule, 'enum-value-added', 'the rule without direction');
+  assert.equal(en.id, res.id, 'the worse direction');
+  assert.equal(en.severity, 'warn');
+  assert.deepEqual(en.directions, [
+    { direction: 'request', severity: req.severity, rule: req.rule, id: req.id },
+    { direction: 'response', severity: res.severity, rule: res.rule, id: res.id },
+  ]);
+  const typeChanges = r.findings.filter((f) => f.baseRule === 'type-changed');
+  assert.equal(typeChanges.length, 2, 'two findings in the result');
+  assert.ok(typeChanges.every((f) => f.severity === 'error'));
+  assert.equal(pet.changes.filter((c) => c.rule === 'type-changed').length, 1);
+  assert.equal(d.breaking, 1, 'the type change breaks generated code once, not once per direction');
+});
+
+test('text: both directions and their IDs under the change', async () => {
+  const { r } = await petsData();
+  const txt = renderSdk(r);
+  const req = r.findings.find((f) => f.rule === 'enum-value-added-in-request')!;
+  const res = r.findings.find((f) => f.rule === 'enum-value-added-in-response')!;
+  assert.match(txt, /^ {4}check {2}enum value added: 'sold' at \/properties\/status\/enum {2}\[enum-value-added\]$/m);
+  assert.match(txt, new RegExp(`^ {11}request INFO · id ${req.id} {3}response WARN · id ${res.id}$`, 'm'));
+  assert.match(txt, /\(1 change breaks generated code\)/);
+});

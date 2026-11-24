@@ -288,7 +288,7 @@ The comparison walks each property path from the operation (`POST /orders → re
 
 **Step 3: score each direction separately.** The rules come in request/response pairs, and each direction the component is used in gets **its own finding**, with its own rule ID, severity and affected operations: `enum-value-added-in-request` → info, `enum-value-added-in-response` → warn. Each finding records its direction in the result JSON (`"direction": "in"` or `"out"`, the same values as the policy's `direction` override key). It is set only on rules that have request and response variants; rules without them (`ref-*`, docs, component and version rules, and parameter and response-status rules, whose direction is fixed) have no `direction`. One finding per direction, rather than one finding at the worst severity, keeps the rule ID saying which direction set the severity, and lets policies, `--fail-on` and acknowledgements target one direction ([decision record](decision-records/2026-11-21T1539-schema-engine.md)).
 
-The `review` and `explore` reports and the history timeline show the two findings of one change as one entry, with each direction's severity and ID ([decision record](decision-records/2026-11-23T0348-merge-request-response-entries.md)):
+The `review`, `explore` and `sdk` reports and the history timeline show the two findings of one change as one entry, with each direction's severity and ID ([decision record](decision-records/2026-11-23T0348-merge-request-response-entries.md); for `sdk`, [this one](decision-records/2026-11-24T0410-sdk-report-pairs-directions.md)):
 
 ```
 WARN   #/components/schemas/Order  affects 17 operations
@@ -296,7 +296,7 @@ WARN   #/components/schemas/Order  affects 17 operations
               request INFO · id 1b7e7940204c   response WARN · id 558c5604c03e
 ```
 
-The other reports (`ci`, `summary`, `audit`, `sdk`) list each finding with its full rule ID; `changelog` shows the change once, without directions.
+The other reports (`ci`, `summary`, `audit`) list each finding with its full rule ID; `changelog` shows the change once, without directions.
 
 Policy overrides apply **per direction and per operation**. An override for one path changes only those usages, and the rest still count (the finding is split, one part per severity).
 

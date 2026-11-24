@@ -36,7 +36,7 @@ const RESULT: Shape = {
   uses: { file: 1, operations: [1], unmatched: [1] }, findings: [FINDING],
 };
 const ENTRY: Shape = { kind: 1, breaking: 1, text: 1, note: 1, rule: 1, id: 1 };
-const SDK_GROUP: Shape = { name: 1, operation: 1, changes: [{ severity: 1, text: 1, rule: 1, id: 1 }] };
+const SDK_GROUP: Shape = { name: 1, operation: 1, changes: [{ severity: 1, text: 1, rule: 1, id: 1, directions: [{ direction: 1, severity: 1, rule: 1, id: 1 }] }] };
 
 /** The data each built-in report's template sees, by report. */
 export const SHAPES: Record<string, Shape> = {

@@ -252,6 +252,15 @@ rule({ id: 'not-compared', section: 11, kind: 'wire', title: "Parts of the spec 
 export const RULES: readonly RuleMeta[] = R;
 const BY_ID = new Map(R.map((r) => [r.id, r]));
 
+/** Rules about the inputs or the tool rather than the API: every rule in RULES.md section 11. */
+export const NOTICE_RULES: ReadonlySet<string> = new Set(R.filter((r) => r.section === 11).map((r) => r.id));
+/** Rules about the release's version rather than a place in the API. */
+export const VERSION_RULES: ReadonlySet<string> = new Set(['version-unchanged', 'version-bump-too-small']);
+export const isNotice = (f: { baseRule: string }): boolean => NOTICE_RULES.has(f.baseRule);
+export const isVersion = (f: { baseRule: string }): boolean => VERSION_RULES.has(f.baseRule);
+/** A change to the API: not a notice and not a version check. */
+export const isChange = (f: { baseRule: string }): boolean => !isNotice(f) && !isVersion(f);
+
 export function getRule(id: string): RuleMeta {
   const r = BY_ID.get(id);
   if (!r) throw new Error(`unknown rule '${id}'`);

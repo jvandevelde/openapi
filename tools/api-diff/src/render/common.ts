@@ -1,6 +1,7 @@
 // Shared pieces of the text reports: colours, the versions header, finding
 // lines and the counts line.
 
+import { isChange, isNotice, isVersion, NOTICE_RULES, VERSION_RULES } from '../rules/registry.ts';
 import type { BumpLevel, ComparedSide, Finding, Location, Result, Severity } from '../types.ts';
 
 export interface TxtOptions {
@@ -25,14 +26,8 @@ const RESET = '\x1b[0m';
 
 export const painter = (color: boolean): Paint => (code, s) => (color ? `${code}${s}${RESET}` : s);
 
-/** Rules about the inputs or the tool rather than the API. */
-export const NOTICE_RULES = new Set(['spec-invalid', 'ref-unresolved', 'discriminator-mapping-orphaned', 'cycle-not-productive', 'not-compared', 'documents-unrelated', 'acknowledgement-stale', 'acknowledgement-expired', 'acknowledgement-not-owner']);
-export const isNotice = (f: Finding): boolean => NOTICE_RULES.has(f.baseRule);
-/** Rules about the release's version rather than a place in the API. */
-export const VERSION_RULES = new Set(['version-unchanged', 'version-bump-too-small']);
-export const isVersion = (f: Finding): boolean => VERSION_RULES.has(f.baseRule);
-/** A change to the API: not a notice and not a version check. */
-export const isChange = (f: Finding): boolean => !isNotice(f) && !isVersion(f);
+// Notice and version rules are defined in the registry; re-exported for the reports.
+export { isChange, isNotice, isVersion, NOTICE_RULES, VERSION_RULES };
 
 export const where = (l: Location | undefined): string => (l ? `${l.file}${l.line ? `:${l.line}` : ''}` : '');
 

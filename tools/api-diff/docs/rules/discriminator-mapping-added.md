@@ -14,7 +14,7 @@ Discriminator mapping added
 
 ## What it detects
 
-A new value in `discriminator.mapping`.
+A new value in `discriminator.mapping` for a variant that was already there (an alias), or with no union beside it (a parent schema that children extend with `allOf`). A value added together with its `oneOf`/`anyOf` branch is reported as `union-branch-added` instead.
 
 ## Why this default
 
@@ -41,8 +41,12 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`discriminator-mapping-added`](../../test/cases/discriminator-mapping-added/) | `discriminator-mapping-added-in-response` · warn · #/components/schemas/Pet | A discriminator value added to a response. |
+| [`union-branch-added-with-alias`](../../test/cases/union-branch-added-with-alias/) | `discriminator-mapping-added-in-response` · warn · #/components/schemas/Pet | A branch added with its discriminator value, and an alias (kitty) added for an existing branch: the alias is still a mapping finding. |
 
 ## Policy options
 

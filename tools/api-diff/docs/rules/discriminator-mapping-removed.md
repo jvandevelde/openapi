@@ -14,7 +14,7 @@ Discriminator mapping removed
 
 ## What it detects
 
-A value was removed from `discriminator.mapping`.
+A value was removed from `discriminator.mapping` while its schema stays a variant (an alias dropped), or with no union beside it. A value removed together with its `oneOf`/`anyOf` branch is reported as `union-branch-removed` instead.
 
 ## Why this default
 

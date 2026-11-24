@@ -166,13 +166,15 @@ An enum marked open in the spec (`x-api-diff: { enum: open }`) makes `enum-value
 
 `allOf` has no rules of its own: we compare the merged (effective) schema, so its changes show up as the property and keyword rules above.
 
+A branch added or removed together with its discriminator value is one `union-branch-*` finding that names the value; the `discriminator-mapping-*` rules report values whose branch stays (aliases) or that have no union beside them ([decision record](decision-records/2026-11-24T0206-one-finding-for-a-branch-and-its-discriminator-value.md)).
+
 | Rule | Meaning | in / out | Phase |
 |---|---|---|---|
-| [`union-branch-added`](docs/rules/union-branch-added.md) | New `oneOf`/`anyOf` branch | info / warn | 2 |
+| [`union-branch-added`](docs/rules/union-branch-added.md) | New `oneOf`/`anyOf` branch (with its discriminator value, if any) | info / warn | 2 |
 | [`union-branch-removed`](docs/rules/union-branch-removed.md) | A branch was removed | error / info | 2 |
 | [`union-kind-changed`](docs/rules/union-kind-changed.md) | `anyOf` ↔ `oneOf`. wire: values that match several branches change validity. sdk: generated union types change | warn / warn · **sdk: error** | 2 |
 | [`discriminator-property-changed`](docs/rules/discriminator-property-changed.md) | `discriminator.propertyName` changed | error / error | 2 |
-| [`discriminator-mapping-added`](docs/rules/discriminator-mapping-added.md) | New mapping value | info / warn | 2 |
+| [`discriminator-mapping-added`](docs/rules/discriminator-mapping-added.md) | New mapping value for an existing branch (alias) or with no union | info / warn | 2 |
 | [`discriminator-mapping-removed`](docs/rules/discriminator-mapping-removed.md) | A mapping value was removed | error / info | 2 |
 | [`discriminator-mapping-changed`](docs/rules/discriminator-mapping-changed.md) | A value now maps to a different schema | error / error | 2 |
 

@@ -47,4 +47,6 @@ test('notes depend on direction', () => {
   assert.equal(clientNote(f('enum-value-added-in-request', { values: ['adopted'], path: '/properties/status/enum' })), undefined);
   assert.equal(clientNote(f('max-length-decreased-in-request', { from: 100, to: 50, path: '/properties/name/maxLength' })), 'Send `name` within the new limit: `maxLength` is now 50 (was 100).');
   assert.equal(clientNote(f('property-removed-in-response', { name: 'age', path: '/properties/age' })), "Don't rely on `age` in responses; it's no longer returned.");
+  assert.equal(clientNote(f('union-branch-added-in-response', { branch: '#/components/schemas/Bird', discriminatorValues: ['bird', 'parrot'], path: '/properties/pet/oneOf' })), 'Handle the new `Bird` variant of `pet` (discriminator `bird` or `parrot`).');
+  assert.equal(clientNote(f('union-branch-removed-in-request', { branch: '#/components/schemas/Bird', path: '/properties/pet/oneOf' })), 'Stop sending the `Bird` variant of `pet`.');
 });

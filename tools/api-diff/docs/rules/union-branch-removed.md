@@ -14,7 +14,7 @@ oneOf/anyOf branch removed
 
 ## What it detects
 
-A branch was removed from a `oneOf` or `anyOf`.
+A branch was removed from a `oneOf` or `anyOf`. When the discriminator value for the branch was removed with it, the finding names the value and no separate `discriminator-mapping-removed` is reported.
 
 ## Why this default
 
@@ -41,8 +41,12 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+2 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`union-branch-removed`](../../test/cases/union-branch-removed/) | `union-branch-removed-in-request` · error · #/components/schemas/Pet | A oneOf branch removed from a request. |
+| [`union-branch-removed-with-discriminator`](../../test/cases/union-branch-removed-with-discriminator/) | `union-branch-removed-in-request` · error · #/components/schemas/Pet | A oneOf branch removed from a request with its discriminator value: one finding, not a mapping finding as well. |
 
 ## Policy options
 

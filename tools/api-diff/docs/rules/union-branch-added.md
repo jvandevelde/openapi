@@ -14,7 +14,7 @@ oneOf/anyOf branch added
 
 ## What it detects
 
-A branch was added to a `oneOf` or `anyOf`. Branches are matched by discriminator value, `$ref` target or structure, not by position.
+A branch was added to a `oneOf` or `anyOf`. Branches are matched by discriminator value, `$ref` target or structure, not by position. When the discriminator value for the branch was added with it, the finding names the value and no separate `discriminator-mapping-added` is reported.
 
 ## Why this default
 
@@ -41,8 +41,13 @@ Findings:
 
 ## Test cases
 
-The example above is the only test case for this rule.
+3 test cases expect this rule. Each folder has the base and revision documents and the expected findings; they run with `npm test`.
 
+| Test case | Expects | What it shows |
+|---|---|---|
+| [`union-branch-added`](../../test/cases/union-branch-added/) | `union-branch-added-in-response` · warn · #/components/schemas/Pet | A oneOf branch added to a response: clients may get a variant they do not handle. |
+| [`union-branch-added-with-alias`](../../test/cases/union-branch-added-with-alias/) | `union-branch-added-in-response` · warn · #/components/schemas/Pet | A branch added with its discriminator value, and an alias (kitty) added for an existing branch: the alias is still a mapping finding. |
+| [`union-branch-added-with-discriminator`](../../test/cases/union-branch-added-with-discriminator/) | `union-branch-added-in-response` · warn · #/components/schemas/Pet | A oneOf branch added to a response with its discriminator values (bird, parrot): one finding, not one per value as well. |
 
 ## Policy options
 

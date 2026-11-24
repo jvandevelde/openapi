@@ -50,6 +50,9 @@ interface Eff {
   unions: { kind: 'oneOf' | 'anyOf'; branches: Pos[]; at: Pos }[];
 }
 
+/** Union branches added and removed (unmatched between the two sides), found by #union. */
+type BranchChanges = { bu: NonNullable<Eff['union']>; ru: NonNullable<Eff['union']>; removed: Pos[]; added: Pos[] };
+
 /** Keywords that only constrain one type, used to infer the type of an untyped union branch. */
 const TYPE_KEYWORDS: [type: string, kws: string[]][] = [
   ['object', ['properties', 'required', 'additionalProperties', 'patternProperties', 'minProperties', 'maxProperties', 'propertyNames', 'dependentRequired', 'dependentSchemas', 'unevaluatedProperties']],
@@ -384,8 +387,9 @@ export class SchemaEngine {
     this.#properties(eb, er, dir, depth);
     this.#additional(eb, er, dir, depth);
     this.#items(eb, er, dir, depth);
-    this.#union(eb, er, dir, depth);
-    this.#discriminator(eb, er, dir);
+    const branches = this.#union(eb, er, dir, depth);
+    const values = this.#discriminator(eb, er, dir, branches);
+    this.#branchChanges(branches, values, dir);
     this.#docs(eb, er);
     this.#other(eb, er, dir, depth);
   }
@@ -603,14 +607,15 @@ export class SchemaEngine {
     } else if (!bp !== !rp) this.#unclassifiedAt(eb.at, er.at, `/${[...er.at.path, 'prefixItems'].join('/')}`);
   }
 
-  #union(eb: Eff, er: Eff, dir: Direction, depth: number): void {
+  /** Compares the unions' branches; returns the branches added and removed, for #branchChanges to report. */
+  #union(eb: Eff, er: Eff, dir: Direction, depth: number): BranchChanges | undefined {
     const bu = eb.union;
     const ru = er.union;
-    if (!bu && !ru) return;
+    if (!bu && !ru) return undefined;
     if (!bu || !ru) {
       // A union appeared or disappeared: the schema now accepts fewer or more values.
       this.#emit(ru ? 'schema-narrowed' : 'schema-widened', dir, bu?.at ?? eb.at, ru?.at ?? er.at, { keyword: (ru ?? bu)!.kind });
-      return;
+      return undefined;
     }
     if (bu.kind !== ru.kind) this.#emit('union-kind-changed', dir, bu.at, ru.at, { from: bu.kind, to: ru.kind }, [bu.kind], [ru.kind]);
     // Match branches: same $ref target, then identical inline content, then the only ones left.
@@ -631,15 +636,38 @@ export class SchemaEngine {
     // Inline branches changed in place: pair them in order.
     const unmatchedR = [...left.keys()];
     while (unmatchedB.length && unmatchedR.length && !this.#pureRef('b', unmatchedB[0]!) && !this.#pureRef('r', unmatchedR[0]!)) this.#compare(unmatchedB.shift()!, unmatchedR.shift()!, dir, depth + 1);
-    for (const bp of unmatchedB) this.#emit('union-branch-removed', dir, bp, ru.at, { branch: this.#pureRef('b', bp)?.logical ?? bp.path[bp.path.length - 1] }, [], [ru.kind]);
-    for (const rp of unmatchedR) this.#emit('union-branch-added', dir, bu.at, rp, { branch: this.#pureRef('r', rp)?.logical ?? rp.path[rp.path.length - 1] }, [bu.kind]);
+    return { bu, ru, removed: unmatchedB, added: unmatchedR };
   }
 
-  #discriminator(eb: Eff, er: Eff, dir: Direction): void {
+  /**
+   * Reports the branches #union found added or removed. A branch whose discriminator value was
+   * added or removed with it gets the value in its finding (`discriminatorValues`), and #discriminator
+   * reports no separate mapping finding for it: both describe the same new or dropped variant.
+   */
+  #branchChanges(ch: BranchChanges | undefined, values: { added: Map<string, string[]>; removed: Map<string, string[]> }, dir: Direction): void {
+    if (!ch) return;
+    const withValues = (d: Record<string, unknown>, vs: string[] | undefined): Record<string, unknown> => (vs?.length ? { ...d, discriminatorValues: vs } : d);
+    for (const bp of ch.removed) {
+      const t = this.#pureRef('b', bp)?.logical;
+      this.#emit('union-branch-removed', dir, bp, ch.ru.at, withValues({ branch: t ?? bp.path[bp.path.length - 1] }, t ? values.removed.get(t) : undefined), [], [ch.ru.kind]);
+    }
+    for (const rp of ch.added) {
+      const t = this.#pureRef('r', rp)?.logical;
+      this.#emit('union-branch-added', dir, ch.bu.at, rp, withValues({ branch: t ?? rp.path[rp.path.length - 1] }, t ? values.added.get(t) : undefined), [ch.bu.kind]);
+    }
+  }
+
+  /**
+   * Compares the discriminators. A mapping value added or removed together with the union branch it
+   * points to isn't reported here; it is returned (by target schema) for #branchChanges to put in the
+   * branch's finding.
+   */
+  #discriminator(eb: Eff, er: Eff, dir: Direction, ch: BranchChanges | undefined): { added: Map<string, string[]>; removed: Map<string, string[]> } {
+    const folded = { added: new Map<string, string[]>(), removed: new Map<string, string[]>() };
     const [bk, rk, bAt, rAt] = this.#kwPair(eb, er, 'discriminator');
     if (!isObject(bk?.value) || !isObject(rk?.value)) {
       if (!bk !== !rk) this.#unclassifiedAt(eb.at, er.at, `/${[...(rk?.at ?? er.at).path, 'discriminator'].join('/')}`);
-      return;
+      return folded;
     }
     const bd = bk!.value as Record<string, unknown>;
     const rd = rk!.value as Record<string, unknown>;
@@ -652,11 +680,23 @@ export class SchemaEngine {
     };
     const bm = isObject(bd.mapping) ? bd.mapping : {};
     const rm = isObject(rd.mapping) ? rd.mapping : {};
+    const removedBranches = new Set((ch?.removed ?? []).map((p) => this.#pureRef('b', p)?.logical).filter((t) => t !== undefined));
+    const addedBranches = new Set((ch?.added ?? []).map((p) => this.#pureRef('r', p)?.logical).filter((t) => t !== undefined));
+    const fold = (m: Map<string, string[]>, t: string, v: string): void => void m.set(t, [...(m.get(t) ?? []), v]);
     for (const v of Object.keys(bm)) {
-      if (!(v in rm)) this.#emit('discriminator-mapping-removed', dir, bAt, rAt, { value: v }, ['discriminator', 'mapping', v], ['discriminator', 'mapping']);
-      else if (target('b', bAt, bm[v]) !== target('r', rAt, rm[v])) this.#emit('discriminator-mapping-changed', dir, bAt, rAt, { value: v, from: target('b', bAt, bm[v]), to: target('r', rAt, rm[v]) }, ['discriminator', 'mapping', v]);
+      if (!(v in rm)) {
+        const t = target('b', bAt, bm[v]);
+        if (removedBranches.has(t)) fold(folded.removed, t, v);
+        else this.#emit('discriminator-mapping-removed', dir, bAt, rAt, { value: v }, ['discriminator', 'mapping', v], ['discriminator', 'mapping']);
+      } else if (target('b', bAt, bm[v]) !== target('r', rAt, rm[v])) this.#emit('discriminator-mapping-changed', dir, bAt, rAt, { value: v, from: target('b', bAt, bm[v]), to: target('r', rAt, rm[v]) }, ['discriminator', 'mapping', v]);
     }
-    for (const v of Object.keys(rm)) if (!(v in bm)) this.#emit('discriminator-mapping-added', dir, bAt, rAt, { value: v }, ['discriminator', 'mapping'], ['discriminator', 'mapping', v]);
+    for (const v of Object.keys(rm)) {
+      if (v in bm) continue;
+      const t = target('r', rAt, rm[v]);
+      if (addedBranches.has(t)) fold(folded.added, t, v);
+      else this.#emit('discriminator-mapping-added', dir, bAt, rAt, { value: v }, ['discriminator', 'mapping'], ['discriminator', 'mapping', v]);
+    }
+    return folded;
   }
 
   #docs(eb: Eff, er: Eff): void {

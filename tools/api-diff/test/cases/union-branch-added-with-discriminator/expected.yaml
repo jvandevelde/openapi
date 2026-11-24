@@ -1,0 +1,6 @@
+description: 'A oneOf branch added to a response with its discriminator values (bird, parrot): one finding, not one per value as well.'
+milestone: M5
+findings:
+- rule: union-branch-added-in-response
+  severity: warn
+  subject: '#/components/schemas/Pet'

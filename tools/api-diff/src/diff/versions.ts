@@ -5,6 +5,7 @@
 import { isObject } from '../load/documents.ts';
 import { tagGlob } from '../sources/git.ts';
 import { PolicyError } from '../policy/errors.ts';
+import { isChange } from '../rules/registry.ts';
 import type { Change, ComparedSide, Finding } from '../types.ts';
 
 export interface VersionSettings {
@@ -111,9 +112,6 @@ export function recordVersions(side: ComparedSide, doc: unknown, settings: Versi
 
 // --- Checks ----------------------------------------------------------------
 
-/** Findings that are about the tool or the inputs, not the API: they never need a version bump. */
-const NOTICES = new Set(['spec-invalid', 'ref-unresolved', 'cycle-not-productive', 'not-compared', 'documents-unrelated', 'version-unchanged', 'version-bump-too-small', 'acknowledgement-stale', 'acknowledgement-expired']);
-
 export type Level = 'none' | 'patch' | 'minor' | 'major';
 const RANK: Record<Level, number> = { none: 0, patch: 1, minor: 2, major: 3 };
 
@@ -141,7 +139,7 @@ export function neededBump(findings: Finding[], base: Semver): { level: Level; b
   let level: Level = 'none';
   let because: string | undefined;
   for (const f of findings) {
-    if (NOTICES.has(f.baseRule)) continue;
+    if (!isChange(f)) continue;
     const l: Level = f.severity === 'error' ? 'major' : f.kind === 'docs' ? 'patch' : 'minor';
     if (RANK[l] > RANK[level]) [level, because] = [l, `${f.rule} at ${f.subject}`];
   }
@@ -165,7 +163,7 @@ export interface BumpAdvice {
 export function bumpAdvice(findings: Finding[], base: ComparedSide, rev: ComparedSide): BumpAdvice | undefined {
   const [a, b] = [parseSemver(base.version), parseSemver(rev.version)];
   if (!a || !b) return undefined;
-  const changed = findings.filter((f) => !NOTICES.has(f.baseRule));
+  const changed = findings.filter(isChange);
   const need = neededBump(changed, a);
   const actual = bumpOf(a, b);
   const advice: BumpAdvice = { needed: need.level, actual, ok: RANK[actual] >= RANK[need.level], breaking: changed.filter((f) => f.severity === 'error').length };
@@ -178,7 +176,7 @@ export function bumpAdvice(findings: Finding[], base: ComparedSide, rev: Compare
  * be checked (a side has no version from the sources `tried`, or one isn't semver).
  */
 export function checkVersions(findings: Finding[], base: ComparedSide, rev: ComparedSide, schemes: { unchanged: Scheme; bump: Scheme }, tried: string[] = DEFAULT_VERSIONS.primary): Change[] {
-  const changed = findings.filter((f) => !NOTICES.has(f.baseRule));
+  const changed = findings.filter(isChange);
   if (!changed.length || (schemes.unchanged === 'none' && schemes.bump === 'none')) return [];
   const missing = ([['base', base], ['revision', rev]] as const).filter(([, s]) => s.version === 'unknown').map(([n]) => n);
   if (missing.length) return [{ rule: 'not-compared', subject: 'document', details: { what: `version checks (no version for the ${missing.join(' and ')}; tried ${tried.join(', ')})`, name: 'version-checks' } }];

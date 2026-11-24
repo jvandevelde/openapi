@@ -131,6 +131,7 @@ export function schemaMessage(title: string, c: Change): string {
   if (Array.isArray(c.details.values)) m += `: ${(c.details.values as unknown[]).map(v).join(', ')}`;
   if (c.details.value !== undefined) m += ` '${String(c.details.value)}'`;
   if (c.details.branch !== undefined) m += `: ${String(c.details.branch)}`;
+  if (Array.isArray(c.details.discriminatorValues)) m += ` (discriminator ${(c.details.discriminatorValues as unknown[]).map(v).join(', ')})`;
   if (c.details.keyword !== undefined && c.details.from === undefined) m += ` (${String(c.details.keyword)})`;
   if ('from' in c.details || 'to' in c.details) m += ` (${v(c.details.from)} → ${v(c.details.to)})`;
   if (c.details.path) m += ` at ${String(c.details.path)}`;
@@ -236,6 +237,7 @@ rule({ id: 'extension-changed-wire', section: 10, kind: 'wire', title: 'x- exten
 // 11. Spec and engine notices
 rule({ id: 'spec-invalid', section: 11, kind: 'wire', title: 'Document failed to load or validate', severity: 'error', milestone: 3, message: (c) => d(c, 'reason') });
 rule({ id: 'ref-unresolved', section: 11, kind: 'wire', title: '$ref points nowhere', severity: 'error', milestone: 3, message: (c) => `$ref '${d(c, 'ref')}' can't be resolved${c.details.reason ? `: ${d(c, 'reason')}` : ''}` });
+rule({ id: 'discriminator-mapping-orphaned', section: 11, kind: 'wire', title: 'Discriminator value points at no branch', severity: 'warn', milestone: 5, message: (c) => `discriminator value '${d(c, 'value')}' maps to ${d(c, 'target')}, which ${c.details.reason === 'missing' ? "doesn't exist" : `isn't a ${d(c, 'union')} branch`}, so no payload with it is valid` });
 rule({ id: 'cycle-not-productive', section: 11, kind: 'wire', title: 'Cycle with no property or items step', severity: 'error', milestone: 4, message: (c) => `schema cycle ${(c.details.cycle as string[]).join(' → ')} has no property or items step, so it describes no valid value` });
 rule({ id: 'documents-unrelated', section: 11, kind: 'wire', title: 'The two documents look like different APIs', severity: 'error', milestone: 6, message: (c) => `documents look unrelated: ${d(c, 'summary')}; set documents-unrelated: off in the policy to compare them anyway` });
 rule({ id: 'acknowledgement-stale', section: 11, kind: 'wire', title: "An acknowledgement's finding no longer appears", severity: 'info', milestone: 6, message: (c) => `acknowledgement for finding ${d(c, 'name')} matches nothing now (fixed, or the finding changed); remove it from ${d(c, 'file')}` });
@@ -249,6 +251,15 @@ rule({ id: 'not-compared', section: 11, kind: 'wire', title: "Parts of the spec 
 
 export const RULES: readonly RuleMeta[] = R;
 const BY_ID = new Map(R.map((r) => [r.id, r]));
+
+/** Rules about the inputs or the tool rather than the API: every rule in RULES.md section 11. */
+export const NOTICE_RULES: ReadonlySet<string> = new Set(R.filter((r) => r.section === 11).map((r) => r.id));
+/** Rules about the release's version rather than a place in the API. */
+export const VERSION_RULES: ReadonlySet<string> = new Set(['version-unchanged', 'version-bump-too-small']);
+export const isNotice = (f: { baseRule: string }): boolean => NOTICE_RULES.has(f.baseRule);
+export const isVersion = (f: { baseRule: string }): boolean => VERSION_RULES.has(f.baseRule);
+/** A change to the API: not a notice and not a version check. */
+export const isChange = (f: { baseRule: string }): boolean => !isNotice(f) && !isVersion(f);
 
 export function getRule(id: string): RuleMeta {
   const r = BY_ID.get(id);

@@ -32,7 +32,7 @@ operation-added                      info  GET /owners/{id}
 | New resource (tag, CRUD operations, schemas) | N × `operation-added`, `tag-added` | same tag and path prefix, shared new schemas |
 | Field replaced (`ownerName` deprecated, `owner` added) | `deprecated-added` + `property-added-optional` | same parent; description often names the replacement |
 | Type promoted (`address: string` → `$ref Address`) | `type-changed` | old leaf replaced by a new subgraph at the same path |
-| New union variant | branch + mapping + enum value | see [Discriminated-union variants](discriminated-union-variants.md) |
+| New union variant | branch (with its mapping value) + enum value | see [Discriminated-union variants](discriminated-union-variants.md) |
 | Pagination added | `limit`/`cursor` params on N operations, responses wrapped in `Page<T>` | same operations, one new envelope schema |
 | Error model changed | many response status and body changes | one new `Problem` schema reached from many responses |
 | Auth rollout | new scheme + N × `security-requirement-added` | all reference the same new scheme |

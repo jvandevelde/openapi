@@ -101,6 +101,42 @@ class Builder {
     return !!file && !!segs && this.#docs.value({ file, segs }) !== undefined;
   }
 
+  /** The root file's display name. */
+  get rootName(): string {
+    return this.#docs.root.display;
+  }
+
+  /**
+   * For an item only one side has (an operation added or removed): the nearest ancestor of `s`'s
+   * scope that the other side has too, if it's a path item or a component's part and fits. Widens
+   * `s`'s scope to it and returns that pointer's segments, so the other side can show the same node.
+   */
+  widenToShared(s: Snippet, other: Builder): string[] | undefined {
+    const file = this.#files.get(s.file);
+    const segs = s.scope ? segmentsOf(s.scope.pointer) : undefined;
+    if (!file || file !== this.#docs.root || !segs) return undefined;
+    for (let d = segs.length - 1; d >= 2; d--) {
+      const anc = segs.slice(0, d);
+      if (anc[0] === 'components' && d < 3) continue; // /components/schemas is no context
+      if (anc[0] === 'info') return undefined;
+      if (!other.has(other.rootName, encodePointer(anc), true)) continue;
+      const block = this.#block(file, anc, s.line);
+      if (!block) return undefined;
+      s.scope = block;
+      return anc;
+    }
+    return undefined;
+  }
+
+  /** A snippet of a node this side has but the finding has no location on: the node's lines, nothing highlighted. */
+  context(segs: string[]): Snippet | undefined {
+    const file = this.#docs.root;
+    const block = this.#block(file, segs, file.parsed.positions.lineCol(segs).line);
+    if (!block) return undefined;
+    const pos = file.parsed.positions;
+    return { file: file.display, start: block.start, line: block.start, lines: [], absent: true, scope: block, path: segs.map((key, i) => ({ key, line: pos.lineCol(segs.slice(0, i + 1)).line })) };
+  }
+
   snippet(l: Location | undefined, other?: Builder): Snippet | undefined {
     const file = l?.line ? this.#files.get(l.file) : undefined;
     if (!l?.line || !file) return undefined;
@@ -150,8 +186,16 @@ export function snippetsFor(findings: Finding[], base: DocumentSet | undefined, 
   const out: NonNullable<Result['snippets']> = {};
   for (const f of findings) {
     const s: { base?: Snippet; revision?: Snippet } = {};
-    const bs = b?.snippet(f.base, r);
-    const rs = r?.snippet(f.revision, b);
+    let bs = b?.snippet(f.base, r);
+    let rs = r?.snippet(f.revision, b);
+    // Only one side has it (an operation added or removed): show the path item it is in on both sides.
+    if (bs && !rs && b && r) {
+      const anc = b.widenToShared(bs, r);
+      if (anc) rs = r.context(anc);
+    } else if (rs && !bs && b && r) {
+      const anc = r.widenToShared(rs, b);
+      if (anc) bs = b.context(anc);
+    }
     if (bs) s.base = bs;
     if (rs) s.revision = rs;
     if (bs || rs) out[f.id] = s;

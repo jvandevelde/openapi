@@ -125,7 +125,8 @@
             }
           }
         },
-        "scopeIsNew": { "type": "boolean", "description": "With via: the other version has no node at scope (e.g. the component was added with the $ref)." }
+        "scopeIsNew": { "type": "boolean", "description": "With via: the other version has no node at scope (e.g. the component was added with the $ref)." },
+        "absent": { "type": "boolean", "description": "The finding has no location on this side (an operation added or removed): scope is the node it would be in, for context, and nothing is highlighted." }
       }
     },
     "snippetBlock": {

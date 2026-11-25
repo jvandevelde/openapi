@@ -154,6 +154,8 @@ export interface Snippet {
   via?: { file: string; line: number; name: string; path?: { key: string; line: number }[]; scope?: SnippetBlock }[];
   /** With `via`: the other version has no node at `scope` (e.g. the component was added with the `$ref`). */
   scopeIsNew?: boolean;
+  /** The finding has no location on this side (an operation added or removed): `scope` is the node it would be in, for context, and nothing is highlighted. */
+  absent?: boolean;
 }
 
 /** A node's lines: `start` to `end`, with `line` the one to highlight. */

@@ -130,7 +130,7 @@ export function schemaMessage(title: string, c: Change): string {
   if (c.details.name !== undefined) m += ` '${String(c.details.name)}'`;
   if (Array.isArray(c.details.values)) m += `: ${(c.details.values as unknown[]).map(v).join(', ')}`;
   if (c.details.value !== undefined) m += ` '${String(c.details.value)}'`;
-  if (c.details.branch !== undefined) m += `: ${String(c.details.branch)}`;
+  if (c.details.branch !== undefined) m += c.details.branchSummary !== undefined ? `: inline ${String(c.details.branchSummary)}` : `: ${String(c.details.branch)}`;
   if (Array.isArray(c.details.discriminatorValues)) m += ` (discriminator ${(c.details.discriminatorValues as unknown[]).map(v).join(', ')})`;
   if (c.details.keyword !== undefined && c.details.from === undefined) m += ` (${String(c.details.keyword)})`;
   if ('from' in c.details || 'to' in c.details) m += ` (${v(c.details.from)} → ${v(c.details.to)})`;

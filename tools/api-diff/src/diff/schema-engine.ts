@@ -84,6 +84,18 @@ const IGNORED = new Set(['deprecated', '$comment', '$id', '$schema', '$anchor', 
 /** Literal nesting beyond this is compared by hash only, so deep files can't overflow the stack. */
 const MAX_DEPTH = 400;
 
+/** A few words on what an inline union branch is, for messages: its title, else its type and first properties ("object with card, expiry"). */
+function branchSummary(v: unknown): string {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return 'schema';
+  const o = v as Record<string, unknown>;
+  if (typeof o.title === 'string' && o.title.trim()) return `'${o.title.trim()}'`;
+  if ('const' in o) return `const ${JSON.stringify(o.const)}`;
+  const type = Array.isArray(o.type) ? o.type.join(' or ') : typeof o.type === 'string' ? o.type : o.properties ? 'object' : o.items ? 'array' : 'schema';
+  const props = o.properties && typeof o.properties === 'object' ? Object.keys(o.properties) : [];
+  if (!props.length) return type;
+  return `${type} with ${props.slice(0, 3).join(', ')}${props.length > 3 ? ` and ${props.length - 3} more` : ''}`;
+}
+
 const canon = (v: unknown): string => canonicalString(sorted(v));
 function sorted(v: unknown): unknown {
   if (v === null || typeof v !== 'object') return v;
@@ -669,13 +681,16 @@ export class SchemaEngine {
   #branchChanges(ch: BranchChanges | undefined, values: { added: Map<string, string[]>; removed: Map<string, string[]> }, dir: Direction): void {
     if (!ch) return;
     const withValues = (d: Record<string, unknown>, vs: string[] | undefined): Record<string, unknown> => (vs?.length ? { ...d, discriminatorValues: vs } : d);
+    // A `$ref` branch is named by its target; an inline one by its index, with a short summary of what it is.
+    const branch = (which: 'b' | 'r', p: Pos, t: string | undefined): Record<string, unknown> =>
+      t ? { branch: t } : { branch: p.path[p.path.length - 1], branchSummary: branchSummary(this.#value(which, p)) };
     for (const bp of ch.removed) {
       const t = this.#pureRef('b', bp)?.logical;
-      this.#emit('union-branch-removed', dir, bp, ch.ru.at, withValues({ branch: t ?? bp.path[bp.path.length - 1] }, t ? values.removed.get(t) : undefined), [], [ch.ru.kind]);
+      this.#emit('union-branch-removed', dir, bp, ch.ru.at, withValues(branch('b', bp, t), t ? values.removed.get(t) : undefined), [], [ch.ru.kind]);
     }
     for (const rp of ch.added) {
       const t = this.#pureRef('r', rp)?.logical;
-      this.#emit('union-branch-added', dir, ch.bu.at, rp, withValues({ branch: t ?? rp.path[rp.path.length - 1] }, t ? values.added.get(t) : undefined), [ch.bu.kind]);
+      this.#emit('union-branch-added', dir, ch.bu.at, rp, withValues(branch('r', rp, t), t ? values.added.get(t) : undefined), [ch.bu.kind], []);
     }
   }
 

@@ -49,6 +49,8 @@ const was = (x: Helpers): string => (x.d('from') === 'none' || x.d('from') === '
 const narrowedLimit: Note = (f, dir, x) => (dir === 'request' ? `Send ${x.field} within the new limit: ${code(lastKeyword(f))} is now ${x.d('to')} (${was(x)}).` : undefined);
 const widenedLimit: Note = (f, dir, x) => (dir === 'response' ? `Handle ${x.field} values beyond the old limit: ${code(lastKeyword(f))} is now ${x.d('to') === 'none' ? 'gone' : x.d('to')} (${was(x)}).` : undefined);
 const lastKeyword = (f: Finding): string => String(f.details.path ?? '').split('/').pop() || String(f.details.keyword ?? '');
+/** A union branch: its `$ref` target, or for an inline branch its summary ("variant (object with card)"). */
+const variant = (x: { d(key: string): string }): string => (x.d('branchSummary') ? `variant (${x.d('branchSummary')})` : `${code(shortSchema(x.d('branch')))} variant`);
 const sdkType: Note = (_f, _dir, x) => `In generated SDKs the type used for ${x.field} changes (${x.d('from') ? code(shortSchema(x.d('from'))) : 'inline'} → ${x.d('to') ? code(shortSchema(x.d('to'))) : 'inline'}); update code that names it after regenerating.`;
 
 const NOTES: Record<string, Note> = {
@@ -149,8 +151,8 @@ const NOTES: Record<string, Note> = {
   'pattern-changed': (_f, dir, x) => (dir === 'request' ? `Make sure ${x.field} matches ${code(x.d('to'))} (was ${code(x.d('from'))}).` : `Don't assume ${x.field} matches ${code(x.d('from'))}; it now follows ${code(x.d('to'))}.`),
 
   // Composition
-  'union-branch-added': (_f, dir, x) => (dir === 'response' ? `Handle the new ${code(shortSchema(x.d('branch')))} variant of ${x.field}${tagged(x)}.` : undefined),
-  'union-branch-removed': (_f, dir, x) => (dir === 'request' ? `Stop sending the ${code(shortSchema(x.d('branch')))} variant of ${x.field}${tagged(x)}.` : undefined),
+  'union-branch-added': (_f, dir, x) => (dir === 'response' ? `Handle the new ${variant(x)} of ${x.field}${tagged(x)}.` : undefined),
+  'union-branch-removed': (_f, dir, x) => (dir === 'request' ? `Stop sending the ${variant(x)} of ${x.field}${tagged(x)}.` : undefined),
   'union-kind-changed': (_f, _dir, x) => `Values of ${x.field} must now match ${x.d('to') === 'oneOf' ? 'exactly one variant' : 'at least one variant'} (${x.d('from')} → ${x.d('to')}); generated SDK types change.`,
   'discriminator-property-changed': (_f, _dir, x) => `Use ${code(x.d('to'))} instead of ${code(x.d('from'))} to tell the variants of ${x.field} apart.`,
   'discriminator-mapping-added': (_f, dir, x) => (dir === 'response' ? `Handle the new ${code(x.d('value'))} variant of ${x.field}.` : undefined),

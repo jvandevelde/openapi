@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Idea |
+| **Status** | Built in part: the `$ref` site and folding (see the [decision record](../decision-records/2026-11-25T0136-explore-panes-show-ref-site-and-fold.md)); aligning the sides and the smaller items are still ideas |
 | **Summary** | Make each finding's base and revision panes readable without hunting: when one side reaches the change through a `$ref` the other side doesn't (an inline schema extracted to a component, or the reverse), show the enclosing schema with the `$ref` line on that side and the component as a second block; open the whole enclosing schema by default with unchanged siblings folded instead of a 9-line window; and line the two sides up. |
 | **Value / effort** | high / medium |
 | **Plan entry** | [PLAN.md section 8, *Large specs and noise*](../PLAN.md#large-specs-and-noise) |
@@ -62,12 +62,15 @@ With both sides open on the same schema (item 1) and folded the same way (item 2
 - **Reached from.** Show how an affected operation reaches the change: `GET /orders → 200 application/json → Order.shipping → Address.zip`. "Affects" lists the operations, but not the route, which is what tells a reviewer whether the field is in a request or response body, a parameter or a header.
 - **Shorter file names in the pane headers.** The header shows the path as given (`../../../../tmp/…/rev.yaml`), which wraps over two lines; show the name relative to the repository (or the base name) with the full path in a tooltip.
 
-## Bugs found while looking at this
+## Bugs found while looking at this (fixed)
 
 - `union-branch-added` gives the revision a pointer that doesn't exist (`/components/schemas/Payment/oneOf/2/oneOf`): `#branchChanges` passes `[ch.bu.kind]` as the base keywords and `#emit` reuses them for the revision. The base side should get the keyword and the revision none, as `union-branch-removed` does.
 - An inline branch is named by its index: "oneOf/anyOf branch added: 2" and the hint "Handle the new `2` variant of `Payment`". Better: "branch 3 (inline object)" or a summary of its properties (`{paypal}`).
 
 ## Open questions
+
+Answered for what was built: a second block, not in-place expansion; nodes of 3 lines or fewer stay unfolded; folded, not a size threshold. See the decision record.
+
 
 - Is the second block enough, or is in-place `$ref` expansion wanted as well?
 - How short is "short" for a sibling that stays unfolded (1 line? up to 3?).

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built (see the [decision record](../decision-records/2026-11-23T2219-explore-expands-to-the-enclosing-schema.md)) |
+| **Status** | Built (see the [decision record](../decision-records/2026-11-23T2219-explore-expands-to-the-enclosing-schema.md)); the window and toggle were replaced by [folded scopes](explore-context-panes.md) |
 | **Summary** | Each side of an `explore` finding shows a breadcrumb from the document root, can expand from the 9-line window to the whole enclosing schema or operation, and jumps to a `$ref`'s target, so a reviewer can see which schema a deep change is in without opening the spec. |
 | **Value / effort** | high / low |
 | **Plan entry** | [PLAN.md section 8, *Large specs and noise*](../PLAN.md#large-specs-and-noise) |

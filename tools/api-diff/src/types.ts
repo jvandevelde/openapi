@@ -19,6 +19,12 @@ export interface Location {
   /** 1-based line and column, when known. */
   line?: number;
   column?: number;
+  /**
+   * Schema changes: the `$ref`s this side went through to reach the change and the other side
+   * didn't, outermost first (an inline schema became a `$ref` here, or a `$ref` was inlined on the
+   * other side). Each is the `$ref`'s location; the change itself is inside the last one's target.
+   */
+  via?: Location[];
 }
 
 /**
@@ -142,8 +148,12 @@ export interface Snippet {
   path?: { key: string; line: number }[];
   /** The enclosing schema or operation (or the outermost node on the path that fits), in `file`; its lines are in `sourceLines`. */
   scope?: SnippetBlock;
-  /** When the node is a `$ref`: the node it points at; its lines are in `sourceLines`, under `file`. */
-  ref?: SnippetBlock & { file: string; name: string };
+  /** When the node is a `$ref`: the node it points at; its lines are in `sourceLines`, under `file`. `isNew`: the other version has no node there. */
+  ref?: SnippetBlock & { file: string; name: string; isNew?: boolean };
+  /** The `$ref`s only this side went through to reach the change (the location's `via`), outermost first: each one's line, `$ref` value, path and enclosing scope. */
+  via?: { file: string; line: number; name: string; path?: { key: string; line: number }[]; scope?: SnippetBlock }[];
+  /** With `via`: the other version has no node at `scope` (e.g. the component was added with the `$ref`). */
+  scopeIsNew?: boolean;
 }
 
 /** A node's lines: `start` to `end`, with `line` the one to highlight. */

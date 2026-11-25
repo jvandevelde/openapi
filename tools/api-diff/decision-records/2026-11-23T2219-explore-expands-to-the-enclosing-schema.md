@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted |
+| **Status** | Superseded by [Explore panes show the $ref a side went through, and open on the whole enclosing schema, folded](2026-11-25T0136-explore-panes-show-ref-site-and-fold.md) |
 | **Date** | 2026-11-23 22:19 UTC |
 | **Summary** | Each side of an `explore` finding shows its path from the document root as a breadcrumb, can expand from the 9-line window to the whole enclosing schema or operation (up to 400 lines), and jumps to a `$ref`'s target. The lines are embedded once per file and side, so the page still works offline. |
 | **Milestone** | — (follow-up to M8) |

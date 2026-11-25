@@ -80,7 +80,28 @@ class Builder {
     return { pointer: encodePointer(segs), start, end, line };
   }
 
-  snippet(l: Location | undefined): Snippet | undefined {
+  /** The path from the root to `segs` (the breadcrumb) and the enclosing schema or operation, or the outermost node below it that fits. */
+  #place(file: LoadedFile, segs: readonly string[], line: number): Pick<Snippet, 'path' | 'scope'> {
+    const pos = file.parsed.positions;
+    const out: Pick<Snippet, 'path' | 'scope'> = { path: segs.map((key, i) => ({ key, line: pos.lineCol(segs.slice(0, i + 1)).line })) };
+    for (let d = scopeDepth(segs, file === this.#docs.root); d <= segs.length; d++) {
+      const block = this.#block(file, segs.slice(0, d), line);
+      if (block) {
+        out.scope = block;
+        break;
+      }
+    }
+    return out;
+  }
+
+  /** True if this side has a node at `pointer` in the file shown as `display` on the other side (the root file matches the root, whatever its name). */
+  has(display: string, pointer: string, fromRoot: boolean): boolean {
+    const file = fromRoot ? this.#docs.root : this.#files.get(display);
+    const segs = segmentsOf(pointer);
+    return !!file && !!segs && this.#docs.value({ file, segs }) !== undefined;
+  }
+
+  snippet(l: Location | undefined, other?: Builder): Snippet | undefined {
     const file = l?.line ? this.#files.get(l.file) : undefined;
     if (!l?.line || !file) return undefined;
     const text = this.#textOf(file);
@@ -89,15 +110,21 @@ class Builder {
     const s: Snippet = { file: l.file, start, line: l.line, lines: text.slice(start - 1, end).map(cutLine) };
     const segs = segmentsOf(l.pointer);
     if (!segs) return s;
-    const pos = file.parsed.positions;
-    s.path = segs.map((key, i) => ({ key, line: pos.lineCol(segs.slice(0, i + 1)).line }));
-    // The enclosing schema or operation, or the outermost node below it that fits.
-    for (let d = scopeDepth(segs, file === this.#docs.root); d <= segs.length; d++) {
-      const block = this.#block(file, segs.slice(0, d), l.line);
-      if (block) {
-        s.scope = block;
-        break;
-      }
+    Object.assign(s, this.#place(file, segs, l.line));
+    // `$ref`s only this side went through: each one's place, so the page shows the schema both
+    // sides have in common (with the `$ref` line) before the one the change is in.
+    const hops: NonNullable<Snippet['via']> = [];
+    for (const v of l.via ?? []) {
+      const vf = v.line ? this.#files.get(v.file) : undefined;
+      const vs = segmentsOf(v.pointer);
+      const node = vf && vs ? this.#docs.value({ file: vf, segs: vs }) : undefined;
+      const name = node !== null && typeof node === 'object' && !Array.isArray(node) ? (node as Record<string, unknown>).$ref : undefined;
+      if (!vf || !vs || typeof name !== 'string') break; // keep the hops up to the first one we can't show
+      hops.push({ file: v.file, line: v.line!, name, ...this.#place(vf, vs, v.line!) });
+    }
+    if (hops.length) {
+      s.via = hops;
+      if (other && s.scope && !other.has(l.file, s.scope.pointer, file === this.#docs.root)) s.scopeIsNew = true;
     }
     // A `$ref` (the node itself, or its `$ref` key): the node it points at. One hop, and
     // resolveRef records no notices (the result's notices are already final).
@@ -107,7 +134,10 @@ class Builder {
     if (typeof ref === 'string') {
       const t = this.#docs.resolveRef(file, ref);
       const block = 'error' in t ? undefined : this.#block(t.file, t.segs, t.file.parsed.positions.lineCol(t.segs).line);
-      if (block && !('error' in t)) s.ref = { ...block, file: t.file.display, name: ref };
+      if (block && !('error' in t)) {
+        s.ref = { ...block, file: t.file.display, name: ref };
+        if (other && !other.has(t.file.display, block.pointer, t.file === this.#docs.root)) s.ref.isNew = true;
+      }
     }
     return s;
   }
@@ -120,8 +150,8 @@ export function snippetsFor(findings: Finding[], base: DocumentSet | undefined, 
   const out: NonNullable<Result['snippets']> = {};
   for (const f of findings) {
     const s: { base?: Snippet; revision?: Snippet } = {};
-    const bs = b?.snippet(f.base);
-    const rs = r?.snippet(f.revision);
+    const bs = b?.snippet(f.base, r);
+    const rs = r?.snippet(f.revision, b);
     if (bs) s.base = bs;
     if (rs) s.revision = rs;
     if (bs || rs) out[f.id] = s;

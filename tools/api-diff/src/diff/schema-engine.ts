@@ -133,6 +133,8 @@ export class SchemaEngine {
   readonly #typeSets = new WeakMap<Eff, Map<number, Set<string> | undefined>>();
   readonly #unclassified = new Map<string, { b: Pos; r: Pos; pointers: Set<string>; pairs: Set<string> }>();
   #pair = '';
+  /** `$ref`s one side stepped through and the other didn't (an inline schema extracted to a component, or inlined), outermost first; changes found inside carry them as `via`. */
+  #via: { b: Location[]; r: Location[] } = { b: [], r: [] };
 
   readonly #opts: SchemaEngineOptions;
 
@@ -255,6 +257,8 @@ export class SchemaEngine {
     if (c.details.path === '/') c.details.path = '';
     if (b) c.base = this.#loc('b', b, bKw);
     if (r) c.revision = this.#loc('r', r, rKw);
+    if (c.base && this.#via.b.length) c.base.via = this.#via.b.map((l) => ({ ...l }));
+    if (c.revision && this.#via.r.length) c.revision.via = this.#via.r.map((l) => ({ ...l }));
     return c;
   }
 
@@ -282,6 +286,17 @@ export class SchemaEngine {
 
   // --- Walking -------------------------------------------------------------
 
+  /** Runs `walk` with the `$ref` at `p` recorded as a one-sided hop on that side, for the changes found inside. */
+  #through(which: 'b' | 'r', p: Pos, walk: () => void): void {
+    const hops = this.#via[which];
+    hops.push(this.#loc(which, p));
+    try {
+      walk();
+    } finally {
+      hops.pop();
+    }
+  }
+
   #walkPair(b: SchemaNode, r: SchemaNode, dir: Direction, parent: string): void {
     const key = `${b.id}|${r.id}|${dir}`;
     let ps = this.#parents.get(key);
@@ -292,9 +307,12 @@ export class SchemaEngine {
     this.#visited.add(b.id);
     if (b.logical === r.logical && b.deep.full === r.deep.full) return;
     const saved = this.#pair;
+    const savedVia = this.#via;
     this.#pair = key;
+    this.#via = { b: [], r: [] }; // both sides enter the pair through a $ref, so neither side has a one-sided hop
     this.#compare({ node: b, path: [] }, { node: r, path: [] }, dir, 0);
     this.#pair = saved;
+    this.#via = savedVia;
   }
 
   /** Compares two schema positions, following `$ref`s into pairs. */
@@ -313,12 +331,12 @@ export class SchemaEngine {
     }
     if (bt && !rt) {
       this.#emit('ref-inlined', undefined, b, r, { from: bt.logical });
-      this.#schemas({ node: bt, path: [] }, r, dir, depth + 1);
+      this.#through('b', b, () => this.#schemas({ node: bt, path: [] }, r, dir, depth + 1));
       return;
     }
     if (!bt && rt) {
       this.#emit('ref-extracted', undefined, b, r, { to: rt.logical });
-      this.#schemas(b, { node: rt, path: [] }, dir, depth + 1);
+      this.#through('r', r, () => this.#schemas(b, { node: rt, path: [] }, dir, depth + 1));
       return;
     }
     this.#schemas(b, r, dir, depth);

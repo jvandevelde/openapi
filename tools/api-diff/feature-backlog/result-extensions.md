@@ -115,6 +115,10 @@ Built-in sources: git trailers, git notes, a JSON Pointer into the base or revis
 4. `render` for diff results, after deciding what a saved result must contain.
 5. Scripts (2c), together with rule plugins, if they're still wanted.
 
+## Choices so far
+
+- 2026-11-25: when work starts, the first data source is your own scripts writing into the JSON, followed by `api-diff render` (2a and 4). This is a preference, not a decision record; ask again when work starts.
+
 ## Related
 
 - [Rule plugins](rule-plugins.md): a plugin could write finding extensions, and both need a safe way to load code.

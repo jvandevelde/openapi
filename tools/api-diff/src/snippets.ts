@@ -80,10 +80,30 @@ class Builder {
     return { pointer: encodePointer(segs), start, end, line };
   }
 
+  /**
+   * The breadcrumb steps to `segs`, each with its line. An array step gets a `label` where its index
+   * says little: a parameter by name and location (`limit (query)`), a union or allOf member by its
+   * `$ref` target (`Card`), else `#n` counting from 1.
+   */
+  #path(file: LoadedFile, segs: readonly string[]): NonNullable<Snippet['path']> {
+    const pos = file.parsed.positions;
+    return segs.map((key, i) => {
+      const step: NonNullable<Snippet['path']>[number] = { key, line: pos.lineCol(segs.slice(0, i + 1)).line };
+      const parent = segs[i - 1];
+      if (!/^\d+$/.test(key) || !parent) return step;
+      const v = this.#docs.value({ file, segs: segs.slice(0, i + 1) });
+      const o = v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
+      const ref = typeof o?.$ref === 'string' ? o.$ref.split('/').pop() : undefined;
+      if (parent === 'parameters') step.label = typeof o?.name === 'string' ? `${o.name}${typeof o.in === 'string' ? ` (${o.in})` : ''}` : ref ?? `#${Number(key) + 1}`;
+      else if (/^(oneOf|anyOf|allOf|prefixItems)$/.test(parent)) step.label = ref ?? `#${Number(key) + 1}`;
+      return step;
+    });
+  }
+
   /** The path from the root to `segs` (the breadcrumb) and the enclosing schema or operation, or the outermost node below it that fits. */
   #place(file: LoadedFile, segs: readonly string[], line: number): Pick<Snippet, 'path' | 'scope'> {
     const pos = file.parsed.positions;
-    const out: Pick<Snippet, 'path' | 'scope'> = { path: segs.map((key, i) => ({ key, line: pos.lineCol(segs.slice(0, i + 1)).line })) };
+    const out: Pick<Snippet, 'path' | 'scope'> = { path: this.#path(file, segs) };
     for (let d = scopeDepth(segs, file === this.#docs.root); d <= segs.length; d++) {
       const block = this.#block(file, segs.slice(0, d), line);
       if (block) {
@@ -128,13 +148,16 @@ class Builder {
     return undefined;
   }
 
-  /** A snippet of a node this side has but the finding has no location on: the node's lines, nothing highlighted. */
-  context(segs: string[]): Snippet | undefined {
+  /** A snippet of a node in the root file that the finding has no location on: its lines, with nothing highlighted unless `hit`. */
+  context(segs: string[], hit = false): Snippet | undefined {
     const file = this.#docs.root;
-    const block = this.#block(file, segs, file.parsed.positions.lineCol(segs).line);
-    if (!block) return undefined;
+    if (this.#docs.value({ file, segs }) === undefined) return undefined;
     const pos = file.parsed.positions;
-    return { file: file.display, start: block.start, line: block.start, lines: [], absent: true, scope: block, path: segs.map((key, i) => ({ key, line: pos.lineCol(segs.slice(0, i + 1)).line })) };
+    const block = this.#block(file, segs, pos.lineCol(segs).line);
+    if (!block) return undefined;
+    const s: Snippet = { file: file.display, start: block.start, line: block.start, lines: [], scope: block, path: this.#path(file, segs) };
+    if (!hit) s.absent = true;
+    return s;
   }
 
   snippet(l: Location | undefined, other?: Builder): Snippet | undefined {
@@ -188,6 +211,11 @@ export function snippetsFor(findings: Finding[], base: DocumentSet | undefined, 
     const s: { base?: Snippet; revision?: Snippet } = {};
     let bs = b?.snippet(f.base, r);
     let rs = r?.snippet(f.revision, b);
+    // Version checks have no location: show info.version on both sides.
+    if (!f.base && !f.revision && /^version-/.test(f.rule)) {
+      bs = b?.context(['info', 'version'], true);
+      rs = r?.context(['info', 'version'], true);
+    }
     // Only one side has it (an operation added or removed): show the path item it is in on both sides.
     if (bs && !rs && b && r) {
       const anc = b.widenToShared(bs, r);

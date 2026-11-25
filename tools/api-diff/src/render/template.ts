@@ -27,7 +27,7 @@ export const FINDING: Shape = {
 const COUNTS: Shape = { total: 1, bySeverity: BY_SEVERITY, byKind: { wire: 1, sdk: 1, docs: 1 }, byRule: { '*': 1 }, acknowledged: 1 };
 const COMPARED: Shape = { base: SIDE, revision: SIDE };
 const BLOCK = { pointer: 1, start: 1, end: 1, line: 1 } as const;
-const SNIPPET: Shape = { file: 1, start: 1, line: 1, lines: [1], path: [{ key: 1, line: 1 }], scope: BLOCK, ref: { ...BLOCK, file: 1, name: 1, isNew: 1 }, via: [{ file: 1, line: 1, name: 1, path: [{ key: 1, line: 1 }], scope: BLOCK }], scopeIsNew: 1, absent: 1 };
+const SNIPPET: Shape = { file: 1, start: 1, line: 1, lines: [1], path: [{ key: 1, line: 1, label: 1 }], scope: BLOCK, ref: { ...BLOCK, file: 1, name: 1, isNew: 1 }, via: [{ file: 1, line: 1, name: 1, path: [{ key: 1, line: 1, label: 1 }], scope: BLOCK }], scopeIsNew: 1, absent: 1 };
 const SOURCE_LINES: Shape = { '*': { '*': 1 } };
 const RESULT: Shape = {
   schemaVersion: 1, tool: { name: 1, version: 1 }, profile: 1, compared: COMPARED, state: 1, counts: COUNTS,

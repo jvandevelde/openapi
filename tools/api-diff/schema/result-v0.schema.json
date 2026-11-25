@@ -101,7 +101,7 @@
         "path": {
           "description": "The pointer's steps from the document root, each with its line (the breadcrumb).",
           "type": "array",
-          "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" } } }
+          "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" }, "label": { "type": "string", "description": "A name for an array step where the index says little: a parameter (limit (query)), a $ref member (Card), else #n." } } }
         },
         "scope": { "description": "The enclosing schema or operation, or the outermost node on the path that fits; its lines are in sourceLines.", "$ref": "#/$defs/snippetBlock" },
         "ref": {
@@ -120,7 +120,7 @@
               "file": { "type": "string" },
               "line": { "type": "integer" },
               "name": { "type": "string", "description": "The $ref as written." },
-              "path": { "type": "array", "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" } } } },
+              "path": { "type": "array", "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" }, "label": { "type": "string", "description": "A name for an array step where the index says little: a parameter (limit (query)), a $ref member (Card), else #n." } } } },
               "scope": { "$ref": "#/$defs/snippetBlock" }
             }
           }

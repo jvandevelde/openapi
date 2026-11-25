@@ -123,9 +123,29 @@ rule({ id: 'response-header-removed', section: 6, kind: 'wire', title: 'Response
 rule({ id: 'response-header-became-optional', section: 6, kind: 'wire', title: 'Response header became optional', severity: 'error', milestone: 3, message: (c) => `response ${d(c, 'status')} header '${d(c, 'name')}' became optional` });
 
 // 7. Schemas (all have request/response variants)
-/** Message for schema changes: what changed, the values, and where in the schema. */
+/**
+ * Where in its subject a change is, for messages: `details.path` relative to the operation for an
+ * operation's subject, without a last step that only repeats what the title says (`/properties/note`
+ * for "maxLength decreased", not `/properties/note/maxLength`). Empty when nothing is left.
+ */
+export function wherePath(c: Change, title: string): string {
+  let p = typeof c.details.path === 'string' ? c.details.path : '';
+  const op = /^([A-Z]+) (\/.*)$/.exec(c.subject);
+  if (op) {
+    const prefix = `/paths/${op[2]!.replace(/~/g, '~0').replace(/\//g, '~1')}/${op[1]!.toLowerCase()}`;
+    if (p === prefix || p.startsWith(`${prefix}/`)) p = p.slice(prefix.length);
+  }
+  const segs = p.split('/');
+  const last = segs.at(-1) ?? '';
+  if (segs.length > 1 && /^[A-Za-z$]+$/.test(last) && segs.at(-2) !== 'properties' && title.toLowerCase().includes(last.toLowerCase())) p = segs.slice(0, -1).join('/');
+  return p;
+}
+
+/** Message for schema changes: the field when known, what changed, the values, and where in the schema. */
 export function schemaMessage(title: string, c: Change): string {
-  const v = (x: unknown): string => (x === null || x === undefined ? 'none' : typeof x === 'string' ? `'${x}'` : JSON.stringify(x));
+  // A one-type list prints as the type, several as "string or null".
+  const typeList = typeof c.details.path === 'string' && c.details.path.endsWith('/type');
+  const v = (x: unknown): string => (x === null || x === undefined ? 'none' : typeof x === 'string' ? `'${x}'` : typeList && Array.isArray(x) && x.every((t) => typeof t === 'string') ? x.join(' or ') : JSON.stringify(x));
   let m = title.charAt(0).toLowerCase() + title.slice(1);
   if (c.details.name !== undefined) m += ` '${String(c.details.name)}'`;
   if (Array.isArray(c.details.values)) m += `: ${(c.details.values as unknown[]).map(v).join(', ')}`;
@@ -134,7 +154,10 @@ export function schemaMessage(title: string, c: Change): string {
   if (Array.isArray(c.details.discriminatorValues)) m += ` (discriminator ${(c.details.discriminatorValues as unknown[]).map(v).join(', ')})`;
   if (c.details.keyword !== undefined && c.details.from === undefined) m += ` (${String(c.details.keyword)})`;
   if ('from' in c.details || 'to' in c.details) m += ` (${v(c.details.from)} → ${v(c.details.to)})`;
-  if (c.details.path) m += ` at ${String(c.details.path)}`;
+  const at = wherePath(c, title);
+  if (at) m += ` at ${at}`;
+  // An inline schema in an operation: say which parameter, header or body it is.
+  if (typeof c.details.usage === 'string') m = `${c.details.usage}: ${m}`;
   return m;
 }
 
@@ -224,7 +247,7 @@ for (const [id, title] of [
   ['info-changed', 'info (contact, license, terms) changed'],
   ['extension-changed', 'Unclassified x- extension changed'],
 ] as const) {
-  rule({ id, section: 10, kind: 'docs', title, severity: 'info', milestone: 5, message: (c) => `${title.charAt(0).toLowerCase() + title.slice(1)}${c.details.name !== undefined ? ` '${String(c.details.name)}'` : ''}${c.details.path ? ` at ${d(c, 'path')}` : ''}` });
+  rule({ id, section: 10, kind: 'docs', title, severity: 'info', milestone: 5, message: (c) => { const at = wherePath(c, title); return `${title.charAt(0).toLowerCase() + title.slice(1)}${c.details.name !== undefined ? ` '${String(c.details.name)}'` : ''}${at ? ` at ${at}` : ''}`; } });
 }
 
 const extMessage = (c: Change): string => {

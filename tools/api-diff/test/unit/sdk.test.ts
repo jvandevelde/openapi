@@ -110,7 +110,7 @@ test('text: both directions and their IDs under the change', async () => {
   const txt = renderSdk(r);
   const req = r.findings.find((f) => f.rule === 'enum-value-added-in-request')!;
   const res = r.findings.find((f) => f.rule === 'enum-value-added-in-response')!;
-  assert.match(txt, /^ {4}check {2}enum value added: 'sold' at \/properties\/status\/enum {2}\[enum-value-added\]$/m);
+  assert.match(txt, /^ {4}check {2}enum value added: 'sold' at \/properties\/status {2}\[enum-value-added\]$/m);
   assert.match(txt, new RegExp(`^ {11}request INFO · id ${req.id} {3}response WARN · id ${res.id}$`, 'm'));
   assert.match(txt, /\(1 change breaks generated code\)/);
 });

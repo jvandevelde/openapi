@@ -54,7 +54,7 @@ node "$HOME/bin/api-diff.mjs" HEAD:"$spec" :"$spec" --report ci --fail-on error 
 A blocked commit looks like this:
 
 ```
-ERROR  #/components/schemas/NewPet  maxLength decreased (50 → 20) at /properties/name/maxLength  :openapi.yaml:87 · max-length-decreased-in-request · id 8b48ac001f7e
+ERROR  #/components/schemas/NewPet  maxLength decreased (50 → 20) at /properties/name  :openapi.yaml:87 · max-length-decreased-in-request · id 8b48ac001f7e
 
 3 findings: 1 error, 1 warn, 1 info · state: breaking · fails CI at error and above
 FAIL: 1 finding at error or above

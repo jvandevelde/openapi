@@ -15,6 +15,7 @@
 // is inserted as text, never as HTML.
 
 import { clientNote } from '../rules/notes.ts';
+import { getRule } from '../rules/registry.ts';
 import type { Finding, Result } from '../types.ts';
 import { adviceLine, asciiHtml, isNotice, isVersion, mergeDirections } from './common.ts';
 import { explorerLink } from './config.ts';
@@ -66,7 +67,7 @@ details.f:hover { border-color:var(--border-strong); }
 details.f[open] { box-shadow:var(--shadow); border-color:var(--border-strong); }
 details.f > summary { padding:10px 12px; display:grid; grid-template-columns:16px 68px minmax(0,1fr); gap:10px; align-items:start; border-radius:10px; }
 details.f > summary .chev, details.g > summary .chev { margin-top:3px; }
-.subj { font-weight:600; overflow-wrap:anywhere; } .msg { overflow-wrap:anywhere; }
+.subj { font-weight:600; overflow-wrap:anywhere; } .subj .kind { font-weight:450; font-size:12.5px; } .msg { overflow-wrap:anywhere; }
 .body { padding:2px 14px 14px 106px; }
 .body dl { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:4px 16px; margin:8px 0; font-size:13px; }
 .body dt { color:var(--muted); } .body dd { margin:0; overflow-wrap:anywhere; }
@@ -123,7 +124,7 @@ for (const f of data.findings) for (const name of ['base', 'revision']) {
 }
 const rowNode = new Map(); // finding ID -> its row
 const goTo = (id) => { const d = rowNode.get(id); if (!d) return; for (let p = d.parentElement; p; p = p.parentElement) if (p.tagName === 'DETAILS') p.open = true; d.open = true; d.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
-const findingLink = (f) => { const a = el('button', { type: 'button', class: 'link' }, f.subject + ': ' + f.message); a.addEventListener('click', () => goTo(f.id)); return a; };
+const findingLink = (f) => { const a = el('button', { type: 'button', class: 'link', title: f.subject }, f.subject.replace(/^#\\/components\\/[^/]+\\//, '') + ': ' + f.message); a.addEventListener('click', () => goTo(f.id)); return a; };
 // "via" on a change inside an extracted schema; "changes inside" on the extraction itself.
 function refLinks(body, parts) {
   const f = parts[0];
@@ -131,11 +132,24 @@ function refLinks(body, parts) {
   const vias = [];
   for (const name of ['base', 'revision']) for (const v of (f[name] && f[name].via) || []) { const g = refFinding.get(hopKey(name, v)); if (g && !vias.includes(g)) vias.push(g); }
   if (vias.length) line('via', vias);
+  if (f.details.becauseId && byId.get(f.details.becauseId)) line('for example', [byId.get(f.details.becauseId)]);
   if (REF_RULES.test(f.rule)) {
     const seen = new Set(), list = [];
     for (const name of ['base', 'revision']) if (f[name]) for (const g of inside.get(hopKey(name, f[name])) || []) { const key = g.rule.replace(/-in-(request|response)$/, '') + '|' + g.message; if (!seen.has(key)) { seen.add(key); list.push(g); } }
     if (list.length) line('changes inside', list);
   }
+}
+// A subject as people say it: "Status" with a muted "schema" for a component, "All operations"
+// for a change to the top-level security; operations and other subjects as they are.
+const COMPONENT_KIND = { schemas: 'schema', parameters: 'parameter', responses: 'response', requestBodies: 'request body', headers: 'header', securitySchemes: 'security scheme', examples: 'example', links: 'link', callbacks: 'callback', pathItems: 'path item' };
+function subjectEl(subject, f) {
+  const m = /^#\\/components\\/([^/]+)\\/(.+)$/.exec(subject) || /^#\\/definitions\\/(.+)$/.exec(subject);
+  if (m) {
+    const kind = m.length === 3 ? COMPONENT_KIND[m[1]] || m[1] : 'definition';
+    return el('span', { class: 'subj', title: subject }, unesc(m[m.length - 1]), el('span', { class: 'muted kind' }, ' ' + kind));
+  }
+  if (/^\\d+ operations$/.test(subject) && f && ((f.base && f.base.pointer === '/security') || (f.revision && f.revision.pointer === '/security'))) return el('span', { class: 'subj', title: subject }, 'All operations', el('span', { class: 'muted kind' }, ' top-level security'));
+  return el('span', { class: 'subj' }, subject);
 }
 const RANK = { error: 0, warn: 1, info: 2 };
 const worst = (fs) => fs.reduce((a, b) => (RANK[b.severity] < RANK[a.severity] ? b : a));
@@ -183,7 +197,7 @@ function item(parts) {
   const d = el('details', { class: 'f' });
   for (const p of parts) rowNode.set(p.id, d);
   const badge = el('span', { class: 'sev ' + f.severity }, f.severity);
-  const head = el('div', {}, el('span', { class: 'subj' }, f.subject), f.details.recursive ? ' ↻' : '', ' ', el('span', { class: 'msg' }, f.message));
+  const head = el('div', {}, subjectEl(f.subject, f), f.details.recursive ? ' ↻' : '', ' ', el('span', { class: 'msg' }, f.message));
   if (parts.length > 1) head.append(' ', el('span', { class: 'dirs' }, parts.map((p) => dirOf(p) + ' ' + p.severity).join(' · ')));
   d.append(el('summary', {}, chev(), badge, head));
   d.addEventListener('toggle', () => {
@@ -231,7 +245,8 @@ function groupNode(g, section) {
   const badge = el('span', { class: 'sev ' + g.sev }, g.sev);
   const count = el('span', { class: 'muted' });
   const ops = [...new Set(g.rows.flatMap((r) => r.parts.flatMap((p) => p.f.impact || [])))].sort();
-  const head = el('div', {}, el('span', { class: 'subj' }, g.key), ' ', count);
+  const first = g.rows[0].parts[0].f;
+  const head = el('div', {}, section === 'docs' ? el('span', { class: 'subj', title: g.key }, (data.ruleTitles || {})[first.baseRule] || g.key) : subjectEl(g.key, first), ' ', count);
   // The header gives only the count (a toggle can't sit inside a summary); the list is at the top of the group.
   const showOps = section === 'changes' && ops.length > 0;
   if (showOps) head.append(el('span', { class: 'muted' }, ' · affects ' + ops.length + ' operation' + (ops.length === 1 ? '' : 's')));
@@ -313,7 +328,8 @@ export function renderExplore(r: Result, explorerUrl?: string): string {
   const index = new Map(r.findings.map((f, i) => [f, i]));
   const sectionOf = (f: Finding): string => (isNotice(f) ? (f.severity === 'info' ? 'notes' : 'problems') : isVersion(f) ? 'version' : f.kind === 'docs' ? 'docs' : 'changes');
   const rows = mergeDirections(r.findings).map((e) => ({ parts: e.parts.map((f) => index.get(f)!), section: sectionOf(e.finding) }));
-  const data = { findings, rows, operations: r.operations ?? {}, snippets: r.snippets ?? {}, sourceLines: r.sourceLines ?? {} };
+  const ruleTitles = Object.fromEntries([...new Set(r.findings.filter((f) => f.kind === 'docs').map((f) => f.baseRule))].map((id) => [id, getRule(id)?.title ?? id]));
+  const data = { findings, rows, operations: r.operations ?? {}, snippets: r.snippets ?? {}, sourceLines: r.sourceLines ?? {}, ruleTitles };
   const side = (s: Result['compared']['base']): string => `<code>${esc(s.file)}</code>${s.commit ? ` <span class="mono">@ ${esc(s.commit.slice(0, 7))}</span>` : ''} · version ${esc(s.version)}`;
   const advice = adviceLine(r);
   const title = r.compared.revision.title ?? r.compared.base.title ?? 'API';

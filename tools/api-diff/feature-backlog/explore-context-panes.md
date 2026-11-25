@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Built in part: the `$ref` site and folding (see the [decision record](../decision-records/2026-11-25T0136-explore-panes-show-ref-site-and-fold.md)); aligning the sides and the smaller items are still ideas |
+| **Status** | Built in part: the `$ref` site and folding (see the [decision record](../decision-records/2026-11-25T0136-explore-panes-show-ref-site-and-fold.md)); aligning the sides was then built with [the aligned diff](../decision-records/2026-11-25T0154-explore-shows-findings-as-aligned-diff.md); sticky ancestors, a schema-level group view and the route from an operation are still ideas |
 | **Summary** | Make each finding's base and revision panes readable without hunting: when one side reaches the change through a `$ref` the other side doesn't (an inline schema extracted to a component, or the reverse), show the enclosing schema with the `$ref` line on that side and the component as a second block; open the whole enclosing schema by default with unchanged siblings folded instead of a 9-line window; and line the two sides up. |
 | **Value / effort** | high / medium |
 | **Plan entry** | [PLAN.md section 8, *Large specs and noise*](../PLAN.md#large-specs-and-noise) |

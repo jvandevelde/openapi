@@ -144,14 +144,14 @@ export interface Snippet {
   /** The line the finding points at. */
   line: number;
   lines: string[];
-  /** The pointer's steps from the document root, each with its line (the breadcrumb). */
-  path?: { key: string; line: number }[];
+  /** The pointer's steps from the document root, each with its line (the breadcrumb); `label` names an array step where the index says little (`limit (query)`, `Card`, `#2`). */
+  path?: { key: string; line: number; label?: string }[];
   /** The enclosing schema or operation (or the outermost node on the path that fits), in `file`; its lines are in `sourceLines`. */
   scope?: SnippetBlock;
   /** When the node is a `$ref`: the node it points at; its lines are in `sourceLines`, under `file`. `isNew`: the other version has no node there. */
   ref?: SnippetBlock & { file: string; name: string; isNew?: boolean };
   /** The `$ref`s only this side went through to reach the change (the location's `via`), outermost first: each one's line, `$ref` value, path and enclosing scope. */
-  via?: { file: string; line: number; name: string; path?: { key: string; line: number }[]; scope?: SnippetBlock }[];
+  via?: { file: string; line: number; name: string; path?: { key: string; line: number; label?: string }[]; scope?: SnippetBlock }[];
   /** With `via`: the other version has no node at `scope` (e.g. the component was added with the `$ref`). */
   scopeIsNew?: boolean;
   /** The finding has no location on this side (an operation added or removed): `scope` is the node it would be in, for context, and nothing is highlighted. */

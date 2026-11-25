@@ -87,7 +87,7 @@ test('review text: one entry with the rule without direction, then each directio
   const text = renderReview(r, { color: false });
   const req = byRule(r, 'max-length-decreased-in-request');
   const res = byRule(r, 'max-length-decreased-in-response');
-  assert.match(text, /maxLength decreased \(100 → 50\) at \/properties\/name\/maxLength {2}b\.yaml:\d+ · max-length-decreased\n/);
+  assert.match(text, /maxLength decreased \(100 → 50\) at \/properties\/name {2}b\.yaml:\d+ · max-length-decreased\n/);
   assert.match(text, new RegExp(`^ {14}request ERROR · id ${req.id} {3}response INFO · id ${res.id}$`, 'm'));
   assert.equal(text.match(/maxLength decreased/g)!.length, 1);
 });

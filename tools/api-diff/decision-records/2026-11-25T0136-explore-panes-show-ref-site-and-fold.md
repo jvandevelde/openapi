@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Accepted |
+| **Status** | Superseded by [Explore shows each finding as an aligned, tinted diff of its enclosing schema or operation](2026-11-25T0154-explore-shows-findings-as-aligned-diff.md) |
 | **Date** | 2026-11-25 01:36 UTC |
 | **Summary** | When one side reaches a change through a `$ref` the other side doesn't (an inline schema became a `$ref`, or the reverse), the finding's location records that `$ref` as `via`, and its pane shows the schema both sides share, with the `$ref` line highlighted, above the component the change is in. Each pane opens on the whole enclosing schema or operation, with unchanged parts of more than 3 lines folded to one line (schemas of 40 lines or fewer are shown whole). The 9-line window and its "show all" toggle are gone. |
 | **Milestone** | — (follow-up to M8) |

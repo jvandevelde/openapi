@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Idea |
+| **Status** | Built, except item 12 (the phone layout, not wanted for now): see the decision records on [the aligned diff](../decision-records/2026-11-25T0154-explore-shows-findings-as-aligned-diff.md) and [messages](../decision-records/2026-11-25T0155-messages-name-the-field.md) |
 | **Summary** | A UX review of the `explore` page from a reviewer's point of view, done on a realistic spec pair (operations, parameters, headers, enums, security, added and removed operations, docs edits) at desktop and phone width. The common thread is the one behind [the `$ref` site fix](explore-context-panes.md): the panes don't always show the change itself, or highlight a line that didn't change. Twelve issues, with a fix for each, in priority order. |
 | **Value / effort** | high / medium (most items are low effort each) |
 | **Plan entry** | [PLAN.md section 8, *Large specs and noise*](../PLAN.md#large-specs-and-noise) |
@@ -80,6 +80,9 @@ A spec pair for a small shop API produced 20 findings: a lower `maximum` on a qu
 5. Items 9 and 10.
 
 ## Open questions
+
+Answered: messages change in every report; findings on the same line are listed, not merged; no phone layout for now.
+
 
 - Item 5 changes message text, which `review`, `ci` and the changelog also print. Change it everywhere, or only on the `explore` page?
 - Item 9: list the related findings, or merge enum value changes into one row (a new kind of merge, like the request/response one)?

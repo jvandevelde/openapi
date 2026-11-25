@@ -76,7 +76,7 @@ test('text and HTML', async () => {
   const r = await result();
   const txt = renderChangelog(r);
   assert.match(txt, /^# Shop 1\.0\.0 → 2\.0\.0\n\n\*\*2 breaking changes\.\*\*/);
-  assert.match(txt, /^### `GET \/orders`: List orders\n\n- \*\*Changed \(breaking\):\*\* maximum decreased/m);
+  assert.match(txt, /^### `GET \/orders`: List orders\n\n- \*\*Changed \(breaking\):\*\* query parameter 'limit': maximum decreased \(100 → 50\)$/m);
   assert.match(txt, /^## Shared types\n\n### `Order`\n\nUsed by `GET \/orders`, `GET \/orders\/\{id\}`\./m);
   const html = renderChangelogHtml(r);
   assert.match(html, /<h1>Shop 1\.0\.0 &#x2192; 2\.0\.0<\/h1>/);

@@ -269,3 +269,49 @@ test('the page links an extraction and the changes found inside it, and folds lo
   const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]!;
   assert.doesNotThrow(() => new Function(script));
 });
+
+// Reviewer UX pass (decision record: explore shows each finding as an aligned diff)
+
+const shop = (v: string, opts: { del: boolean; max: number }): string => `openapi: 3.1.0
+info: { title: Shop, version: '${v}' }
+paths:
+  /orders/{id}:
+    get:
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - name: limit
+          in: query
+          schema: { type: integer, maximum: ${opts.max} }
+      responses:
+        '200': { description: ok }
+${opts.del ? `    delete:
+      responses:
+        '204': { description: gone }
+` : ''}`;
+
+test('an operation only one side has: the other side shows the path item it was in, with nothing highlighted', async () => {
+  const r = await nestedResult(shop('1.0.0', { del: true, max: 10 }), shop('1.1.0', { del: false, max: 10 }));
+  const f = r.findings.find((x) => x.rule === 'operation-removed')!;
+  const s = r.snippets![f.id]!;
+  assert.equal(s.base!.scope!.pointer, '/paths/~1orders~1{id}');
+  assert.equal(s.revision!.absent, true);
+  assert.equal(s.revision!.scope!.pointer, '/paths/~1orders~1{id}');
+  assert.equal(f.revision, undefined); // the finding itself is unchanged
+});
+
+test('version checks show info.version, and name the finding that needs the bump', async () => {
+  const r = await compareOpened({ source: new MemorySource({ 'a.yaml': shop('1.0.0', { del: false, max: 10 }) }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': shop('1.1.0', { del: false, max: 5 }) }), root: 'b.yaml' }, { snippets: true });
+  const v = r.findings.find((x) => x.rule === 'version-bump-too-small')!;
+  const cause = r.findings.find((x) => x.id === v.details.becauseId)!;
+  assert.match(String(v.details.because), /^GET \/orders\/\{id\}: query parameter 'limit': maximum decreased \(10 → 5\)$/);
+  assert.equal(cause.rule, 'maximum-decreased-in-request');
+  assert.equal(r.snippets![v.id]!.revision!.path!.map((p) => p.key).join('/'), 'info/version');
+});
+
+test('messages name the parameter, drop a keyword the title repeats, and breadcrumbs name array steps', async () => {
+  const r = await nestedResult(shop('1', { del: false, max: 10 }), shop('1', { del: false, max: 5 }));
+  const f = r.findings.find((x) => x.rule === 'maximum-decreased-in-request')!;
+  assert.equal(f.message, "query parameter 'limit': maximum decreased (10 → 5)");
+  const steps = r.snippets![f.id]!.revision!.path!;
+  assert.deepEqual(steps.map((p) => p.label ?? p.key), ['paths', '/orders/{id}', 'get', 'parameters', 'limit (query)', 'schema', 'maximum']);
+});

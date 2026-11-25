@@ -30,7 +30,6 @@ export const DIFF_CSS = `
 .dx-del { background:var(--diff-del-x); border-radius:3px; } .dx-ins { background:var(--diff-ins-x); border-radius:3px; }
 .c .fg { width:16px; }
 .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-left:4px; vertical-align:middle; background:var(--muted); border:0; padding:0; cursor:pointer; }
-.fold-row { grid-column:1 / -1; padding:1px 0 1px 60px; }
 .dv-legend { display:flex; flex-wrap:wrap; gap:4px 14px; padding:6px 2px 0; font-size:12px; color:var(--muted); }
 .dv-legend i { display:inline-block; width:12px; height:10px; border-radius:2px; vertical-align:-1px; margin-right:4px; }
 .also { margin:8px 0 0; font-size:13px; } .also .muted { margin-right:6px; }
@@ -73,10 +72,12 @@ function alignRows(bb, rb) {
   }
   const rows = [];
   let dels = [], inss = [];
+  // A line's key: its indentation and what comes before the first colon (or the list dash).
+  const keyOf = (blk, n) => { const t = blk.lines[n - blk.start] || ''; const m = /^(\s*(?:- )?)([^:]*?)\s*:/.exec(t); return m ? m[1].length + '|' + m[2] : indentOf(t) + '|' + t.trim().slice(0, 2); };
+  // Removed and added lines with the same key share a row (changed); the rest stay on rows of their own, in order.
   const flush = () => {
-    const n = Math.max(dels.length, inss.length);
-    for (let k = 0; k < n; k++) {
-      const b = k < dels.length ? dels[k] : null, r = k < inss.length ? inss[k] : null;
+    for (const [i, j] of lcsAlign(dels, inss, (x, y) => keyOf(bb, x) === keyOf(rb, y))) {
+      const b = i >= 0 ? dels[i] : null, r = j >= 0 ? inss[j] : null;
       rows.push({ b, r, kind: b !== null && r !== null ? 'chg' : b !== null ? 'del' : 'ins' });
     }
     dels = []; inss = [];
@@ -262,12 +263,16 @@ function diffView(snip, parts) {
     const gaps = gapRows(p);
     for (let i = 0; i < p.rows.length; i++) {
       const row = p.rows[i];
-      g.append(cell(p, row, i, 'b', gaps), cell(p, row, i, 'r', gaps));
+      const cb = cell(p, row, i, 'b', gaps), cr = cell(p, row, i, 'r', gaps);
+      g.append(cb, cr);
       if (p.folded.has(i)) {
         const e = p.rangeEnd[i];
-        const more = el('button', { type: 'button', class: 'more' }, '… ' + (e - i) + ' unchanged line' + (e - i === 1 ? '' : 's'));
-        more.addEventListener('click', () => { p.folded.delete(i); render(p); });
-        g.append(el('div', { class: 'fold-row' }, more));
+        for (const c of [cb, cr]) {
+          const t = c.querySelector('.t'); if (!t || c.classList.contains('fill')) continue;
+          const more = el('button', { type: 'button', class: 'more' }, '… ' + (e - i) + ' unchanged line' + (e - i === 1 ? '' : 's'));
+          more.addEventListener('click', () => { p.folded.delete(i); render(p); });
+          t.append(' ', more);
+        }
         i = e;
       }
     }
@@ -337,7 +342,7 @@ function diffView(snip, parts) {
   wrap.append(legend);
   // Other findings on the highlighted lines.
   const also = [], seen = new Set();
-  for (const blocks of [B, R]) for (const blk of blocks) if (blk.hit !== null && blk.hit !== undefined) for (const id of blk.marks[blk.hit] || []) {
+  for (const blocks of [B, R]) for (const blk of blocks) if (blk.own && blk.hit !== null && blk.hit !== undefined) for (const id of blk.marks[blk.hit] || []) {
     if (own.has(id)) continue;
     const node = rowNode.get(id); if (!node || seen.has(node)) continue;
     seen.add(node); also.push(byId.get(id));

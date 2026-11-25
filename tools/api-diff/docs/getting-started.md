@@ -69,12 +69,12 @@ Version
 
 Changes (3 places, 2 with breaking changes)
 ERROR  #/components/schemas/NewPet  affects 3 operations: GET /pets, GET /pets/{petId}, POST /pets
-       -  maxLength decreased (100 → 50) at /properties/name/maxLength  openapi.yaml:94 · max-length-decreased
+       -  maxLength decreased (100 → 50) at /properties/name  openapi.yaml:94 · max-length-decreased
               request ERROR · id 8b48ac001f7e   response INFO · id c6a8e0868a08
 ERROR  GET /pets
        -  query parameter 'limit' became required  openapi.yaml:17 · query-parameter-became-required · id 7266a0a41492
 WARN   #/components/schemas/PetStatus  affects 3 operations: GET /pets, GET /pets/{petId}, POST /pets
-       -  enum value added: 'adopted' at /enum  openapi.yaml:89 · enum-value-added
+       -  enum value added: 'adopted'  openapi.yaml:89 · enum-value-added
               request INFO · id 6f4a9cb185dc   response WARN · id 0d553c2a7a3a
 
 6 findings: 2 error, 2 warn, 2 info · state: breaking · not failing CI (--fail-on never)
@@ -151,7 +151,7 @@ $ api-diff --base main openapi.yaml --report changelog
 
 Used by `GET /pets`, `GET /pets/{petId}`, `POST /pets`.
 
-- **Changed (breaking):** maxLength decreased (100 → 50) at /properties/name/maxLength
+- **Changed (breaking):** maxLength decreased (100 → 50) at /properties/name
   Send `name` within the new limit: `maxLength` is now 50 (was 100).
 …
 ```
@@ -170,7 +170,7 @@ api-diff history  openapi.yaml  v1.0.0 (39ca1cd) → HEAD (4bb2cce)
 2 steps · net: 3 error, 2 warn, 2 info
 
 2026-11-23  12bac85  1.1.0: adopted status, limit required, shorter names  1.0.0 → 1.1.0
-            ERROR  #/components/schemas/NewPet  maxLength decreased (100 → 50) at /properties/name/maxLength  (request ERROR, response INFO)
+            ERROR  #/components/schemas/NewPet  maxLength decreased (100 → 50) at /properties/name  (request ERROR, response INFO)
             ERROR  GET /pets  query parameter 'limit' became required
             …
 ── tag v1.1.0 ──────────────────────────────────────────────────────

@@ -135,16 +135,17 @@ function bumpOf(a: Semver, b: Semver): Level {
 }
 
 /** The bump the findings need: error → major, other wire/sdk → minor, docs → patch; one level lower for 0.x. */
-export function neededBump(findings: Finding[], base: Semver): { level: Level; because: string | undefined } {
+export function neededBump(findings: Finding[], base: Semver): { level: Level; because: string | undefined; becauseId: string | undefined } {
   let level: Level = 'none';
   let because: string | undefined;
+  let becauseId: string | undefined;
   for (const f of findings) {
     if (!isChange(f)) continue;
     const l: Level = f.severity === 'error' ? 'major' : f.kind === 'docs' ? 'patch' : 'minor';
-    if (RANK[l] > RANK[level]) [level, because] = [l, `${f.rule} at ${f.subject}`];
+    if (RANK[l] > RANK[level]) [level, because, becauseId] = [l, `${f.subject.replace(/^#\/components\/[^/]+\//, '')}: ${f.message}`, f.id];
   }
   if (base.major === 0 && level !== 'none') level = level === 'major' ? 'minor' : 'patch';
-  return { level, because };
+  return { level, because, becauseId };
 }
 
 export interface BumpAdvice {
@@ -153,7 +154,7 @@ export interface BumpAdvice {
   /** The bump the versions show. */
   actual: Level;
   ok: boolean;
-  /** The finding that sets `needed`, e.g. `operation-removed at DELETE /pets`. */
+  /** The finding that sets `needed`, e.g. `DELETE /pets: operation removed`. */
   because?: string;
   /** How many findings need a major bump (breaking changes). */
   breaking: number;
@@ -190,7 +191,7 @@ export function checkVersions(findings: Finding[], base: ComparedSide, rev: Comp
   const need = neededBump(changed, a);
   const got = bumpOf(a, b);
   if (RANK[got] >= RANK[need.level]) return [];
-  return [{ rule: 'version-bump-too-small', subject: 'document', details: { ...details, needed: need.level, got, because: need.because } }];
+  return [{ rule: 'version-bump-too-small', subject: 'document', details: { ...details, needed: need.level, got, because: need.because, ...(need.becauseId ? { becauseId: need.becauseId } : {}) } }];
 }
 
 export function schemeOption(v: unknown, where: string): Scheme {

@@ -84,6 +84,18 @@ const IGNORED = new Set(['deprecated', '$comment', '$id', '$schema', '$anchor', 
 /** Literal nesting beyond this is compared by hash only, so deep files can't overflow the stack. */
 const MAX_DEPTH = 400;
 
+/** A few words on what an inline union branch is, for messages: its title, else its type and first properties ("object with card, expiry"). */
+function branchSummary(v: unknown): string {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return 'schema';
+  const o = v as Record<string, unknown>;
+  if (typeof o.title === 'string' && o.title.trim()) return `'${o.title.trim()}'`;
+  if ('const' in o) return `const ${JSON.stringify(o.const)}`;
+  const type = Array.isArray(o.type) ? o.type.join(' or ') : typeof o.type === 'string' ? o.type : o.properties ? 'object' : o.items ? 'array' : 'schema';
+  const props = o.properties && typeof o.properties === 'object' ? Object.keys(o.properties) : [];
+  if (!props.length) return type;
+  return `${type} with ${props.slice(0, 3).join(', ')}${props.length > 3 ? ` and ${props.length - 3} more` : ''}`;
+}
+
 const canon = (v: unknown): string => canonicalString(sorted(v));
 function sorted(v: unknown): unknown {
   if (v === null || typeof v !== 'object') return v;
@@ -121,6 +133,8 @@ export class SchemaEngine {
   readonly #typeSets = new WeakMap<Eff, Map<number, Set<string> | undefined>>();
   readonly #unclassified = new Map<string, { b: Pos; r: Pos; pointers: Set<string>; pairs: Set<string> }>();
   #pair = '';
+  /** `$ref`s one side stepped through and the other didn't (an inline schema extracted to a component, or inlined), outermost first; changes found inside carry them as `via`. */
+  #via: { b: Location[]; r: Location[] } = { b: [], r: [] };
 
   readonly #opts: SchemaEngineOptions;
 
@@ -243,6 +257,8 @@ export class SchemaEngine {
     if (c.details.path === '/') c.details.path = '';
     if (b) c.base = this.#loc('b', b, bKw);
     if (r) c.revision = this.#loc('r', r, rKw);
+    if (c.base && this.#via.b.length) c.base.via = this.#via.b.map((l) => ({ ...l }));
+    if (c.revision && this.#via.r.length) c.revision.via = this.#via.r.map((l) => ({ ...l }));
     return c;
   }
 
@@ -270,6 +286,17 @@ export class SchemaEngine {
 
   // --- Walking -------------------------------------------------------------
 
+  /** Runs `walk` with the `$ref` at `p` recorded as a one-sided hop on that side, for the changes found inside. */
+  #through(which: 'b' | 'r', p: Pos, walk: () => void): void {
+    const hops = this.#via[which];
+    hops.push(this.#loc(which, p));
+    try {
+      walk();
+    } finally {
+      hops.pop();
+    }
+  }
+
   #walkPair(b: SchemaNode, r: SchemaNode, dir: Direction, parent: string): void {
     const key = `${b.id}|${r.id}|${dir}`;
     let ps = this.#parents.get(key);
@@ -280,9 +307,12 @@ export class SchemaEngine {
     this.#visited.add(b.id);
     if (b.logical === r.logical && b.deep.full === r.deep.full) return;
     const saved = this.#pair;
+    const savedVia = this.#via;
     this.#pair = key;
+    this.#via = { b: [], r: [] }; // both sides enter the pair through a $ref, so neither side has a one-sided hop
     this.#compare({ node: b, path: [] }, { node: r, path: [] }, dir, 0);
     this.#pair = saved;
+    this.#via = savedVia;
   }
 
   /** Compares two schema positions, following `$ref`s into pairs. */
@@ -301,12 +331,12 @@ export class SchemaEngine {
     }
     if (bt && !rt) {
       this.#emit('ref-inlined', undefined, b, r, { from: bt.logical });
-      this.#schemas({ node: bt, path: [] }, r, dir, depth + 1);
+      this.#through('b', b, () => this.#schemas({ node: bt, path: [] }, r, dir, depth + 1));
       return;
     }
     if (!bt && rt) {
       this.#emit('ref-extracted', undefined, b, r, { to: rt.logical });
-      this.#schemas(b, { node: rt, path: [] }, dir, depth + 1);
+      this.#through('r', r, () => this.#schemas(b, { node: rt, path: [] }, dir, depth + 1));
       return;
     }
     this.#schemas(b, r, dir, depth);
@@ -669,13 +699,16 @@ export class SchemaEngine {
   #branchChanges(ch: BranchChanges | undefined, values: { added: Map<string, string[]>; removed: Map<string, string[]> }, dir: Direction): void {
     if (!ch) return;
     const withValues = (d: Record<string, unknown>, vs: string[] | undefined): Record<string, unknown> => (vs?.length ? { ...d, discriminatorValues: vs } : d);
+    // A `$ref` branch is named by its target; an inline one by its index, with a short summary of what it is.
+    const branch = (which: 'b' | 'r', p: Pos, t: string | undefined): Record<string, unknown> =>
+      t ? { branch: t } : { branch: p.path[p.path.length - 1], branchSummary: branchSummary(this.#value(which, p)) };
     for (const bp of ch.removed) {
       const t = this.#pureRef('b', bp)?.logical;
-      this.#emit('union-branch-removed', dir, bp, ch.ru.at, withValues({ branch: t ?? bp.path[bp.path.length - 1] }, t ? values.removed.get(t) : undefined), [], [ch.ru.kind]);
+      this.#emit('union-branch-removed', dir, bp, ch.ru.at, withValues(branch('b', bp, t), t ? values.removed.get(t) : undefined), [], [ch.ru.kind]);
     }
     for (const rp of ch.added) {
       const t = this.#pureRef('r', rp)?.logical;
-      this.#emit('union-branch-added', dir, ch.bu.at, rp, withValues({ branch: t ?? rp.path[rp.path.length - 1] }, t ? values.added.get(t) : undefined), [ch.bu.kind]);
+      this.#emit('union-branch-added', dir, ch.bu.at, rp, withValues(branch('r', rp, t), t ? values.added.get(t) : undefined), [ch.bu.kind], []);
     }
   }
 

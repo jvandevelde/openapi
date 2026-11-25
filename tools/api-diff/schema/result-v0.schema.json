@@ -101,15 +101,32 @@
         "path": {
           "description": "The pointer's steps from the document root, each with its line (the breadcrumb).",
           "type": "array",
-          "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" } } }
+          "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" }, "label": { "type": "string", "description": "A name for an array step where the index says little: a parameter (limit (query)), a $ref member (Card), else #n." } } }
         },
         "scope": { "description": "The enclosing schema or operation, or the outermost node on the path that fits; its lines are in sourceLines.", "$ref": "#/$defs/snippetBlock" },
         "ref": {
           "description": "When the node is a $ref: the node it points at; its lines are in sourceLines under file.",
           "allOf": [{ "$ref": "#/$defs/snippetBlock" }],
           "required": ["file", "name"],
-          "properties": { "file": { "type": "string" }, "name": { "type": "string", "description": "The $ref as written." } }
-        }
+          "properties": { "file": { "type": "string" }, "name": { "type": "string", "description": "The $ref as written." }, "isNew": { "type": "boolean", "description": "The other version has no node there." } }
+        },
+        "via": {
+          "description": "The $refs only this side went through to reach the change (the location's via), outermost first: each one's line, $ref as written, path and enclosing scope.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "line", "name"],
+            "properties": {
+              "file": { "type": "string" },
+              "line": { "type": "integer" },
+              "name": { "type": "string", "description": "The $ref as written." },
+              "path": { "type": "array", "items": { "type": "object", "required": ["key", "line"], "properties": { "key": { "type": "string" }, "line": { "type": "integer" }, "label": { "type": "string", "description": "A name for an array step where the index says little: a parameter (limit (query)), a $ref member (Card), else #n." } } } },
+              "scope": { "$ref": "#/$defs/snippetBlock" }
+            }
+          }
+        },
+        "scopeIsNew": { "type": "boolean", "description": "With via: the other version has no node at scope (e.g. the component was added with the $ref)." },
+        "absent": { "type": "boolean", "description": "The finding has no location on this side (an operation added or removed): scope is the node it would be in, for context, and nothing is highlighted." }
       }
     },
     "snippetBlock": {
@@ -145,7 +162,12 @@
         "file": { "type": "string" },
         "pointer": { "type": "string", "description": "JSON Pointer in that file." },
         "line": { "type": "integer", "minimum": 1 },
-        "column": { "type": "integer", "minimum": 1 }
+        "column": { "type": "integer", "minimum": 1 },
+        "via": {
+          "description": "Schema changes: the $refs this side went through to reach the change and the other side didn't (an inline schema became a $ref, or a $ref was inlined), outermost first. The change is inside the last one's target.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/location" }
+        }
       }
     },
     "finding": {

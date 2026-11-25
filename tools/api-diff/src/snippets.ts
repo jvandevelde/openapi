@@ -80,7 +80,87 @@ class Builder {
     return { pointer: encodePointer(segs), start, end, line };
   }
 
-  snippet(l: Location | undefined): Snippet | undefined {
+  /**
+   * The breadcrumb steps to `segs`, each with its line. An array step gets a `label` where its index
+   * says little: a parameter by name and location (`limit (query)`), a union or allOf member by its
+   * `$ref` target (`Card`), else `#n` counting from 1.
+   */
+  #path(file: LoadedFile, segs: readonly string[]): NonNullable<Snippet['path']> {
+    const pos = file.parsed.positions;
+    return segs.map((key, i) => {
+      const step: NonNullable<Snippet['path']>[number] = { key, line: pos.lineCol(segs.slice(0, i + 1)).line };
+      const parent = segs[i - 1];
+      if (!/^\d+$/.test(key) || !parent) return step;
+      const v = this.#docs.value({ file, segs: segs.slice(0, i + 1) });
+      const o = v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined;
+      const ref = typeof o?.$ref === 'string' ? o.$ref.split('/').pop() : undefined;
+      if (parent === 'parameters') step.label = typeof o?.name === 'string' ? `${o.name}${typeof o.in === 'string' ? ` (${o.in})` : ''}` : ref ?? `#${Number(key) + 1}`;
+      else if (/^(oneOf|anyOf|allOf|prefixItems)$/.test(parent)) step.label = ref ?? `#${Number(key) + 1}`;
+      return step;
+    });
+  }
+
+  /** The path from the root to `segs` (the breadcrumb) and the enclosing schema or operation, or the outermost node below it that fits. */
+  #place(file: LoadedFile, segs: readonly string[], line: number): Pick<Snippet, 'path' | 'scope'> {
+    const pos = file.parsed.positions;
+    const out: Pick<Snippet, 'path' | 'scope'> = { path: this.#path(file, segs) };
+    for (let d = scopeDepth(segs, file === this.#docs.root); d <= segs.length; d++) {
+      const block = this.#block(file, segs.slice(0, d), line);
+      if (block) {
+        out.scope = block;
+        break;
+      }
+    }
+    return out;
+  }
+
+  /** True if this side has a node at `pointer` in the file shown as `display` on the other side (the root file matches the root, whatever its name). */
+  has(display: string, pointer: string, fromRoot: boolean): boolean {
+    const file = fromRoot ? this.#docs.root : this.#files.get(display);
+    const segs = segmentsOf(pointer);
+    return !!file && !!segs && this.#docs.value({ file, segs }) !== undefined;
+  }
+
+  /** The root file's display name. */
+  get rootName(): string {
+    return this.#docs.root.display;
+  }
+
+  /**
+   * For an item only one side has (an operation added or removed): the nearest ancestor of `s`'s
+   * scope that the other side has too, if it's a path item or a component's part and fits. Widens
+   * `s`'s scope to it and returns that pointer's segments, so the other side can show the same node.
+   */
+  widenToShared(s: Snippet, other: Builder): string[] | undefined {
+    const file = this.#files.get(s.file);
+    const segs = s.scope ? segmentsOf(s.scope.pointer) : undefined;
+    if (!file || file !== this.#docs.root || !segs) return undefined;
+    for (let d = segs.length - 1; d >= 2; d--) {
+      const anc = segs.slice(0, d);
+      if (anc[0] === 'components' && d < 3) continue; // /components/schemas is no context
+      if (anc[0] === 'info') return undefined;
+      if (!other.has(other.rootName, encodePointer(anc), true)) continue;
+      const block = this.#block(file, anc, s.line);
+      if (!block) return undefined;
+      s.scope = block;
+      return anc;
+    }
+    return undefined;
+  }
+
+  /** A snippet of a node in the root file that the finding has no location on: its lines, with nothing highlighted unless `hit`. */
+  context(segs: string[], hit = false): Snippet | undefined {
+    const file = this.#docs.root;
+    if (this.#docs.value({ file, segs }) === undefined) return undefined;
+    const pos = file.parsed.positions;
+    const block = this.#block(file, segs, pos.lineCol(segs).line);
+    if (!block) return undefined;
+    const s: Snippet = { file: file.display, start: block.start, line: block.start, lines: [], scope: block, path: this.#path(file, segs) };
+    if (!hit) s.absent = true;
+    return s;
+  }
+
+  snippet(l: Location | undefined, other?: Builder): Snippet | undefined {
     const file = l?.line ? this.#files.get(l.file) : undefined;
     if (!l?.line || !file) return undefined;
     const text = this.#textOf(file);
@@ -89,15 +169,21 @@ class Builder {
     const s: Snippet = { file: l.file, start, line: l.line, lines: text.slice(start - 1, end).map(cutLine) };
     const segs = segmentsOf(l.pointer);
     if (!segs) return s;
-    const pos = file.parsed.positions;
-    s.path = segs.map((key, i) => ({ key, line: pos.lineCol(segs.slice(0, i + 1)).line }));
-    // The enclosing schema or operation, or the outermost node below it that fits.
-    for (let d = scopeDepth(segs, file === this.#docs.root); d <= segs.length; d++) {
-      const block = this.#block(file, segs.slice(0, d), l.line);
-      if (block) {
-        s.scope = block;
-        break;
-      }
+    Object.assign(s, this.#place(file, segs, l.line));
+    // `$ref`s only this side went through: each one's place, so the page shows the schema both
+    // sides have in common (with the `$ref` line) before the one the change is in.
+    const hops: NonNullable<Snippet['via']> = [];
+    for (const v of l.via ?? []) {
+      const vf = v.line ? this.#files.get(v.file) : undefined;
+      const vs = segmentsOf(v.pointer);
+      const node = vf && vs ? this.#docs.value({ file: vf, segs: vs }) : undefined;
+      const name = node !== null && typeof node === 'object' && !Array.isArray(node) ? (node as Record<string, unknown>).$ref : undefined;
+      if (!vf || !vs || typeof name !== 'string') break; // keep the hops up to the first one we can't show
+      hops.push({ file: v.file, line: v.line!, name, ...this.#place(vf, vs, v.line!) });
+    }
+    if (hops.length) {
+      s.via = hops;
+      if (other && s.scope && !other.has(l.file, s.scope.pointer, file === this.#docs.root)) s.scopeIsNew = true;
     }
     // A `$ref` (the node itself, or its `$ref` key): the node it points at. One hop, and
     // resolveRef records no notices (the result's notices are already final).
@@ -107,7 +193,10 @@ class Builder {
     if (typeof ref === 'string') {
       const t = this.#docs.resolveRef(file, ref);
       const block = 'error' in t ? undefined : this.#block(t.file, t.segs, t.file.parsed.positions.lineCol(t.segs).line);
-      if (block && !('error' in t)) s.ref = { ...block, file: t.file.display, name: ref };
+      if (block && !('error' in t)) {
+        s.ref = { ...block, file: t.file.display, name: ref };
+        if (other && !other.has(t.file.display, block.pointer, t.file === this.#docs.root)) s.ref.isNew = true;
+      }
     }
     return s;
   }
@@ -120,8 +209,21 @@ export function snippetsFor(findings: Finding[], base: DocumentSet | undefined, 
   const out: NonNullable<Result['snippets']> = {};
   for (const f of findings) {
     const s: { base?: Snippet; revision?: Snippet } = {};
-    const bs = b?.snippet(f.base);
-    const rs = r?.snippet(f.revision);
+    let bs = b?.snippet(f.base, r);
+    let rs = r?.snippet(f.revision, b);
+    // Version checks have no location: show info.version on both sides.
+    if (!f.base && !f.revision && /^version-/.test(f.rule)) {
+      bs = b?.context(['info', 'version'], true);
+      rs = r?.context(['info', 'version'], true);
+    }
+    // Only one side has it (an operation added or removed): show the path item it is in on both sides.
+    if (bs && !rs && b && r) {
+      const anc = b.widenToShared(bs, r);
+      if (anc) rs = r.context(anc);
+    } else if (rs && !bs && b && r) {
+      const anc = r.widenToShared(rs, b);
+      if (anc) bs = b.context(anc);
+    }
     if (bs) s.base = bs;
     if (rs) s.revision = rs;
     if (bs || rs) out[f.id] = s;

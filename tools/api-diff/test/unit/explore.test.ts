@@ -205,3 +205,113 @@ test('HTML pages are pure ASCII, so a wrong charset guess cannot garble them', (
   assert.equal(asciiHtml(html), '<p title="caf&#xe9;">&#x1f984; &#xb7; &#xe9;</p><style>a::before { content: \'\\0025b8\'; }</style><script>const s = "\\u2192\\ud83e\\udd84";</script>');
   assert.equal(eval(asciiHtml('<script>"→🦄"</script>').slice(8, -9)), '→🦄');
 });
+
+// Context in the panes (decision record: explore shows the $ref site and folds the enclosing schema)
+
+const extracted = (inline: boolean, max: number): string => `openapi: 3.1.0
+info: { title: t, version: '1' }
+paths:
+  /o:
+    get:
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Order' } } } }
+components:
+  schemas:
+    Order:
+      type: object
+      properties:
+        id: { type: string }
+${inline ? `        shipping:
+          type: object
+          properties:
+            zip: { type: string, maxLength: ${max} }` : `        shipping: { $ref: '#/components/schemas/Address' }
+    Address:
+      type: object
+      properties:
+        zip: { type: string, maxLength: ${max} }`}
+`;
+
+test('a change inside an extracted schema records the $ref it was reached through, and its snippet shows that place first', async () => {
+  const r = await nestedResult(extracted(true, 10), extracted(false, 8));
+  const f = r.findings.find((x) => x.rule === 'max-length-decreased-in-response')!;
+  assert.equal(f.base!.pointer, '/components/schemas/Order/properties/shipping/properties/zip/maxLength');
+  assert.equal(f.base!.via, undefined);
+  assert.equal(f.revision!.pointer, '/components/schemas/Address/properties/zip/maxLength');
+  assert.deepEqual(f.revision!.via!.map((v) => v.pointer), ['/components/schemas/Order/properties/shipping']);
+  const s = r.snippets![f.id]!.revision!;
+  assert.equal(s.via!.length, 1);
+  assert.equal(s.via![0]!.name, '#/components/schemas/Address');
+  assert.equal(s.via![0]!.scope!.pointer, '/components/schemas/Order');
+  assert.equal(s.scope!.pointer, '/components/schemas/Address');
+  assert.equal(s.scopeIsNew, true);
+  const lines = r.sourceLines!.revision['b.yaml']!;
+  assert.match(lines[s.via![0]!.line]!, /shipping: \{ \$ref/);
+  // The reverse: the base went through the $ref, and the component is gone from the revision.
+  const back = await nestedResult(extracted(false, 8), extracted(true, 10));
+  const g = back.findings.find((x) => x.rule === 'max-length-increased-in-response')!;
+  assert.deepEqual(g.base!.via!.map((v) => v.pointer), ['/components/schemas/Order/properties/shipping']);
+  assert.equal(back.snippets![g.id]!.base!.scopeIsNew, true);
+  // Both sides through the same $ref: no via.
+  const same = await nestedResult(extracted(false, 10), extracted(false, 8));
+  assert.equal(same.findings.find((x) => x.rule.startsWith('max-length'))!.revision!.via, undefined);
+});
+
+test('the page links an extraction and the changes found inside it, and folds long schemas', async () => {
+  const r = await nestedResult(extracted(true, 10), extracted(false, 8));
+  const html = renderExplore(r);
+  const data = JSON.parse(html.match(/id="data">([\s\S]*?)<\/script>/)![1]!);
+  const ext = data.findings.find((x: { rule: string }) => x.rule === 'ref-extracted');
+  assert.equal(ext.revision.pointer, '/components/schemas/Order/properties/shipping');
+  assert.match(html, /'changes inside'/);
+  assert.match(html, /'via'/);
+  assert.match(html, /SHOW_WHOLE = 40, FOLD_MIN = 3/);
+  // The script parses (it lives in a template literal, where a stray escape breaks it).
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]!;
+  assert.doesNotThrow(() => new Function(script));
+});
+
+// Reviewer UX pass (decision record: explore shows each finding as an aligned diff)
+
+const shop = (v: string, opts: { del: boolean; max: number }): string => `openapi: 3.1.0
+info: { title: Shop, version: '${v}' }
+paths:
+  /orders/{id}:
+    get:
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - name: limit
+          in: query
+          schema: { type: integer, maximum: ${opts.max} }
+      responses:
+        '200': { description: ok }
+${opts.del ? `    delete:
+      responses:
+        '204': { description: gone }
+` : ''}`;
+
+test('an operation only one side has: the other side shows the path item it was in, with nothing highlighted', async () => {
+  const r = await nestedResult(shop('1.0.0', { del: true, max: 10 }), shop('1.1.0', { del: false, max: 10 }));
+  const f = r.findings.find((x) => x.rule === 'operation-removed')!;
+  const s = r.snippets![f.id]!;
+  assert.equal(s.base!.scope!.pointer, '/paths/~1orders~1{id}');
+  assert.equal(s.revision!.absent, true);
+  assert.equal(s.revision!.scope!.pointer, '/paths/~1orders~1{id}');
+  assert.equal(f.revision, undefined); // the finding itself is unchanged
+});
+
+test('version checks show info.version, and name the finding that needs the bump', async () => {
+  const r = await compareOpened({ source: new MemorySource({ 'a.yaml': shop('1.0.0', { del: false, max: 10 }) }), root: 'a.yaml' }, { source: new MemorySource({ 'b.yaml': shop('1.1.0', { del: false, max: 5 }) }), root: 'b.yaml' }, { snippets: true });
+  const v = r.findings.find((x) => x.rule === 'version-bump-too-small')!;
+  const cause = r.findings.find((x) => x.id === v.details.becauseId)!;
+  assert.match(String(v.details.because), /^GET \/orders\/\{id\}: query parameter 'limit': maximum decreased \(10 → 5\)$/);
+  assert.equal(cause.rule, 'maximum-decreased-in-request');
+  assert.equal(r.snippets![v.id]!.revision!.path!.map((p) => p.key).join('/'), 'info/version');
+});
+
+test('messages name the parameter, drop a keyword the title repeats, and breadcrumbs name array steps', async () => {
+  const r = await nestedResult(shop('1', { del: false, max: 10 }), shop('1', { del: false, max: 5 }));
+  const f = r.findings.find((x) => x.rule === 'maximum-decreased-in-request')!;
+  assert.equal(f.message, "query parameter 'limit': maximum decreased (10 → 5)");
+  const steps = r.snippets![f.id]!.revision!.path!;
+  assert.deepEqual(steps.map((p) => p.label ?? p.key), ['paths', '/orders/{id}', 'get', 'parameters', 'limit (query)', 'schema', 'maximum']);
+});

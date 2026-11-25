@@ -798,6 +798,7 @@ Each idea has its own file in [feature-backlog/](feature-backlog/README.md) with
 |---|---|---|---|
 | [**Editor integration (LSP)**](feature-backlog/editor-integration-lsp.md) | Run the engine as a language server so breaking changes show up in the editor before a PR exists. | high / medium | Idea |
 | [**`api-diff explain <finding-id>`**](feature-backlog/explain-command.md) | Print the full reasoning for one finding: rule, usages, severity source, counter-example and fix. | medium / low | Idea |
+| [**Extensions: your own data in the result JSON**](feature-backlog/result-extensions.md) | Teams keep data about a commit or a change that the spec doesn't have (PR labels, ticket IDs, release notes, deploys). Named `extensions` slots on each history step, finding and result hold it, filled from git trailers, git notes, the spec or a script, shown in the timeline and in templates; `api-diff render` renders a saved JSON file again, so any script can add data and api-diff still draws the report. | high / medium | Idea |
 | [**Rule plugins**](feature-backlog/rule-plugins.md) | Custom TypeScript rules against the change-record API, tested with the golden-case format. | high / medium | Idea |
 | [**Lint only what changed**](feature-backlog/lint-only-what-changed.md) | Let plugin rules declare `scope: changed` so house rules apply only to new and changed parts. | high / low | Idea |
 | [**Watch mode**](feature-backlog/watch-mode.md) | `api-diff --watch` re-runs on save. | low / low | Idea |

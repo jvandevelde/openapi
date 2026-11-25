@@ -32,6 +32,7 @@ One file per proposed feature or design, including every idea in [PLAN.md sectio
 | [Usage-weighted severity](usage-weighted-severity.md) | Ownership and governance | Idea | Import call counts per operation to rank findings or lower severity for unused operations. |
 | [Editor integration (LSP)](editor-integration-lsp.md) | Developer experience | Idea | Run the engine as a language server so breaking changes show up in the editor before a PR exists. |
 | [`api-diff explain <finding-id>`](explain-command.md) | Developer experience | Idea | Print the full reasoning for one finding: rule, usages, severity source, counter-example and fix. |
+| [Extensions: your own data in the result JSON](result-extensions.md) | Developer experience | Idea | Named `extensions` slots on history steps, findings and results, filled from git trailers, git notes, the spec or a script, shown in reports and templates; `api-diff render` renders a saved JSON file with them again. |
 | [Rule plugins](rule-plugins.md) | Developer experience | Idea | Custom TypeScript rules against the change-record API, tested with the golden-case format. |
 | [Lint only what changed](lint-only-what-changed.md) | Developer experience | Idea | Let plugin rules declare `scope: changed` so house rules apply only to new and changed parts. |
 | [Watch mode](watch-mode.md) | Developer experience | Idea | `api-diff --watch` re-runs on save. |
